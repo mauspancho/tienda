@@ -1,5 +1,6 @@
 package com.tienda.pos.dashboard;
 
+import com.tienda.pos.common.CurrentUser;
 import com.tienda.pos.common.NormalMode;
 import com.tienda.pos.product.ProductRepository;
 import com.tienda.pos.purchase.PurchaseRepository;
@@ -29,9 +30,15 @@ public class DashboardController {
 
     @GetMapping("/")
     public String dashboard(Model model) {
-        model.addAttribute("summary", dashboardService.today());
+        boolean admin = CurrentUser.hasRole("ROLE_ADMIN");
+        String username = CurrentUser.username();
+        var latestSales = admin
+                ? saleRepository.findAllByOrderBySaleDateDesc(PageRequest.of(0, 8)).getContent()
+                : saleRepository.findByCashierUsernameOrderBySaleDateDesc(username, PageRequest.of(0, 8)).getContent();
+
+        model.addAttribute("summary", dashboardService.today(username, admin));
         model.addAttribute("lowStock", productRepository.findLowStock(PageRequest.of(0, 8)));
-        model.addAttribute("latestSales", saleRepository.findAllByOrderBySaleDateDesc(PageRequest.of(0, 8)).getContent());
+        model.addAttribute("latestSales", latestSales);
         model.addAttribute("latestPurchases", purchaseRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(0, 8)).getContent());
         return "dashboard/index";
     }
@@ -39,6 +46,6 @@ public class DashboardController {
     @GetMapping("/api/dashboard/summary")
     @ResponseBody
     public DashboardSummary summary() {
-        return dashboardService.today();
+        return dashboardService.today(CurrentUser.username(), CurrentUser.hasRole("ROLE_ADMIN"));
     }
 }

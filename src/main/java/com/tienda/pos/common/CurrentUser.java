@@ -9,10 +9,22 @@ public final class CurrentUser {
     }
 
     public static String username() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Authentication authentication = authentication();
         if (authentication == null || !authentication.isAuthenticated()) {
             return "sistema";
         }
         return authentication.getName();
+    }
+
+    public static boolean hasRole(String role) {
+        Authentication authentication = authentication();
+        return authentication != null
+                && authentication.isAuthenticated()
+                && authentication.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals(role));
+    }
+
+    private static Authentication authentication() {
+        return SecurityContextHolder.getContext().getAuthentication();
     }
 }

@@ -26,19 +26,26 @@ public class DashboardService {
     }
 
     public DashboardSummary today() {
+        return today(null, true);
+    }
+
+    public DashboardSummary today(String username, boolean admin) {
         LocalDate today = LocalDate.now();
         var start = today.atStartOfDay();
         var end = today.plusDays(1).atStartOfDay().minusNanos(1);
         return new DashboardSummary(
-                saleRepository.totalSales(start, end),
-                saleRepository.grossProfit(start, end),
-                saleRepository.soldUnits(start, end),
-                saleRepository.countBySaleDateBetweenAndStatus(start, end, SaleStatus.COMPLETED),
+                admin ? saleRepository.totalSales(start, end) : saleRepository.totalSalesByCashier(username, start, end),
+                admin ? saleRepository.grossProfit(start, end) : saleRepository.grossProfitByCashier(username, start, end),
+                admin ? saleRepository.soldUnits(start, end) : saleRepository.soldUnitsByCashier(username, start, end),
+                admin ? saleRepository.countBySaleDateBetweenAndStatus(start, end, SaleStatus.COMPLETED)
+                        : saleRepository.countByCashierUsernameAndSaleDateBetweenAndStatus(username, start, end, SaleStatus.COMPLETED),
                 productRepository.findLowStock(PageRequest.of(0, 100)).size(),
                 expenseRepository.totalBetween(today, today),
                 productRepository.inventoryValue(),
-                saleRepository.dailySalesSince(today.minusDays(6).atStartOfDay()),
-                saleRepository.topProducts(start, end, PageRequest.of(0, 5))
+                admin ? saleRepository.dailySalesSince(today.minusDays(6).atStartOfDay())
+                        : saleRepository.dailySalesSinceByCashier(username, today.minusDays(6).atStartOfDay()),
+                admin ? saleRepository.topProducts(start, end, PageRequest.of(0, 5))
+                        : saleRepository.topProductsByCashier(username, start, end, PageRequest.of(0, 5))
         );
     }
 }
