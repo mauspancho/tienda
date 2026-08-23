@@ -21,7 +21,8 @@
 
   if (!input || !cartBody) return;
 
-  const money = value => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(value || 0);
+  const money = value => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value || 0);
+  const number = value => new Intl.NumberFormat("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value || 0);
   const say = (text, kind = "info") => {
     message.textContent = text;
     message.className = kind === "error" ? "alert alert-error" : "alert alert-success";
@@ -39,7 +40,7 @@
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td><strong>${item.name}</strong><br><span class="muted">${item.code || ""}</span></td>
-        <td><input aria-label="Cantidad" type="number" min="0.001" step="0.001" value="${item.quantity}" data-qty="${item.id}"></td>
+        <td><input aria-label="Cantidad" type="number" min="0.01" step="0.01" value="${Number(item.quantity || 0).toFixed(2)}" data-qty="${item.id}"></td>
         <td>${money(item.price)}</td>
         <td>${money(line)}</td>
         <td><button class="btn btn-danger" data-remove="${item.id}" type="button">Quitar</button></td>`;
@@ -114,7 +115,7 @@
       const node = document.createElement("button");
       node.type = "button";
       node.className = "product-hit";
-      node.innerHTML = `<strong>${product.name}</strong><br><span class="muted">${money(product.price)} · Stock ${product.stock}</span>`;
+      node.innerHTML = `<strong>${product.name}</strong><br><span class="muted">${money(product.price)} · Stock ${number(product.stock)}</span>`;
       node.addEventListener("click", () => addProduct(product));
       results.appendChild(node);
     });

@@ -1,5 +1,6 @@
 (() => {
-  const money = value => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(value || 0);
+  const money = value => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value || 0);
+  const number = value => new Intl.NumberFormat("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value || 0);
 
   const buttons = document.querySelectorAll("[data-generate-code]");
   const lookupCard = document.querySelector("[data-product-lookup]");
@@ -102,7 +103,7 @@
     localBox.hidden = false;
     localBox.querySelector("[data-local-product-name]").textContent = result.name || "Producto registrado";
     localBox.querySelector("[data-local-product-code]").textContent = result.code || result.barcode || "";
-    localBox.querySelector("[data-local-product-stock]").textContent = result.stock ?? "0";
+    localBox.querySelector("[data-local-product-stock]").textContent = number(result.stock || 0);
     localBox.querySelector("[data-local-product-price]").textContent = money(result.price || 0);
     localBox.querySelector("[data-local-view]").href = `/products?q=${encodeURIComponent(result.barcode || result.code || "")}`;
     localBox.querySelector("[data-local-edit]").href = `/products/${result.productId}/edit`;

@@ -19,10 +19,10 @@
         </div>
       </td>
       <td><strong th:text="${p.name}"></strong><br><span class="muted" th:text="${p.barcode}"></span></td>
-      <td th:text="${'$' + p.salePrice}"></td>
-      <td th:text="${'$' + p.purchaseCost}"></td>
-      <td><span th:class="${p.hasLowStock() ? 'badge badge-yellow' : 'badge badge-green'}" th:text="${p.currentStock}"></span></td>
-      <td th:text="${p.marginPercent() + '%'}"></td>
+      <td th:text="${@display.money(p.salePrice)}"></td>
+      <td th:text="${@display.money(p.purchaseCost)}"></td>
+      <td><span th:class="${p.hasLowStock() ? 'badge badge-yellow' : 'badge badge-green'}" th:text="${@display.number(p.currentStock)}"></span></td>
+      <td th:text="${@display.percent(p.marginPercent())}"></td>
       <td><a class="btn btn-muted" th:href="@{'/products/' + ${p.id} + '/edit'}">Editar</a></td>
     </tr>
   </table>

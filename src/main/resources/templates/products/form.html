@@ -62,14 +62,14 @@
 
 <h2>Datos de tu tienda</h2>
 <div class="grid grid-3">
-  <div class="field"><label>Stock inicial</label><input type="number" step="0.001" th:field="*{currentStock}"></div>
+  <div class="field"><label>Stock inicial</label><input type="number" step="0.01" th:field="*{currentStock}"></div>
   <div class="field"><label>Costo de compra por unidad</label><input type="number" step="0.01" th:field="*{purchaseCost}" data-cost-input></div>
   <div class="field"><label>Precio de venta al público</label><input type="number" step="0.01" th:field="*{salePrice}" data-price-input></div>
 </div>
 <div class="grid grid-3">
   <div class="field"><label>Ganancia por unidad</label><div class="cart-total" data-profit-preview>$0.00</div></div>
   <div class="field"><label>Margen</label><div class="cart-total" data-margin-preview>0.00%</div></div>
-  <div class="field"><label>Stock mínimo</label><input type="number" step="0.001" th:field="*{minimumStock}"></div>
+  <div class="field"><label>Stock mínimo</label><input type="number" step="0.01" th:field="*{minimumStock}"></div>
 </div>
 <div class="grid grid-3">
   <div class="field"><label>Impuesto %</label><input type="number" step="0.01" th:field="*{tax}"></div>
