@@ -12,7 +12,10 @@
   <h2>Escanear producto</h2>
   <div class="field">
     <label>Código de barras</label>
-    <input data-product-lookup-input autocomplete="off" inputmode="numeric" placeholder="7501055300006">
+    <div class="camera-input-row">
+      <input data-product-lookup-input autocomplete="off" inputmode="numeric" placeholder="7501055300006">
+      <button class="btn btn-primary" type="button" data-camera-scan data-camera-mode="single" data-camera-title="Escanear producto">Escanear con cámara</button>
+    </div>
   </div>
   <p class="muted">Escanea el producto o escribe el código y presiona Enter.</p>
   <div data-product-lookup-message hidden></div>
@@ -76,4 +79,4 @@
   <div class="field"><label>Activo</label><select th:field="*{active}"><option value="true">Sí</option><option value="false">No</option></select></div>
 </div>
 <button class="btn btn-success" type="submit">Guardar producto</button></form>
-</section></main></div><script th:src="@{/js/product-code-generator.js}"></script></body></html>
+</section></main></div><script th:src="@{/vendor/zxing/zxing-browser.min.js}"></script><script th:src="@{/js/product-code-generator.js}"></script><script th:src="@{/js/camera-barcode-scanner.js}"></script></body></html>

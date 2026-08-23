@@ -60,6 +60,14 @@
     totalEl.textContent = money(Math.max(total - discount, 0));
   }
 
+  function registerUrlFor(barcode) {
+    return `/products/new?barcode=${encodeURIComponent(barcode)}&lookup=true`;
+  }
+
+  function notifyCameraLookup(detail) {
+    document.dispatchEvent(new CustomEvent("barcode:lookup-result", { detail }));
+  }
+
   function showUnregisteredProduct(barcode) {
     say("Producto no registrado.", "error");
     results.innerHTML = "";
@@ -68,7 +76,7 @@
     panel.innerHTML = `
       <strong>Producto no registrado.</strong><br>
       <span class="muted">Código: ${barcode}</span><br>
-      <a class="btn btn-muted" href="/products/new?barcode=${encodeURIComponent(barcode)}&lookup=true">Buscar información y registrar</a>
+      <a class="btn btn-muted" href="${registerUrlFor(barcode)}">Buscar información y registrar</a>
       <button class="btn btn-muted" type="button" data-cancel-register>Cancelar</button>`;
     panel.querySelector("[data-cancel-register]").addEventListener("click", () => {
       results.innerHTML = "";
@@ -94,15 +102,26 @@
 
   async function fetchBarcode(code) {
     const barcode = code.trim();
-    if (!barcode || busy || !cashOpen) return;
+    if (!barcode || busy || !cashOpen) return { status: "ignored", barcode };
     busy = true;
     try {
       const response = await fetch(`/api/products/barcode/${encodeURIComponent(barcode)}`);
       if (!response.ok) {
         showUnregisteredProduct(barcode);
-        return;
+        const result = { status: "missing", barcode, registerUrl: registerUrlFor(barcode) };
+        notifyCameraLookup(result);
+        return result;
       }
-      addProduct(await response.json());
+      const product = await response.json();
+      addProduct(product);
+      const result = { status: "found", barcode, product, message: `${product.name} agregado.` };
+      notifyCameraLookup(result);
+      return result;
+    } catch (error) {
+      const result = { status: "error", barcode, message: "No fue posible consultar el producto." };
+      notifyCameraLookup(result);
+      say(result.message, "error");
+      return result;
     } finally {
       busy = false;
       input.value = "";
@@ -166,6 +185,13 @@
     }
   }
 
+  window.posBarcodeLookup = fetchBarcode;
+
+  document.addEventListener("barcode:detected", event => {
+    const barcode = event.detail?.barcode;
+    if (event.detail?.source !== "camera" || !barcode) return;
+    fetchBarcode(barcode);
+  });
   input.addEventListener("keydown", event => {
     if (event.key === "Enter") {
       event.preventDefault();

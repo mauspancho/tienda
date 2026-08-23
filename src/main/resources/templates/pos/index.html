@@ -21,7 +21,10 @@
     </div>
     <div class="card">
       <label>Escanear código de barras / buscar producto</label>
-      <input class="scanner-input" data-barcode-input autocomplete="off" placeholder="Escanea el código y se agrega automático" th:disabled="${!cashOpen}">
+            <div class="camera-input-row pos-camera-input-row">
+        <input class="scanner-input" data-barcode-input autocomplete="off" placeholder="Escanea el código y se agrega automático" th:disabled="${!cashOpen}">
+        <button class="btn btn-primary" type="button" data-camera-scan data-camera-mode="continuous" data-camera-title="Escanear venta" th:disabled="${!cashOpen}">Usar cámara</button>
+      </div>
       <div data-search-results class="search-results"></div>
     </div>
     <div class="table-wrap"><table><thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Total</th><th></th></tr></thead><tbody data-cart-body></tbody></table></div>
@@ -50,5 +53,7 @@
   </aside>
 </div>
 </section></main></div>
+<script th:src="@{/vendor/zxing/zxing-browser.min.js}"></script>
 <script th:src="@{/js/barcode-scanner.js}"></script>
+<script th:src="@{/js/camera-barcode-scanner.js}"></script>
 </body></html>

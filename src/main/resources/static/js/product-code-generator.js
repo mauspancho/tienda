@@ -152,6 +152,15 @@
     document.querySelector("[data-product-name]")?.focus();
   }
 
+  window.productBarcodeLookup = lookupBarcode;
+
+  document.addEventListener("barcode:detected", event => {
+    const barcode = event.detail?.barcode;
+    if (event.detail?.source !== "camera" || !barcode) return;
+    if (lookupInput) lookupInput.value = barcode;
+    lookupBarcode(barcode);
+  });
+
   async function lookupBarcode(barcode) {
     const clean = barcode.replace(/\s+/g, "").trim();
     if (!clean) return;

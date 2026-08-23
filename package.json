@@ -1,10 +1,15 @@
 {
   "scripts": {
     "css:build": "tailwindcss -i ./src/main/resources/static/css/input.css -o ./src/main/resources/static/css/app.css --minify",
-    "css:watch": "tailwindcss -i ./src/main/resources/static/css/input.css -o ./src/main/resources/static/css/app.css --watch"
+    "css:watch": "tailwindcss -i ./src/main/resources/static/css/input.css -o ./src/main/resources/static/css/app.css --watch",
+    "vendor:build": "node ./scripts/copy-vendor-assets.js",
+    "assets:build": "pnpm run vendor:build && pnpm run css:build"
   },
   "devDependencies": {
     "daisyui": "4.12.24",
     "tailwindcss": "^3.4.14"
+  },
+  "dependencies": {
+    "@zxing/browser": "^0.2.1"
   }
 }

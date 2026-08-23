@@ -157,3 +157,24 @@ Si Open Food Facts no responde, la aplicación permite continuar el alta manual 
 - `image_url`
 
 Flyway aplicará esta migración al reiniciar el JAR actualizado. No modifica ni recrea tablas existentes.
+
+## Escáner con cámara móvil
+
+La pantalla `Productos -> Nuevo producto` y el `Punto de Venta` incluyen botones para leer códigos de barras con la cámara del dispositivo. La lectura usa `@zxing/browser` desde assets locales incluidos en el JAR; no se carga ninguna librería desde CDN.
+
+La cámara solo convierte el código físico a texto. Después reutiliza los flujos existentes:
+
+- en Productos llama la búsqueda asistida por código de barras y Open Food Facts si aplica;
+- en POS llama la búsqueda local y agrega el producto al carrito;
+- si el producto no existe en POS, muestra la opción para registrarlo.
+
+El video se procesa localmente en el navegador. No se envían imágenes ni video al servidor; únicamente se usa el string del código detectado.
+
+En teléfonos y navegadores modernos la cámara requiere un contexto seguro. Usa HTTPS cuando accedas desde otro dispositivo de la red. El lector USB tipo teclado y la captura manual siguen funcionando por HTTP.
+
+Pruebas manuales sugeridas:
+
+- Productos: abrir `Productos -> Nuevo producto`, tocar `Escanear con cámara`, escanear un EAN/UPC y verificar que se precargue el formulario o permita alta manual.
+- POS: abrir caja, tocar `Usar cámara`, escanear varios productos y confirmar que el carrito suma cantidades repetidas sin cerrar la cámara.
+- Producto no registrado: escanear un código inexistente y verificar las opciones `Buscar informacion y registrar` y `Continuar escaneando`.
+- Permisos: denegar cámara y confirmar que aparece un mensaje claro sin romper captura manual ni lector USB.
