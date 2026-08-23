@@ -29,7 +29,7 @@ public class SecurityConfig {
         return http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/css/**", "/js/**", "/login", "/error").permitAll()
-                        .requestMatchers("/users/**", "/settings/**", "/reports/**").hasRole("ADMIN")
+                        .requestMatchers("/users/**", "/settings/**", "/reports/**", "/cash/**").hasRole("ADMIN")
                         .requestMatchers("/products/**", "/categories/**", "/suppliers/**", "/purchases/**",
                                 "/inventory/**", "/expenses/**").hasRole("ADMIN")
                         .requestMatchers("/pos/**", "/sales/**", "/tickets/**", "/api/products/**").hasAnyRole("ADMIN", "CAJERO")

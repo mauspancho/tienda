@@ -15,7 +15,7 @@ import java.math.BigDecimal;
 
 @Controller
 @NormalMode
-@PreAuthorize("hasAnyRole('ADMIN','CAJERO')")
+@PreAuthorize("hasRole('ADMIN')")
 public class CashController {
 
     private final CashRegisterSessionRepository sessionRepository;

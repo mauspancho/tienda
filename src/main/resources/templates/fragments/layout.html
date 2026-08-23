@@ -24,7 +24,7 @@
               <ul>
                 <li><a th:href="@{/}">Dashboard</a></li>
                 <li><a th:href="@{/sales}">Ventas</a></li>
-                <li><a th:href="@{/cash}">Caja</a></li>
+                <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/cash}">Caja</a></li>
               </ul>
             </li>
           </ul>
@@ -116,7 +116,7 @@
 
         <li><a th:href="@{/}">Dashboard</a></li>
         <li><a th:href="@{/sales}">Ventas</a></li>
-        <li><a th:href="@{/cash}">Caja</a></li>
+        <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/cash}">Caja</a></li>
         <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/products}">Productos</a></li>
         <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/categories}">Categorías</a></li>
         <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/inventory}">Inventario</a></li>
