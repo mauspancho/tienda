@@ -37,10 +37,19 @@
             </div>
           </div>
           <div class="field"><label>Email</label><input class="input input-bordered" th:field="*{email}"></div>
-          <div class="flex flex-wrap gap-4">
-            <label class="label cursor-pointer gap-2"><input class="checkbox checkbox-primary" type="checkbox" th:field="*{admin}"> <span>Administrador</span></label>
-            <label class="label cursor-pointer gap-2"><input class="checkbox checkbox-primary" type="checkbox" th:field="*{cashier}"> <span>Cajero</span></label>
-            <label class="label cursor-pointer gap-2"><input class="toggle toggle-success" type="checkbox" th:field="*{active}"> <span>Activo</span></label>
+          <div class="user-access-options">
+            <label class="user-access-option">
+              <input class="user-access-input" type="checkbox" th:field="*{admin}">
+              <span>Administrador</span>
+            </label>
+            <label class="user-access-option">
+              <input class="user-access-input" type="checkbox" th:field="*{cashier}">
+              <span>Cajero</span>
+            </label>
+            <label class="user-access-option">
+              <input class="user-access-input" type="checkbox" th:field="*{active}">
+              <span>Activo</span>
+            </label>
           </div>
           <button class="btn btn-success" type="submit" th:text="${mode == 'edit'} ? 'Guardar cambios' : 'Crear usuario'">Crear usuario</button>
         </form>
