@@ -9,6 +9,15 @@
   const checkoutButton = document.querySelector("[data-checkout]");
   const cart = new Map();
   let busy = false;
+  let autoScanTimer = null;
+  let lastInputAt = 0;
+  let lastInputValue = "";
+  let fastInputStreak = 0;
+  let lastAutoCode = "";
+
+  const AUTO_SCAN_MIN_LENGTH = 4;
+  const SCANNER_KEY_INTERVAL_MS = 55;
+  const AUTO_SCAN_IDLE_MS = 140;
 
   if (!input || !cartBody) return;
 
@@ -48,14 +57,18 @@
     say("Producto agregado.");
     input.value = "";
     results.innerHTML = "";
+    lastInputValue = "";
+    fastInputStreak = 0;
+    lastAutoCode = "";
     focusScanner();
   }
 
   async function fetchBarcode(code) {
-    if (!code || busy) return;
+    const barcode = code.trim();
+    if (!barcode || busy) return;
     busy = true;
     try {
-      const response = await fetch(`/api/products/barcode/${encodeURIComponent(code)}`);
+      const response = await fetch(`/api/products/barcode/${encodeURIComponent(barcode)}`);
       if (!response.ok) {
         say("Código de barras no encontrado.", "error");
         return;
@@ -64,6 +77,9 @@
     } finally {
       busy = false;
       input.value = "";
+      lastInputValue = "";
+      fastInputStreak = 0;
+      lastAutoCode = "";
       focusScanner();
     }
   }
@@ -86,13 +102,53 @@
     });
   }
 
+  function clearAutoScanTimer() {
+    if (autoScanTimer) {
+      clearTimeout(autoScanTimer);
+      autoScanTimer = null;
+    }
+  }
+
+  function scheduleAutoScanLookup(code) {
+    clearAutoScanTimer();
+    if (code.length < AUTO_SCAN_MIN_LENGTH || code === lastAutoCode) return;
+    lastAutoCode = code;
+    autoScanTimer = setTimeout(() => fetchBarcode(code), AUTO_SCAN_IDLE_MS);
+  }
+
+  function trackScannerInput(value) {
+    const now = performance.now();
+    const delta = now - lastInputAt;
+    const grewBy = value.length - lastInputValue.length;
+    const fastKey = grewBy === 1 && delta > 0 && delta <= SCANNER_KEY_INTERVAL_MS;
+    const burstInput = grewBy > 1;
+
+    if (burstInput) fastInputStreak += grewBy;
+    else if (fastKey) fastInputStreak += 1;
+    else fastInputStreak = 0;
+
+    lastInputAt = now;
+    lastInputValue = value;
+
+    if (value.length >= AUTO_SCAN_MIN_LENGTH && (fastInputStreak >= AUTO_SCAN_MIN_LENGTH - 1 || burstInput)) {
+      scheduleAutoScanLookup(value);
+    } else {
+      clearAutoScanTimer();
+    }
+  }
+
   input.addEventListener("keydown", event => {
     if (event.key === "Enter") {
       event.preventDefault();
+      clearAutoScanTimer();
       fetchBarcode(input.value.trim());
     }
   });
-  input.addEventListener("input", event => search(event.target.value.trim()));
+  input.addEventListener("input", event => {
+    const value = event.target.value.trim();
+    trackScannerInput(value);
+    search(value);
+  });
   cartBody.addEventListener("input", event => {
     const id = Number(event.target.dataset.qty);
     if (!id) return;
