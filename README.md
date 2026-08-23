@@ -56,7 +56,7 @@ tienda-pos/
 - Setup inicial sin datasource externo.
 - Login/logout con Spring Security, BCrypt, CSRF y roles `ROLE_ADMIN` / `ROLE_CAJERO`.
 - Dashboard.
-- Productos, categorías y proveedores.
+- Productos, categorías y proveedores, con alta asistida por código de barras usando Open Food Facts.
 - Compras con actualización transaccional de inventario.
 - Inventario con movimientos trazables.
 - POS con lector USB tipo teclado (`input + Enter`).
@@ -112,3 +112,48 @@ La pantalla de configuración incluye una acción inicial de respaldo. Si `mysql
 - Si vuelve a aparecer `/setup`, revisa que exista `config/application.yml` y contenga `spring.datasource.url`.
 - Si Flyway falla, revisa usuario, permisos y que la base exista.
 - No publiques `config/application.yml`: contiene credenciales.
+## Integración Open Food Facts
+
+La pantalla `Productos -> Nuevo producto` incluye un bloque para escanear o escribir un código de barras y presionar Enter. El sistema busca primero en la base local; si el producto ya existe, muestra accesos para verlo o editarlo. Si no existe localmente, consulta Open Food Facts y precarga datos descriptivos cuando están disponibles:
+
+- nombre;
+- marca;
+- presentación;
+- categoría sugerida;
+- URL de imagen.
+
+La integración no descarga imágenes al servidor y nunca obtiene stock, costo ni precio desde Open Food Facts. Esos datos siguen siendo propios de la tienda y deben capturarse manualmente antes de guardar.
+
+La configuración por defecto es:
+
+```yaml
+external:
+  products:
+    open-food-facts:
+      enabled: true
+      base-url: https://world.openfoodfacts.org
+      user-agent: TiendaPOS/1.0
+      connect-timeout: 3s
+      read-timeout: 5s
+```
+
+Puedes deshabilitarla en `config/application.yml` con:
+
+```yaml
+external:
+  products:
+    open-food-facts:
+      enabled: false
+```
+
+Si Open Food Facts no responde, la aplicación permite continuar el alta manual con el código de barras escaneado. Durante una venta normal el POS solo usa la base local; si el producto no existe muestra un acceso para registrarlo desde Productos.
+
+## Migraciones nuevas
+
+`V3__add_external_product_fields.sql` agrega columnas opcionales a `product`:
+
+- `brand`
+- `presentation`
+- `image_url`
+
+Flyway aplicará esta migración al reiniciar el JAR actualizado. No modifica ni recrea tablas existentes.

@@ -39,3 +39,12 @@ tienda:
   timezone: America/Mexico_City
   currency: MXN
   currency-symbol: "$"
+
+external:
+  products:
+    open-food-facts:
+      enabled: true
+      base-url: https://world.openfoodfacts.org
+      user-agent: TiendaPOS/1.0
+      connect-timeout: 3s
+      read-timeout: 5s

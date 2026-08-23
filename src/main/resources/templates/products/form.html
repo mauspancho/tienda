@@ -1,10 +1,79 @@
-<!doctype html><html lang="es" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Producto</title><link rel="stylesheet" th:href="@{/css/app.css}"></head><body><div class="app-shell"><div th:replace="~{fragments/layout :: sidebar}"></div><main class="main"><div th:replace="~{fragments/layout :: header}"></div><section class="content">
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Producto</title><link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-shell"><div th:replace="~{fragments/layout :: sidebar}"></div><main class="main"><div th:replace="~{fragments/layout :: header}"></div><section class="content">
 <div class="page-title"><h1>Producto</h1><a class="btn btn-muted" th:href="@{/products}">Volver</a></div>
-<form class="card form" th:object="${productForm}" th:action="@{/products}" method="post"><input type="hidden" th:field="*{id}">
-<div class="grid grid-3"><div class="field"><label>Código</label><div class="join w-full"><input class="join-item" th:field="*{code}" data-code-target="code"><button class="btn btn-muted join-item" type="button" data-generate-code="code">Generar</button></div></div><div class="field"><label>Código barras</label><div class="join w-full"><input class="join-item" th:field="*{barcode}" data-code-target="barcode"><button class="btn btn-muted join-item" type="button" data-generate-code="barcode">Generar</button></div></div><div class="field"><label>Producto</label><input th:field="*{name}"></div></div>
+
+<div class="card form" data-product-lookup th:data-initial-barcode="${initialBarcode}" th:data-auto-lookup="${autoLookup}">
+  <h2>Escanear producto</h2>
+  <div class="field">
+    <label>Código de barras</label>
+    <input data-product-lookup-input autocomplete="off" inputmode="numeric" placeholder="7501055300006">
+  </div>
+  <p class="muted">Escanea el producto o escribe el código y presiona Enter.</p>
+  <div data-product-lookup-message hidden></div>
+  <div data-local-product hidden>
+    <strong data-local-product-name></strong>
+    <p class="muted"><span data-local-product-code></span> · Stock <span data-local-product-stock></span> · <span data-local-product-price></span></p>
+    <div class="join">
+      <a class="btn btn-muted join-item" data-local-view>Ver producto</a>
+      <a class="btn btn-muted join-item" data-local-edit>Editar</a>
+      <button class="btn btn-muted join-item" type="button" data-local-cancel>Cancelar</button>
+    </div>
+  </div>
+  <div data-external-product hidden>
+    <div class="grid grid-2">
+      <img data-external-image alt="Imagen producto" style="max-height:160px;object-fit:contain" hidden>
+      <div>
+        <strong data-external-name></strong>
+        <p class="muted"><span data-external-brand></span><span data-external-separator hidden> · </span><span data-external-presentation></span></p>
+        <p class="muted">Información obtenida de Open Food Facts.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<form class="card form" th:object="${productForm}" th:action="@{/products}" method="post" data-product-form><input type="hidden" th:field="*{id}">
+<h2>Información del producto</h2>
+<div class="grid grid-3">
+  <div class="field"><label>Código</label><div class="join w-full"><input class="join-item" th:field="*{code}" data-code-target="code"><button class="btn btn-muted join-item" type="button" data-generate-code="code">Generar</button></div></div>
+  <div class="field"><label>Código barras</label><div class="join w-full"><input class="join-item" th:field="*{barcode}" data-code-target="barcode"><button class="btn btn-muted join-item" type="button" data-generate-code="barcode">Generar</button></div></div>
+  <div class="field"><label>Producto</label><input th:field="*{name}" data-product-name></div>
+</div>
+<div class="grid grid-3">
+  <div class="field"><label>Marca</label><input th:field="*{brand}" data-product-brand></div>
+  <div class="field"><label>Presentación</label><input th:field="*{presentation}" data-product-presentation placeholder="600 ml"></div>
+  <div class="field"><label>URL imagen</label><input th:field="*{imageUrl}" data-product-image-url></div>
+</div>
+<div data-image-preview hidden>
+  <img data-image-preview-img alt="Vista previa producto" style="max-height:180px;object-fit:contain">
+</div>
 <div class="field"><label>Descripción</label><textarea th:field="*{description}"></textarea></div>
-<div class="grid grid-3"><div class="field"><label>Categoría</label><select th:field="*{categoryId}"><option value="">Sin categoría</option><option th:each="c:${categories}" th:value="${c.id}" th:text="${c.name}"></option></select></div><div class="field"><label>Proveedor</label><select th:field="*{supplierId}"><option value="">Sin proveedor</option><option th:each="s:${suppliers}" th:value="${s.id}" th:text="${s.name}"></option></select></div><div class="field"><label>Unidad</label><select th:field="*{unit}"><option th:each="u:${units}" th:value="${u}" th:text="${u}"></option></select></div></div>
-<div class="grid grid-3"><div class="field"><label>Costo</label><input type="number" step="0.01" th:field="*{purchaseCost}"></div><div class="field"><label>Precio venta</label><input type="number" step="0.01" th:field="*{salePrice}"></div><div class="field"><label>Impuesto %</label><input type="number" step="0.01" th:field="*{tax}"></div></div>
-<div class="grid grid-3"><div class="field"><label>Existencia</label><input type="number" step="0.001" th:field="*{currentStock}"></div><div class="field"><label>Stock mínimo</label><input type="number" step="0.001" th:field="*{minimumStock}"></div><div class="field"><label>Activo</label><select th:field="*{active}"><option value="true">Sí</option><option value="false">No</option></select></div></div>
+<div data-category-suggestion class="alert alert-success" hidden></div>
+<div class="grid grid-3">
+  <div class="field"><label>Categoría de tienda</label><select th:field="*{categoryId}" data-product-category><option value="">Sin categoría</option><option th:each="c:${categories}" th:value="${c.id}" th:text="${c.name}"></option></select></div>
+  <div class="field"><label>Proveedor</label><select th:field="*{supplierId}"><option value="">Sin proveedor</option><option th:each="s:${suppliers}" th:value="${s.id}" th:text="${s.name}"></option></select></div>
+  <div class="field"><label>Unidad</label><select th:field="*{unit}"><option th:each="u:${units}" th:value="${u}" th:text="${u}"></option></select></div>
+</div>
+
+<h2>Datos de tu tienda</h2>
+<div class="grid grid-3">
+  <div class="field"><label>Stock inicial</label><input type="number" step="0.001" th:field="*{currentStock}"></div>
+  <div class="field"><label>Costo de compra por unidad</label><input type="number" step="0.01" th:field="*{purchaseCost}" data-cost-input></div>
+  <div class="field"><label>Precio de venta al público</label><input type="number" step="0.01" th:field="*{salePrice}" data-price-input></div>
+</div>
+<div class="grid grid-3">
+  <div class="field"><label>Ganancia por unidad</label><div class="cart-total" data-profit-preview>$0.00</div></div>
+  <div class="field"><label>Margen</label><div class="cart-total" data-margin-preview>0.00%</div></div>
+  <div class="field"><label>Stock mínimo</label><input type="number" step="0.001" th:field="*{minimumStock}"></div>
+</div>
+<div class="grid grid-3">
+  <div class="field"><label>Impuesto %</label><input type="number" step="0.01" th:field="*{tax}"></div>
+  <div class="field"><label>Activo</label><select th:field="*{active}"><option value="true">Sí</option><option value="false">No</option></select></div>
+</div>
 <button class="btn btn-success" type="submit">Guardar producto</button></form>
 </section></main></div><script th:src="@{/js/product-code-generator.js}"></script></body></html>

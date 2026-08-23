@@ -49,6 +49,24 @@
     totalEl.textContent = money(Math.max(total - discount, 0));
   }
 
+  function showUnregisteredProduct(barcode) {
+    say("Producto no registrado.", "error");
+    results.innerHTML = "";
+    const panel = document.createElement("div");
+    panel.className = "product-hit";
+    panel.innerHTML = `
+      <strong>Producto no registrado.</strong><br>
+      <span class="muted">Código: ${barcode}</span><br>
+      <a class="btn btn-muted" href="/products/new?barcode=${encodeURIComponent(barcode)}&lookup=true">Buscar información y registrar</a>
+      <button class="btn btn-muted" type="button" data-cancel-register>Cancelar</button>`;
+    panel.querySelector("[data-cancel-register]").addEventListener("click", () => {
+      results.innerHTML = "";
+      say("Listo para vender.");
+      focusScanner();
+    });
+    results.appendChild(panel);
+  }
+
   function addProduct(product) {
     const existing = cart.get(product.id);
     if (existing) existing.quantity = Number(existing.quantity) + 1;
@@ -70,7 +88,7 @@
     try {
       const response = await fetch(`/api/products/barcode/${encodeURIComponent(barcode)}`);
       if (!response.ok) {
-        say("Código de barras no encontrado.", "error");
+        showUnregisteredProduct(barcode);
         return;
       }
       addProduct(await response.json());

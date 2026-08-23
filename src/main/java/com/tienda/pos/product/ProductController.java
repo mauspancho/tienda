@@ -46,8 +46,17 @@ public class ProductController {
     }
 
     @GetMapping("/products/new")
-    public String create(Model model) {
-        prepareForm(model, new ProductForm());
+    public String create(@RequestParam(required = false) String barcode,
+                         @RequestParam(defaultValue = "false") boolean lookup,
+                         Model model) {
+        ProductForm form = new ProductForm();
+        String normalizedBarcode = ProductService.normalizeBarcode(barcode);
+        if (normalizedBarcode != null) {
+            form.setBarcode(normalizedBarcode);
+        }
+        prepareForm(model, form);
+        model.addAttribute("initialBarcode", normalizedBarcode == null ? "" : normalizedBarcode);
+        model.addAttribute("autoLookup", lookup && normalizedBarcode != null);
         return "products/form";
     }
 
@@ -55,6 +64,8 @@ public class ProductController {
     public String edit(@PathVariable Long id, Model model) {
         Product product = productRepository.findDetailedById(id).orElseThrow();
         prepareForm(model, ProductForm.from(product));
+        model.addAttribute("initialBarcode", "");
+        model.addAttribute("autoLookup", false);
         return "products/form";
     }
 
@@ -72,6 +83,8 @@ public class ProductController {
                        Model model, RedirectAttributes redirectAttributes) {
         if (bindingResult.hasErrors()) {
             prepareForm(model, form);
+            model.addAttribute("initialBarcode", "");
+            model.addAttribute("autoLookup", false);
             return "products/form";
         }
         productService.save(form);

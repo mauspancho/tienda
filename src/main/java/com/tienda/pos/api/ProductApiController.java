@@ -2,7 +2,9 @@ package com.tienda.pos.api;
 
 import com.tienda.pos.common.NormalMode;
 import com.tienda.pos.product.Product;
+import com.tienda.pos.product.ProductBarcodeLookupResult;
 import com.tienda.pos.product.ProductRepository;
+import com.tienda.pos.product.ProductService;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,9 +24,17 @@ import java.util.List;
 public class ProductApiController {
 
     private final ProductRepository productRepository;
+    private final ProductService productService;
 
-    public ProductApiController(ProductRepository productRepository) {
+    public ProductApiController(ProductRepository productRepository, ProductService productService) {
         this.productRepository = productRepository;
+        this.productService = productService;
+    }
+
+    @GetMapping("/barcode/{barcode}/lookup")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ProductBarcodeLookupResult lookupBarcode(@PathVariable String barcode) {
+        return productService.lookupByBarcode(barcode);
     }
 
     @GetMapping("/barcode/{barcode}")

@@ -33,6 +33,15 @@ public class Product extends BaseEntity {
     @Column(nullable = false)
     private String name;
 
+    @Column(length = 160)
+    private String brand;
+
+    @Column(length = 120)
+    private String presentation;
+
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
     private String description;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -90,6 +99,12 @@ public class Product extends BaseEntity {
     public void setBarcode(String barcode) { this.barcode = barcode; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
+    public String getBrand() { return brand; }
+    public void setBrand(String brand) { this.brand = brand; }
+    public String getPresentation() { return presentation; }
+    public void setPresentation(String presentation) { this.presentation = presentation; }
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
     public Category getCategory() { return category; }

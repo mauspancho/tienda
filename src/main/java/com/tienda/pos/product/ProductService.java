@@ -1,10 +1,14 @@
 package com.tienda.pos.product;
 
+import com.tienda.pos.category.Category;
 import com.tienda.pos.category.CategoryRepository;
 import com.tienda.pos.common.CurrentUser;
 import com.tienda.pos.common.MoneyUtils;
 import com.tienda.pos.common.NormalMode;
 import com.tienda.pos.exception.DomainException;
+import com.tienda.pos.externalproduct.ExternalProductDto;
+import com.tienda.pos.externalproduct.ExternalProductLookupException;
+import com.tienda.pos.externalproduct.ExternalProductService;
 import com.tienda.pos.inventory.InventoryMovement;
 import com.tienda.pos.inventory.InventoryMovementRepository;
 import com.tienda.pos.inventory.InventoryMovementType;
@@ -14,6 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.security.SecureRandom;
+import java.text.Normalizer;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 @NormalMode
@@ -26,13 +33,16 @@ public class ProductService {
     private final CategoryRepository categoryRepository;
     private final SupplierRepository supplierRepository;
     private final InventoryMovementRepository movementRepository;
+    private final ExternalProductService externalProductService;
 
     public ProductService(ProductRepository productRepository, CategoryRepository categoryRepository,
-                          SupplierRepository supplierRepository, InventoryMovementRepository movementRepository) {
+                          SupplierRepository supplierRepository, InventoryMovementRepository movementRepository,
+                          ExternalProductService externalProductService) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.supplierRepository = supplierRepository;
         this.movementRepository = movementRepository;
+        this.externalProductService = externalProductService;
     }
 
     @Transactional
@@ -40,9 +50,15 @@ public class ProductService {
         Product product = form.getId() == null ? new Product() : productRepository.findByIdForUpdate(form.getId())
                 .orElseThrow(() -> new DomainException("Producto no encontrado."));
         BigDecimal previousStock = product.getCurrentStock() == null ? BigDecimal.ZERO : product.getCurrentStock();
+        String barcode = blankToNull(form.getBarcode());
+        validateUniqueCode(form.getCode(), form.getId());
+        validateUniqueBarcode(barcode, form.getId());
         product.setCode(form.getCode().trim());
-        product.setBarcode(blankToNull(form.getBarcode()));
+        product.setBarcode(barcode);
         product.setName(form.getName().trim());
+        product.setBrand(blankToNull(form.getBrand()));
+        product.setPresentation(blankToNull(form.getPresentation()));
+        product.setImageUrl(blankToNull(form.getImageUrl()));
         product.setDescription(form.getDescription());
         product.setCategory(form.getCategoryId() == null ? null : categoryRepository.findById(form.getCategoryId()).orElse(null));
         product.setSupplier(form.getSupplierId() == null ? null : supplierRepository.findById(form.getSupplierId()).orElse(null));
@@ -72,6 +88,36 @@ public class ProductService {
         return saved;
     }
 
+    @Transactional(readOnly = true)
+    public ProductBarcodeLookupResult lookupByBarcode(String rawBarcode) {
+        String barcode = normalizeBarcode(rawBarcode);
+        if (barcode == null) {
+            return ProductBarcodeLookupResult.notFound(rawBarcode == null ? "" : rawBarcode.trim());
+        }
+        Optional<Product> local = productRepository.findByBarcode(barcode);
+        if (local.isPresent()) {
+            return ProductBarcodeLookupResult.localFound(local.get());
+        }
+        try {
+            Optional<ExternalProductDto> external = externalProductService.findByBarcode(barcode);
+            if (external.isEmpty()) {
+                return ProductBarcodeLookupResult.notFound(barcode);
+            }
+            ExternalProductDto dto = external.get();
+            CategoryMatch categoryMatch = findEquivalentCategory(dto.category());
+            return ProductBarcodeLookupResult.externalFound(
+                    barcode,
+                    dto.name(),
+                    dto.brand(),
+                    dto.presentation(),
+                    categoryMatch.suggestion(),
+                    categoryMatch.categoryId(),
+                    dto.imageUrl());
+        } catch (ExternalProductLookupException ex) {
+            return ProductBarcodeLookupResult.externalError(barcode);
+        }
+    }
+
     public String generateUniqueProductCode() {
         for (int i = 0; i < MAX_GENERATION_ATTEMPTS; i++) {
             String candidate = "PRD-" + randomDigits(8);
@@ -90,6 +136,49 @@ public class ProductService {
             }
         }
         throw new DomainException("No fue posible generar un código de barras único.");
+    }
+
+    public static String normalizeBarcode(String value) {
+        if (value == null) return null;
+        String normalized = value.replaceAll("\\s+", "").trim();
+        if (normalized.isBlank() || !normalized.matches("\\d+")) return null;
+        return normalized;
+    }
+
+    private void validateUniqueCode(String code, Long currentId) {
+        if (code == null || code.isBlank()) return;
+        productRepository.findByCode(code.trim())
+                .filter(existing -> !existing.getId().equals(currentId))
+                .ifPresent(existing -> { throw new DomainException("Ya existe un producto con ese código."); });
+    }
+
+    private void validateUniqueBarcode(String barcode, Long currentId) {
+        if (barcode == null) return;
+        productRepository.findByBarcode(barcode)
+                .filter(existing -> !existing.getId().equals(currentId))
+                .ifPresent(existing -> { throw new DomainException("Ya existe un producto con ese código de barras."); });
+    }
+
+    private CategoryMatch findEquivalentCategory(String suggestion) {
+        if (suggestion == null || suggestion.isBlank()) {
+            return new CategoryMatch(null, null);
+        }
+        String normalizedSuggestion = normalizeText(suggestion);
+        List<Category> categories = categoryRepository.findByActiveTrueOrderByNameAsc();
+        for (Category category : categories) {
+            if (normalizeText(category.getName()).equals(normalizedSuggestion)) {
+                return new CategoryMatch(suggestion, category.getId());
+            }
+        }
+        return new CategoryMatch(suggestion, null);
+    }
+
+    private String normalizeText(String value) {
+        String normalized = Normalizer.normalize(value == null ? "" : value, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toLowerCase()
+                .trim();
+        return normalized.replaceAll("[^a-z0-9]+", " ").trim();
     }
 
     private String blankToNull(String value) {
@@ -116,5 +205,8 @@ public class ProductService {
             sum += digit * (i % 2 == 0 ? 1 : 3);
         }
         return (10 - (sum % 10)) % 10;
+    }
+
+    private record CategoryMatch(String suggestion, Long categoryId) {
     }
 }
