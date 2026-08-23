@@ -3,15 +3,15 @@
 <body>
 <nav th:fragment="sidebar" class="navbar app-nav px-4">
   <script th:src="@{/js/theme-switcher.js}"></script>
-  <div class="navbar-start gap-2">
-    <a th:href="@{/}" class="btn btn-ghost text-xl font-black tracking-normal">
+  <div class="navbar-start app-nav-brand">
+    <a th:href="@{/}" class="btn btn-ghost text-xl font-black tracking-normal brand-link">
       <span class="badge badge-success badge-lg text-success-content">TP</span>
-      Tienda POS
+      <span class="brand-name">Tienda POS</span>
     </a>
-    <a th:href="@{/pos}" class="btn btn-primary btn-sm quick-pos-link">Punto de Venta</a>
   </div>
+  <a th:href="@{/pos}" class="btn btn-primary btn-sm quick-pos-link app-nav-pos">Punto de Venta</a>
 
-  <div class="navbar-center hidden lg:flex">
+  <div class="navbar-center app-nav-menu hidden lg:flex">
     <div class="megamenu megamenu-full" id="pos-megamenu">
       <span class="megamenu-active"></span>
 
@@ -90,7 +90,7 @@
     </div>
   </div>
 
-  <div class="navbar-end gap-2">
+  <div class="navbar-end gap-2 app-nav-actions">
     <details class="dropdown dropdown-end theme-dropdown">
       <summary class="btn btn-ghost btn-sm theme-trigger" aria-label="Cambiar tema" title="Cambiar tema">
         <svg class="theme-trigger-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -106,9 +106,13 @@
       <strong sec:authentication="name">usuario</strong><br>
       <span class="text-xs opacity-60" th:text="${#temporals.format(#temporals.createNow(), 'dd/MM/yyyy HH:mm')}">fecha</span>
     </div>
-    <details class="dropdown dropdown-end lg:hidden">
-      <summary class="btn btn-ghost">Menú</summary>
-      <ul class="menu dropdown-content z-50 mt-3 w-72 rounded-box bg-base-100 p-2 shadow-xl">
+    <details class="dropdown dropdown-end lg:hidden mobile-menu-dropdown">
+      <summary class="btn btn-ghost btn-sm mobile-menu-trigger" aria-label="Abrir menu" title="Menu">
+        <svg class="mobile-menu-trigger-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 6h16v2H4V6Zm0 5h16v2H4v-2Zm0 5h16v2H4v-2Z"></path>
+        </svg>
+      </summary>
+      <ul class="menu dropdown-content mobile-menu-list z-50 mt-3 w-72 rounded-box bg-base-100 p-2 shadow-xl">
 
         <li><a th:href="@{/}">Dashboard</a></li>
         <li><a th:href="@{/sales}">Ventas</a></li>
@@ -122,9 +126,14 @@
         <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/reports}">Reportes</a></li>
         <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/users}">Usuarios</a></li>
         <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/settings}">Configuración</a></li>
+        <li class="mobile-menu-logout">
+          <form th:action="@{/logout}" method="post">
+            <button class="mobile-menu-logout-button" type="submit">Salir</button>
+          </form>
+        </li>
       </ul>
     </details>
-    <form th:action="@{/logout}" method="post">
+    <form class="desktop-logout" th:action="@{/logout}" method="post">
       <button class="btn btn-outline btn-sm" type="submit">Salir</button>
     </form>
   </div>

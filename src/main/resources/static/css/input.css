@@ -1052,3 +1052,163 @@ html[data-theme="sunset"] .user-access-input:checked {
 html[data-theme="sunset"] .user-access-option:hover .user-access-input {
   border-color: #fdba74;
 }
+
+/* responsive top navigation */
+.app-nav {
+  display: grid !important;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  grid-template-areas: "brand pos menu actions";
+  align-items: center;
+  gap: .5rem .75rem;
+  min-height: 4rem;
+}
+.app-nav-brand {
+  grid-area: brand;
+  width: auto !important;
+  min-width: 0;
+  justify-content: flex-start;
+}
+.brand-link {
+  min-width: 0;
+  white-space: nowrap;
+}
+.brand-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app-nav-pos {
+  grid-area: pos;
+  white-space: nowrap;
+}
+.app-nav-menu {
+  grid-area: menu;
+  justify-self: center;
+  width: auto !important;
+}
+.app-nav-actions {
+  grid-area: actions;
+  width: auto !important;
+  min-width: 0;
+  justify-self: end;
+}
+.desktop-logout {
+  display: block;
+}
+.mobile-menu-trigger {
+  width: 2.5rem;
+  min-width: 2.5rem;
+  height: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0 !important;
+  border-radius: 8px !important;
+}
+.mobile-menu-trigger-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  fill: currentColor;
+}
+.mobile-menu-list {
+  border: 1px solid color-mix(in srgb, hsl(var(--bc)) 24%, transparent) !important;
+  background: color-mix(in srgb, hsl(var(--b1)) 96%, white 4%) !important;
+  color: hsl(var(--bc)) !important;
+}
+.mobile-menu-list form {
+  width: 100%;
+}
+.mobile-menu-logout-button {
+  width: 100%;
+  min-height: 2.5rem;
+  border-radius: .5rem;
+  padding: .5rem .75rem;
+  text-align: left;
+  color: hsl(var(--bc));
+  font-weight: 900;
+}
+.mobile-menu-logout-button:hover {
+  background: color-mix(in srgb, hsl(var(--bc)) 10%, transparent);
+}
+html[data-theme="sunset"] .mobile-menu-list {
+  background: rgba(24, 20, 32, .98) !important;
+  border: 2px solid rgba(255, 255, 255, .72) !important;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .58) !important;
+  backdrop-filter: blur(16px) saturate(1.15);
+  -webkit-backdrop-filter: blur(16px) saturate(1.15);
+}
+html[data-theme="sunset"] .mobile-menu-logout-button {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+@media (max-width: 1023.98px) {
+  .app-nav {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "brand actions" "pos pos";
+    padding: .55rem .75rem !important;
+  }
+  .app-nav-brand .brand-link {
+    max-width: 100%;
+    min-height: 2.35rem;
+    padding-left: .45rem !important;
+    padding-right: .6rem !important;
+    font-size: 1rem !important;
+  }
+  .app-nav-pos {
+    width: 100%;
+    min-height: 2.5rem !important;
+    justify-self: stretch;
+  }
+  .app-nav-actions {
+    gap: .35rem !important;
+  }
+  .desktop-logout {
+    display: none !important;
+  }
+  .theme-trigger,
+  .mobile-menu-trigger {
+    width: 2.4rem;
+    min-width: 2.4rem;
+    height: 2.4rem;
+    min-height: 2.4rem;
+  }
+  .header {
+    position: static;
+    min-height: 0;
+    flex-wrap: wrap;
+    gap: .5rem;
+    padding: .65rem .75rem !important;
+  }
+  .header .breadcrumbs {
+    flex: 1 1 auto;
+    min-width: 12rem;
+  }
+  .header .badge {
+    max-width: 100%;
+    white-space: normal;
+    text-align: center;
+  }
+  .content {
+    overflow-x: hidden;
+    padding: 1rem .75rem !important;
+  }
+}
+@media (max-width: 640px) {
+  .mobile-menu-list {
+    position: fixed !important;
+    left: .75rem !important;
+    right: .75rem !important;
+    top: 4.8rem !important;
+    width: auto !important;
+    max-height: calc(100dvh - 5.6rem);
+    overflow-y: auto;
+    margin-top: 0 !important;
+  }
+}
+@media (max-width: 380px) {
+  .brand-name {
+    font-size: .92rem;
+  }
+  .app-nav {
+    padding-left: .55rem !important;
+    padding-right: .55rem !important;
+  }
+}
