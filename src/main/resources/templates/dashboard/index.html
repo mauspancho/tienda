@@ -32,26 +32,70 @@
   </main>
 </div>
 <script>
+function dashboardChartPalette() {
+  const dark = document.documentElement.getAttribute('data-theme') === 'sunset';
+  return dark
+    ? {
+        text: '#ffffff',
+        grid: 'rgba(255, 255, 255, .22)',
+        border: 'rgba(255, 255, 255, .55)',
+        accent: '#f97316',
+        fill: 'rgba(249, 115, 22, .22)',
+        point: '#ffffff',
+        tooltipBg: '#181420',
+        tooltipText: '#ffffff'
+      }
+    : {
+        text: '#162033',
+        grid: 'rgba(22, 32, 51, .16)',
+        border: 'rgba(22, 32, 51, .36)',
+        accent: '#2563eb',
+        fill: 'rgba(37, 99, 235, .12)',
+        point: '#ffffff',
+        tooltipBg: '#ffffff',
+        tooltipText: '#162033'
+      };
+}
+
+function applyDashboardChartTheme(chart) {
+  const palette = dashboardChartPalette();
+  const dataset = chart.data.datasets[0];
+  dataset.borderColor = palette.accent;
+  dataset.backgroundColor = palette.fill;
+  dataset.pointBackgroundColor = palette.point;
+  dataset.pointBorderColor = palette.accent;
+  dataset.pointHoverBackgroundColor = palette.accent;
+  dataset.pointHoverBorderColor = palette.point;
+  chart.options.plugins.tooltip.backgroundColor = palette.tooltipBg;
+  chart.options.plugins.tooltip.borderColor = palette.border;
+  chart.options.plugins.tooltip.titleColor = palette.tooltipText;
+  chart.options.plugins.tooltip.bodyColor = palette.tooltipText;
+  ['x', 'y'].forEach(axis => {
+    chart.options.scales[axis].ticks.color = palette.text;
+    chart.options.scales[axis].grid.color = palette.grid;
+    chart.options.scales[axis].border.color = palette.border;
+  });
+  chart.update();
+}
+
 fetch('/api/dashboard/summary')
   .then(response => response.json())
   .then(data => {
     const rows = data.dailySales || [];
-    const textColor = '#ffffff';
-    const gridColor = 'rgba(255, 255, 255, .22)';
-    const accentColor = '#f97316';
-    new Chart(document.getElementById('salesChart'), {
+    const palette = dashboardChartPalette();
+    const salesChart = new Chart(document.getElementById('salesChart'), {
       type: 'line',
       data: {
         labels: rows.map(r => r[0]),
         datasets: [{
           label: 'Ventas',
           data: rows.map(r => r[1]),
-          borderColor: accentColor,
-          backgroundColor: 'rgba(249, 115, 22, .22)',
-          pointBackgroundColor: '#ffffff',
-          pointBorderColor: accentColor,
-          pointHoverBackgroundColor: accentColor,
-          pointHoverBorderColor: '#ffffff',
+          borderColor: palette.accent,
+          backgroundColor: palette.fill,
+          pointBackgroundColor: palette.point,
+          pointBorderColor: palette.accent,
+          pointHoverBackgroundColor: palette.accent,
+          pointHoverBorderColor: palette.point,
           fill: true,
           tension: .25
         }]
@@ -62,19 +106,20 @@ fetch('/api/dashboard/summary')
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#181420',
-            borderColor: 'rgba(255, 255, 255, .55)',
+            backgroundColor: palette.tooltipBg,
+            borderColor: palette.border,
             borderWidth: 1,
-            titleColor: textColor,
-            bodyColor: textColor
+            titleColor: palette.tooltipText,
+            bodyColor: palette.tooltipText
           }
         },
         scales: {
-          x: { ticks: { color: textColor }, grid: { color: gridColor }, border: { color: 'rgba(255, 255, 255, .55)' } },
-          y: { ticks: { color: textColor }, grid: { color: gridColor }, border: { color: 'rgba(255, 255, 255, .55)' } }
+          x: { ticks: { color: palette.text }, grid: { color: palette.grid }, border: { color: palette.border } },
+          y: { ticks: { color: palette.text }, grid: { color: palette.grid }, border: { color: palette.border } }
         }
       }
     });
+    document.addEventListener('tienda:theme-changed', () => applyDashboardChartTheme(salesChart));
   });
 </script>
 </body>

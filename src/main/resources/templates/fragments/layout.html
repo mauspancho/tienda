@@ -102,10 +102,17 @@
   </div>
 
   <div class="navbar-end gap-2">
-    <select class="select select-bordered select-sm theme-select hidden w-44 md:inline-block" data-theme-select aria-label="Tema">
-      <option value="tienda">Claro</option>
-      <option value="sunset">Sunset oscuro</option>
-    </select>
+    <details class="dropdown dropdown-end theme-dropdown">
+      <summary class="btn btn-ghost btn-sm theme-trigger" aria-label="Cambiar tema" title="Cambiar tema">
+        <svg class="theme-trigger-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3a9 9 0 1 0 9 9 6.5 6.5 0 0 1-9-9Z"></path>
+        </svg>
+      </summary>
+      <ul class="menu dropdown-content theme-menu z-50 mt-3 w-52 rounded-box p-2 shadow-xl">
+        <li><button type="button" data-theme-option="tienda">Claro</button></li>
+        <li><button type="button" data-theme-option="sunset">Sunset oscuro</button></li>
+      </ul>
+    </details>
     <div class="hidden md:block text-right leading-tight">
       <strong sec:authentication="name">usuario</strong><br>
       <span class="text-xs opacity-60" th:text="${#temporals.format(#temporals.createNow(), 'dd/MM/yyyy HH:mm')}">fecha</span>
@@ -113,12 +120,7 @@
     <details class="dropdown dropdown-end lg:hidden">
       <summary class="btn btn-ghost">Menú</summary>
       <ul class="menu dropdown-content z-50 mt-3 w-72 rounded-box bg-base-100 p-2 shadow-xl">
-        <li>
-          <select class="select select-bordered select-sm theme-select w-full" data-theme-select aria-label="Tema">
-            <option value="tienda">Claro</option>
-            <option value="sunset">Sunset oscuro</option>
-          </select>
-        </li>
+
         <li><a th:href="@{/}">Dashboard</a></li>
         <li><a th:href="@{/pos}">Punto de Venta</a></li>
         <li><a th:href="@{/sales}">Ventas</a></li>

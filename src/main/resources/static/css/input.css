@@ -876,3 +876,85 @@ html[data-theme="sunset"] .chart-panel {
     display: inline-block !important;
   }
 }
+
+/* icon theme switcher */
+.theme-dropdown {
+  display: inline-flex;
+}
+.theme-trigger {
+  width: 2.5rem;
+  min-width: 2.5rem;
+  height: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0 !important;
+  border-radius: 8px !important;
+}
+.theme-trigger-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+  fill: currentColor;
+}
+.theme-menu {
+  background: #ffffff !important;
+  border: 2px solid #162033 !important;
+  color: #162033 !important;
+}
+.theme-menu button {
+  width: 100%;
+  min-height: 2.25rem;
+  border-radius: 8px;
+  color: #162033 !important;
+  -webkit-text-fill-color: #162033 !important;
+  font-weight: 900;
+  text-align: left;
+}
+.theme-menu button:hover,
+.theme-menu button.active {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+html[data-theme="sunset"] .theme-trigger {
+  background: rgba(255, 255, 255, .10) !important;
+  border: 2px solid #ffffff !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+html[data-theme="sunset"] .theme-trigger:hover,
+html[data-theme="sunset"] .theme-dropdown[open] .theme-trigger {
+  background: rgba(255, 255, 255, .18) !important;
+}
+html[data-theme="sunset"] .theme-menu {
+  background: rgba(24, 20, 32, .98) !important;
+  border: 2px solid #ffffff !important;
+  color: #ffffff !important;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .58) !important;
+  backdrop-filter: blur(16px) saturate(1.15);
+  -webkit-backdrop-filter: blur(16px) saturate(1.15);
+}
+html[data-theme="sunset"] .theme-menu button {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+html[data-theme="sunset"] .theme-menu button:hover,
+html[data-theme="sunset"] .theme-menu button.active {
+  background: #f97316 !important;
+  color: #111018 !important;
+  -webkit-text-fill-color: #111018 !important;
+}
+html[data-theme="tienda"] .theme-trigger {
+  background: #ffffff !important;
+  border: 2px solid #162033 !important;
+  color: #162033 !important;
+  -webkit-text-fill-color: #162033 !important;
+}
+html[data-theme="tienda"] .theme-trigger:hover,
+html[data-theme="tienda"] .theme-dropdown[open] .theme-trigger {
+  background: #eef2f7 !important;
+}
+html[data-theme="tienda"] .chart-panel {
+  border: 1px solid rgba(22, 32, 51, .18);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 8px;
+}
