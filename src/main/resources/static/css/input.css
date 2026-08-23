@@ -756,3 +756,123 @@ html[data-theme="sunset"] canvas,
 html[data-theme="sunset"] svg {
   color: #fff7ed;
 }
+
+/* final high contrast polish */
+html[data-theme="sunset"] {
+  --ui-white: #ffffff;
+  --ui-border: rgba(255, 255, 255, .66);
+  --ui-border-soft: rgba(255, 255, 255, .42);
+}
+html[data-theme="sunset"] h1,
+html[data-theme="sunset"] h2,
+html[data-theme="sunset"] h3,
+html[data-theme="sunset"] h4,
+html[data-theme="sunset"] p,
+html[data-theme="sunset"] label,
+html[data-theme="sunset"] strong,
+html[data-theme="sunset"] a,
+html[data-theme="sunset"] .brand,
+html[data-theme="sunset"] .breadcrumbs,
+html[data-theme="sunset"] .breadcrumbs a,
+html[data-theme="sunset"] .metric,
+html[data-theme="sunset"] .muted,
+html[data-theme="sunset"] .mega-button,
+html[data-theme="sunset"] .mega-section-title,
+html[data-theme="sunset"] .mega-panel .menu-title,
+html[data-theme="sunset"] .menu :where(li > a),
+html[data-theme="sunset"] .table :where(th, td),
+html[data-theme="sunset"] table :where(th, td),
+html[data-theme="sunset"] .text-xs.opacity-60 {
+  color: var(--ui-white) !important;
+  -webkit-text-fill-color: var(--ui-white) !important;
+  opacity: 1 !important;
+}
+html[data-theme="sunset"] .app-nav,
+html[data-theme="sunset"] .header,
+html[data-theme="sunset"] .card,
+html[data-theme="sunset"] .table-wrap,
+html[data-theme="sunset"] .product-hit,
+html[data-theme="sunset"] .mega-panel,
+html[data-theme="sunset"] .dropdown-content,
+html[data-theme="sunset"] input,
+html[data-theme="sunset"] select,
+html[data-theme="sunset"] textarea,
+html[data-theme="sunset"] .input,
+html[data-theme="sunset"] .select,
+html[data-theme="sunset"] .textarea,
+html[data-theme="sunset"] .btn-outline,
+html[data-theme="sunset"] .btn-ghost,
+html[data-theme="sunset"] .btn-muted {
+  border-color: var(--ui-border) !important;
+}
+html[data-theme="sunset"] td,
+html[data-theme="sunset"] th,
+html[data-theme="sunset"] .table,
+html[data-theme="sunset"] table {
+  border-color: var(--ui-border-soft) !important;
+}
+html[data-theme="sunset"] .quick-pos-link {
+  background: #f97316 !important;
+  border-color: #fdba74 !important;
+  color: #111018 !important;
+  -webkit-text-fill-color: #111018 !important;
+}
+html[data-theme="sunset"] .theme-select,
+html[data-theme="sunset"] select[data-theme-select] {
+  appearance: auto !important;
+  -webkit-appearance: menulist !important;
+  display: inline-block !important;
+  min-width: 11rem;
+  background: #ffffff !important;
+  border: 2px solid #ffffff !important;
+  color: #111018 !important;
+  -webkit-text-fill-color: #111018 !important;
+  font-weight: 900 !important;
+}
+html[data-theme="sunset"] .theme-select option,
+html[data-theme="sunset"] select[data-theme-select] option {
+  background: #ffffff !important;
+  color: #111018 !important;
+  -webkit-text-fill-color: #111018 !important;
+}
+html[data-theme="tienda"] .theme-select,
+html[data-theme="tienda"] select[data-theme-select] {
+  appearance: auto !important;
+  -webkit-appearance: menulist !important;
+  display: inline-block !important;
+  min-width: 11rem;
+  background: #ffffff !important;
+  border: 2px solid #162033 !important;
+  color: #162033 !important;
+  -webkit-text-fill-color: #162033 !important;
+  font-weight: 900 !important;
+}
+.chart-panel {
+  height: 142px;
+  min-height: 142px;
+  position: relative;
+}
+.chart-panel canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+html[data-theme="sunset"] .chart-panel {
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 8px;
+  background: rgba(15, 17, 26, .34);
+  padding: 8px;
+}
+
+/* responsive theme selector display */
+.navbar-end > select.theme-select.hidden {
+  display: none !important;
+}
+.dropdown-content select.theme-select {
+  display: block !important;
+  width: 100% !important;
+}
+@media (min-width: 768px) {
+  .navbar-end > select.theme-select.hidden {
+    display: inline-block !important;
+  }
+}
