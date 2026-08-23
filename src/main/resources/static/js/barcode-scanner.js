@@ -7,6 +7,8 @@
   const message = document.querySelector("[data-pos-message]");
   const results = document.querySelector("[data-search-results]");
   const checkoutButton = document.querySelector("[data-checkout]");
+  const posPanel = document.querySelector("[data-cash-open]");
+  const cashOpen = posPanel?.dataset.cashOpen === "true";
   const cart = new Map();
   let busy = false;
   let autoScanTimer = null;
@@ -27,9 +29,17 @@
     message.textContent = text;
     message.className = kind === "error" ? "alert alert-error" : "alert alert-success";
   };
-  const focusScanner = () => setTimeout(() => input.focus(), 40);
+  const focusScanner = () => {
+    if (!cashOpen || input.disabled) return;
+    setTimeout(() => input.focus(), 40);
+  };
   document.addEventListener("click", focusScanner);
   focusScanner();
+
+  function cleanErrorText(text) {
+    const doc = new DOMParser().parseFromString(text, "text/html");
+    return doc.body?.textContent?.replace(/\s+/g, " ").trim() || text;
+  }
 
   function render() {
     cartBody.innerHTML = "";
@@ -84,7 +94,7 @@
 
   async function fetchBarcode(code) {
     const barcode = code.trim();
-    if (!barcode || busy) return;
+    if (!barcode || busy || !cashOpen) return;
     busy = true;
     try {
       const response = await fetch(`/api/products/barcode/${encodeURIComponent(barcode)}`);
@@ -104,7 +114,7 @@
   }
 
   async function search(q) {
-    if (q.length < 2) {
+    if (!cashOpen || q.length < 2) {
       results.innerHTML = "";
       return;
     }
@@ -183,6 +193,10 @@
   });
   discountInput?.addEventListener("input", render);
   checkoutButton?.addEventListener("click", async () => {
+    if (!cashOpen) {
+      say("Abre la caja antes de realizar una venta.", "error");
+      return;
+    }
     if (cart.size === 0) {
       say("Agrega al menos un producto.", "error");
       return;
@@ -199,7 +213,7 @@
     if (csrf && csrfHeader) headers[csrfHeader] = csrf;
     const response = await fetch("/pos/checkout", { method: "POST", headers, body: JSON.stringify(body) });
     if (!response.ok) {
-      say(await response.text(), "error");
+      say(cleanErrorText(await response.text()), "error");
       return;
     }
     const result = await response.json();

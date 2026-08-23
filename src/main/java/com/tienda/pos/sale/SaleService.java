@@ -3,6 +3,7 @@ package com.tienda.pos.sale;
 import com.tienda.pos.cash.CashMovement;
 import com.tienda.pos.cash.CashMovementRepository;
 import com.tienda.pos.cash.CashMovementType;
+import com.tienda.pos.cash.CashRegisterSession;
 import com.tienda.pos.cash.CashRegisterSessionRepository;
 import com.tienda.pos.common.CurrentUser;
 import com.tienda.pos.common.MoneyUtils;
@@ -56,6 +57,9 @@ public class SaleService {
     public SaleResult checkout(SaleRequest request) {
         AppUser cashier = userRepository.findByUsername(CurrentUser.username())
                 .orElseThrow(() -> new DomainException("No se encontró el cajero actual."));
+        CashRegisterSession cashSession = cashRegisterSessionRepository.findByCashierAndOpenTrue(cashier)
+                .orElseThrow(() -> new DomainException("Abre la caja antes de realizar una venta."));
+
         Sale sale = new Sale();
         sale.setFolio("V" + LocalDateTime.now().format(FOLIO_FORMAT));
         sale.setCashier(cashier);
@@ -129,16 +133,14 @@ public class SaleService {
         Sale saved = saleRepository.save(sale);
 
         if (request.getPaymentMethod() == PaymentMethod.CASH) {
-            cashRegisterSessionRepository.findByCashierAndOpenTrue(cashier).ifPresent(session -> {
-                CashMovement movement = new CashMovement();
-                movement.setCashRegisterSession(session);
-                movement.setType(CashMovementType.SALE);
-                movement.setAmount(total);
-                movement.setReferenceType("SALE");
-                movement.setReferenceId(saved.getId());
-                movement.setUser(cashier);
-                cashMovementRepository.save(movement);
-            });
+            CashMovement movement = new CashMovement();
+            movement.setCashRegisterSession(cashSession);
+            movement.setType(CashMovementType.SALE);
+            movement.setAmount(total);
+            movement.setReferenceType("SALE");
+            movement.setReferenceId(saved.getId());
+            movement.setUser(cashier);
+            cashMovementRepository.save(movement);
         }
         return new SaleResult(saved.getFolio(), total, received, received.subtract(total));
     }
