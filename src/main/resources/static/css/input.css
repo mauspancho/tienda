@@ -478,3 +478,74 @@ html[data-theme="sunset"] .theme-select option {
   color: #fff7ed !important;
   -webkit-text-fill-color: #fff7ed !important;
 }
+
+/* fixed dark login surface */
+.login-page,
+body.login-page[data-theme="sunset"] {
+  color-scheme: dark;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(249, 115, 22, .22), transparent 34%),
+    linear-gradient(135deg, #0f111a 0%, #181420 52%, #24151c 100%) !important;
+  color: #fff7ed !important;
+}
+.login-page .login-card {
+  background: rgba(24, 20, 32, .98) !important;
+  border: 1px solid rgba(255, 247, 237, .34) !important;
+  color: #fff7ed !important;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, .48), 0 0 0 1px rgba(255, 255, 255, .06) inset !important;
+}
+.login-page .login-brand,
+.login-page .login-card h1,
+.login-page .login-card h2,
+.login-page .login-card p,
+.login-page .login-card label {
+  color: #fff7ed !important;
+  -webkit-text-fill-color: #fff7ed !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
+}
+.login-page .login-brand {
+  margin-bottom: 26px;
+}
+.login-page .login-card label {
+  color: rgba(255, 247, 237, .82) !important;
+  -webkit-text-fill-color: rgba(255, 247, 237, .82) !important;
+}
+.login-page .login-card input {
+  background: rgba(15, 17, 26, .98) !important;
+  border: 1px solid rgba(255, 247, 237, .38) !important;
+  color: #fff7ed !important;
+  -webkit-text-fill-color: #fff7ed !important;
+  caret-color: #fff7ed;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .03) inset !important;
+}
+.login-page .login-card input::placeholder {
+  color: rgba(255, 247, 237, .48) !important;
+  -webkit-text-fill-color: rgba(255, 247, 237, .48) !important;
+}
+.login-page .login-card input:focus {
+  border-color: #f97316 !important;
+  outline: 3px solid rgba(249, 115, 22, .28) !important;
+}
+.login-page .login-card .btn-primary {
+  background: #f97316 !important;
+  color: #111018 !important;
+  -webkit-text-fill-color: #111018 !important;
+  border: 1px solid #fb923c !important;
+}
+.login-page .login-card .btn-primary:hover,
+.login-page .login-card .btn-primary:focus-visible {
+  background: #fb923c !important;
+}
+.login-page .login-card .alert-error {
+  background: rgba(239, 68, 68, .18) !important;
+  border-color: rgba(252, 165, 165, .62) !important;
+  color: #fecaca !important;
+  -webkit-text-fill-color: #fecaca !important;
+}
+.login-page .login-card .alert-success {
+  background: rgba(34, 197, 94, .16) !important;
+  border-color: rgba(134, 239, 172, .58) !important;
+  color: #bbf7d0 !important;
+  -webkit-text-fill-color: #bbf7d0 !important;
+}

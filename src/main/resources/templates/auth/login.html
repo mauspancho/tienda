@@ -1,14 +1,14 @@
 <!doctype html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html lang="es" xmlns:th="http://www.thymeleaf.org" data-theme="sunset">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Iniciar sesión</title>
   <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
-<body class="login-page">
+<body class="login-page" data-theme="sunset">
 <main class="login-card">
-  <div class="brand" style="color:#101828"><span class="brand-mark">TP</span><span>Tienda POS</span></div>
+  <div class="brand login-brand"><span class="brand-mark">TP</span><span>Tienda POS</span></div>
   <h1>Iniciar sesión</h1>
   <p th:if="${param.error}" class="alert alert-error">Usuario o contraseña incorrectos.</p>
   <p th:if="${param.logout}" class="alert alert-success">Sesión cerrada correctamente.</p>
