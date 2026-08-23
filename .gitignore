@@ -1,0 +1,12 @@
+/target/
+/.idea/
+/.vscode/
+/.mvn/wrapper/maven-wrapper.jar
+config/application.yml
+config/application.properties
+.env
+logs/
+backups/
+data/
+*.log
+*.tmp

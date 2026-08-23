@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard</title><link rel="stylesheet" th:href="@{/css/app.css}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="app-shell">
+  <div th:replace="~{fragments/layout :: sidebar}"></div>
+  <main class="main"><div th:replace="~{fragments/layout :: header}"></div>
+    <section class="content">
+      <div class="page-title"><h1>Dashboard</h1></div>
+      <div th:replace="~{fragments/layout :: alerts}"></div>
+      <div class="grid grid-6">
+        <div class="card"><span class="muted">Ventas hoy</span><div class="metric" th:text="${'$' + summary.todaySales}">$0</div></div>
+        <div class="card"><span class="muted">Ganancia bruta</span><div class="metric" th:text="${'$' + summary.grossProfit}">$0</div></div>
+        <div class="card"><span class="muted">Productos vendidos</span><div class="metric" th:text="${summary.soldUnits}">0</div></div>
+        <div class="card"><span class="muted">Tickets</span><div class="metric" th:text="${summary.tickets}">0</div></div>
+        <div class="card"><span class="muted">Stock bajo</span><div class="metric" th:text="${summary.lowStockCount}">0</div></div>
+        <div class="card"><span class="muted">Gastos día</span><div class="metric" th:text="${'$' + summary.todayExpenses}">$0</div></div>
+      </div>
+      <div class="grid grid-2" style="margin-top:16px">
+        <div class="card"><h2>Ventas últimos 7 días</h2><canvas id="salesChart" height="120"></canvas></div>
+        <div class="card"><h2>Productos con stock bajo</h2><div class="table-wrap"><table><tr><th>Producto</th><th>Stock</th></tr><tr th:each="p:${lowStock}"><td th:text="${p.name}"></td><td><span class="badge badge-yellow" th:text="${p.currentStock + ' / mínimo ' + p.minimumStock}"></span></td></tr></table></div></div>
+      </div>
+      <div class="grid grid-2" style="margin-top:16px">
+        <div class="card"><h2>Últimas ventas</h2><div class="table-wrap"><table><tr><th>Folio</th><th>Total</th></tr><tr th:each="s:${latestSales}"><td><a th:href="@{'/sales/' + ${s.folio}}" th:text="${s.folio}"></a></td><td th:text="${'$' + s.total}"></td></tr></table></div></div>
+        <div class="card"><h2>Compras recientes</h2><div class="table-wrap"><table><tr><th>Fecha</th><th>Total</th></tr><tr th:each="p:${latestPurchases}"><td th:text="${p.purchaseDate}"></td><td th:text="${'$' + p.total}"></td></tr></table></div></div>
+      </div>
+    </section>
+  </main>
+</div>
+<script>
+fetch('/api/dashboard/summary')
+  .then(response => response.json())
+  .then(data => {
+    const rows = data.dailySales || [];
+    new Chart(document.getElementById('salesChart'), {
+      type: 'line',
+      data: { labels: rows.map(r => r[0]), datasets: [{ label: 'Ventas', data: rows.map(r => r[1]), borderColor: '#2563eb', tension: .25 }] },
+      options: { plugins: { legend: { display: false } } }
+    });
+  });
+</script>
+</body>
+</html>

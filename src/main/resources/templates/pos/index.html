@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="_csrf" th:content="${_csrf.token}"><meta name="_csrf_header" th:content="${_csrf.headerName}">
+  <title>Punto de Venta</title><link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-shell"><div th:replace="~{fragments/layout :: sidebar}"></div><main class="main"><div th:replace="~{fragments/layout :: header}"></div><section class="content">
+<div class="page-title"><h1>Punto de Venta</h1></div>
+<div class="pos-layout">
+  <div class="grid">
+    <div class="card">
+      <label>Escanear código de barras / buscar producto</label>
+      <input class="scanner-input" data-barcode-input autocomplete="off" placeholder="7501055300006 + Enter">
+      <div data-search-results class="search-results"></div>
+    </div>
+    <div class="table-wrap"><table><thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Total</th><th></th></tr></thead><tbody data-cart-body></tbody></table></div>
+  </div>
+  <aside class="card form">
+    <div data-pos-message class="alert alert-success">Listo para vender.</div>
+    <div class="field"><label>Descuento</label><input data-discount type="number" step="0.01" value="0"></div>
+    <div class="field"><label>Total</label><div data-cart-total class="cart-total">$0.00</div></div>
+    <div class="grid grid-3">
+      <label><input type="radio" name="paymentMethod" value="CASH" checked> Efectivo</label>
+      <label><input type="radio" name="paymentMethod" value="CARD"> Tarjeta</label>
+      <label><input type="radio" name="paymentMethod" value="TRANSFER"> Transferencia</label>
+    </div>
+    <div class="field"><label>Recibido</label><input data-received type="number" step="0.01" value="0"></div>
+    <button data-checkout class="btn btn-success" type="button">Cobrar</button>
+  </aside>
+</div>
+</section></main></div>
+<script th:src="@{/js/barcode-scanner.js}"></script>
+</body></html>

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
+<body>
+<aside th:fragment="sidebar" class="sidebar">
+  <div class="brand"><span class="brand-mark">TP</span><span>Tienda POS</span></div>
+  <a class="nav-link" th:href="@{/}">Dashboard</a>
+  <a class="nav-link" th:href="@{/pos}">Punto de Venta</a>
+  <a class="nav-link" th:href="@{/products}" sec:authorize="hasRole('ADMIN')">Productos</a>
+  <a class="nav-link" th:href="@{/categories}" sec:authorize="hasRole('ADMIN')">Categorías</a>
+  <a class="nav-link" th:href="@{/inventory}" sec:authorize="hasRole('ADMIN')">Inventario</a>
+  <a class="nav-link" th:href="@{/purchases}" sec:authorize="hasRole('ADMIN')">Compras</a>
+  <a class="nav-link" th:href="@{/suppliers}" sec:authorize="hasRole('ADMIN')">Proveedores</a>
+  <a class="nav-link" th:href="@{/sales}">Ventas</a>
+  <a class="nav-link" th:href="@{/cash}">Caja</a>
+  <a class="nav-link" th:href="@{/expenses}" sec:authorize="hasRole('ADMIN')">Gastos</a>
+  <a class="nav-link" th:href="@{/reports}" sec:authorize="hasRole('ADMIN')">Reportes</a>
+  <a class="nav-link" th:href="@{/users}" sec:authorize="hasRole('ADMIN')">Usuarios</a>
+  <a class="nav-link" th:href="@{/settings}" sec:authorize="hasRole('ADMIN')">Configuración</a>
+  <form th:action="@{/logout}" method="post" style="margin-top:16px">
+    <button class="nav-link" style="border:0;width:100%;background:transparent;text-align:left" type="submit">Cerrar sesión</button>
+  </form>
+</aside>
+<header th:fragment="header" class="header">
+  <div><strong sec:authentication="name">usuario</strong><br><span class="muted">Sistema activo</span></div>
+  <div class="muted" th:text="${#temporals.format(#temporals.createNow(), 'dd/MM/yyyy HH:mm')}">fecha</div>
+</header>
+<div th:fragment="alerts">
+  <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+  <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+</div>
+</body>
+</html>

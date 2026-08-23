@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Iniciar sesión</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="login-page">
+<main class="login-card">
+  <div class="brand" style="color:#101828"><span class="brand-mark">TP</span><span>Tienda POS</span></div>
+  <h1>Iniciar sesión</h1>
+  <p th:if="${param.error}" class="alert alert-error">Usuario o contraseña incorrectos.</p>
+  <p th:if="${param.logout}" class="alert alert-success">Sesión cerrada correctamente.</p>
+  <form class="form" th:action="@{/login}" method="post">
+    <div class="field"><label>Usuario</label><input name="username" autofocus autocomplete="username"></div>
+    <div class="field"><label>Contraseña</label><input name="password" type="password" autocomplete="current-password"></div>
+    <button class="btn btn-primary" type="submit">Iniciar sesión</button>
+  </form>
+</main>
+</body>
+</html>

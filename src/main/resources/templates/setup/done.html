@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Instalación completada</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="setup-page">
+<main class="setup-card">
+  <h1>Instalación completada</h1>
+  <div th:replace="~{fragments/layout :: alerts}"></div>
+  <p>Reinicia la aplicación una vez para cargar la configuración externa y entrar al login.</p>
+</main>
+</body>
+</html>

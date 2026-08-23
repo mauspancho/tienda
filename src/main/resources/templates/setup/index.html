@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Configuración inicial</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="setup-page">
+<main class="setup-card">
+  <h1>Configurar Tienda</h1>
+  <p class="muted">Paso 1 de 3: conexión a base de datos. Después se crearán el administrador y la configuración del negocio.</p>
+  <div th:replace="~{fragments/layout :: alerts}"></div>
+  <form class="form" th:object="${setupForm}" method="post">
+    <div class="grid grid-3">
+      <div class="field"><label>Motor</label><select th:field="*{engine}"><option>MariaDB</option><option>MySQL</option></select></div>
+      <div class="field"><label>Host</label><input th:field="*{host}"></div>
+      <div class="field"><label>Puerto</label><input type="number" th:field="*{port}"></div>
+    </div>
+    <div class="grid grid-3">
+      <div class="field"><label>Base</label><input th:field="*{databaseName}"></div>
+      <div class="field"><label>Usuario BD</label><input th:field="*{databaseUser}"></div>
+      <div class="field"><label>Contraseña BD</label><input type="password" th:field="*{databasePassword}"></div>
+    </div>
+    <div class="field"><label>Parámetros adicionales</label><input th:field="*{additionalParams}"></div>
+    <h2>Crear administrador</h2>
+    <div class="grid grid-3">
+      <div class="field"><label>Nombre</label><input th:field="*{adminFirstName}"></div>
+      <div class="field"><label>Apellido</label><input th:field="*{adminLastName}"></div>
+      <div class="field"><label>Usuario</label><input th:field="*{adminUsername}"></div>
+    </div>
+    <div class="grid grid-3">
+      <div class="field"><label>Contraseña</label><input type="password" th:field="*{adminPassword}"></div>
+      <div class="field"><label>Confirmar contraseña</label><input type="password" th:field="*{adminPasswordConfirm}"></div>
+      <div class="field"><label>Correo opcional</label><input th:field="*{adminEmail}"></div>
+    </div>
+    <h2>Negocio</h2>
+    <div class="grid grid-3">
+      <div class="field"><label>Nombre tienda</label><input th:field="*{storeName}"></div>
+      <div class="field"><label>Moneda</label><input th:field="*{currency}"></div>
+      <div class="field"><label>Símbolo</label><input th:field="*{currencySymbol}"></div>
+    </div>
+    <div class="grid grid-3">
+      <div class="field"><label>Zona horaria</label><input th:field="*{timezone}"></div>
+      <div class="field"><label>Teléfono</label><input th:field="*{storePhone}"></div>
+      <div class="field"><label>RFC opcional</label><input th:field="*{taxId}"></div>
+    </div>
+    <div class="field"><label>Dirección</label><input th:field="*{storeAddress}"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-muted" formaction="/setup/test" type="submit">Probar conexión</button>
+      <button class="btn btn-success" formaction="/setup/install" type="submit">Completar instalación</button>
+    </div>
+  </form>
+</main>
+</body>
+</html>
