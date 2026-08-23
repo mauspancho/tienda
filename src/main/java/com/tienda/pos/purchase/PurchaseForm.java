@@ -6,7 +6,6 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
 public class PurchaseForm {
-    @NotNull
     private Long supplierId;
     private String externalFolio;
     @NotNull

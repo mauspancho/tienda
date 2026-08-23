@@ -36,6 +36,7 @@ public class DashboardService {
                 saleRepository.countBySaleDateBetweenAndStatus(start, end, SaleStatus.COMPLETED),
                 productRepository.findLowStock(PageRequest.of(0, 100)).size(),
                 expenseRepository.totalBetween(today, today),
+                productRepository.inventoryValue(),
                 saleRepository.dailySalesSince(today.minusDays(6).atStartOfDay()),
                 saleRepository.topProducts(start, end, PageRequest.of(0, 5))
         );

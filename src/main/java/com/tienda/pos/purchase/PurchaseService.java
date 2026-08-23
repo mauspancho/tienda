@@ -14,10 +14,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 @NormalMode
 public class PurchaseService {
+
+    private static final DateTimeFormatter FOLIO_DATE = DateTimeFormatter.BASIC_ISO_DATE;
 
     private final PurchaseRepository purchaseRepository;
     private final SupplierRepository supplierRepository;
@@ -42,9 +47,11 @@ public class PurchaseService {
         BigDecimal unitCost = MoneyUtils.money(form.getUnitCost());
         BigDecimal subtotal = MoneyUtils.money(unitCost.multiply(form.getQuantity()));
         Purchase purchase = new Purchase();
-        purchase.setSupplier(supplierRepository.findById(form.getSupplierId())
-                .orElseThrow(() -> new DomainException("Proveedor no encontrado.")));
-        purchase.setExternalFolio(form.getExternalFolio());
+        if (form.getSupplierId() != null) {
+            purchase.setSupplier(supplierRepository.findById(form.getSupplierId())
+                    .orElseThrow(() -> new DomainException("Proveedor no encontrado.")));
+        }
+        purchase.setExternalFolio(normalizeFolio(form.getExternalFolio()));
         purchase.setNotes(form.getNotes());
         purchase.setSubtotal(subtotal);
         purchase.setTotal(subtotal);
@@ -66,7 +73,14 @@ public class PurchaseService {
         }
         productRepository.save(product);
         inventoryService.createMovement(product, InventoryMovementType.PURCHASE, form.getQuantity(), previous, next,
-                "PURCHASE", saved.getId(), "Compra confirmada");
+                "PURCHASE", saved.getId(), "Compra confirmada " + saved.getExternalFolio());
         return saved;
+    }
+
+    String normalizeFolio(String externalFolio) {
+        if (externalFolio != null && !externalFolio.isBlank()) {
+            return externalFolio.trim();
+        }
+        return "COMP-" + LocalDate.now().format(FOLIO_DATE) + "-" + ThreadLocalRandom.current().nextInt(1000, 10000);
     }
 }

@@ -10,6 +10,7 @@ public record DashboardSummary(
         long tickets,
         long lowStockCount,
         BigDecimal todayExpenses,
+        BigDecimal inventoryInvestment,
         List<Object[]> dailySales,
         List<Object[]> topProducts
 ) {

@@ -19,6 +19,7 @@
         <div class="card"><span class="muted">Tickets</span><div class="metric" th:text="${summary.tickets}">0</div></div>
         <div class="card"><span class="muted">Stock bajo</span><div class="metric" th:text="${summary.lowStockCount}">0</div></div>
         <div class="card"><span class="muted">Gastos día</span><div class="metric" th:text="${'$' + summary.todayExpenses}">$0</div></div>
+        <div class="card"><span class="muted">Inversión inventario</span><div class="metric" th:text="${'$' + summary.inventoryInvestment}">$0</div></div>
       </div>
       <div class="grid grid-2" style="margin-top:16px">
         <div class="card"><h2>Ventas últimos 7 días</h2><div class="chart-panel"><canvas id="salesChart"></canvas></div></div>
