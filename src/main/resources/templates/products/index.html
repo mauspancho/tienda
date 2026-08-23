@@ -15,7 +15,7 @@
       <td>
         <div class="flex items-center gap-2">
           <span th:text="${p.code}"></span>
-          <a class="btn btn-muted btn-sm" th:if="${p.barcode != null and !#strings.isEmpty(p.barcode)}" th:href="@{/products/{id}/barcode-label(id=${p.id})}" target="_blank" rel="noopener">Imprimir</a>
+          <button class="btn btn-muted btn-sm" type="button" th:if="${p.barcode != null and !#strings.isEmpty(p.barcode)}" th:data-label-url="@{/products/{id}/barcode-label(id=${p.id})}" th:data-label-product="${p.name}" th:data-label-barcode="${p.barcode}" data-open-label-modal>Imprimir</button>
         </div>
       </td>
       <td><strong th:text="${p.name}"></strong><br><span class="muted" th:text="${p.barcode}"></span></td>
@@ -27,4 +27,56 @@
     </tr>
   </table>
 </div>
-</section></main></div></body></html>
+
+<dialog class="modal" data-label-modal>
+  <div class="modal-box card form">
+    <h2>Imprimir etiquetas</h2>
+    <p class="muted"><strong data-label-product-name>Producto</strong><br><span data-label-product-barcode></span></p>
+    <div class="field">
+      <label>Cantidad de etiquetas</label>
+      <input type="number" min="1" max="500" step="1" value="1" data-label-quantity>
+    </div>
+    <p class="muted">Se acomodarán varias etiquetas por hoja para evitar desperdiciar papel.</p>
+    <div class="join">
+      <button class="btn btn-success join-item" type="button" data-label-print>Imprimir</button>
+      <button class="btn btn-muted join-item" type="button" data-label-cancel>Cancelar</button>
+    </div>
+  </div>
+</dialog>
+</section></main></div>
+<script>
+(() => {
+  const modal = document.querySelector('[data-label-modal]');
+  const quantityInput = document.querySelector('[data-label-quantity]');
+  const productName = document.querySelector('[data-label-product-name]');
+  const productBarcode = document.querySelector('[data-label-product-barcode]');
+  let labelUrl = '';
+
+  document.querySelectorAll('[data-open-label-modal]').forEach(button => {
+    button.addEventListener('click', () => {
+      labelUrl = button.dataset.labelUrl;
+      productName.textContent = button.dataset.labelProduct || 'Producto';
+      productBarcode.textContent = button.dataset.labelBarcode || '';
+      quantityInput.value = '1';
+      if (typeof modal.showModal === 'function') modal.showModal();
+      else modal.setAttribute('open', 'open');
+      setTimeout(() => quantityInput.focus(), 40);
+    });
+  });
+
+  document.querySelector('[data-label-cancel]')?.addEventListener('click', () => modal.close());
+  document.querySelector('[data-label-print]')?.addEventListener('click', () => {
+    const quantity = Math.max(1, Math.min(Number(quantityInput.value || 1), 500));
+    modal.close();
+    window.open(`${labelUrl}?quantity=${encodeURIComponent(quantity)}`, '_blank', 'noopener');
+  });
+
+  quantityInput?.addEventListener('keydown', event => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      document.querySelector('[data-label-print]')?.click();
+    }
+  });
+})();
+</script>
+</body></html>

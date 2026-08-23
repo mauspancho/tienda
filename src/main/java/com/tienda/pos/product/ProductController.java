@@ -73,11 +73,14 @@ public class ProductController {
     }
 
     @GetMapping("/products/{id}/barcode-label")
-    public String barcodeLabel(@PathVariable Long id, Model model) {
+    public String barcodeLabel(@PathVariable Long id, @RequestParam(defaultValue = "1") int quantity, Model model) {
         Product product = productRepository.findById(id).orElseThrow();
+        int labelCount = Math.max(1, Math.min(quantity, 500));
         String barcode = product.getBarcode();
         model.addAttribute("product", product);
         model.addAttribute("barcode", barcode);
+        model.addAttribute("quantity", labelCount);
+        model.addAttribute("labels", java.util.stream.IntStream.range(0, labelCount).boxed().toList());
         model.addAttribute("barcodeSvg", barcodeLabelService.code128Svg(barcode));
         return "products/barcode-label";
     }
