@@ -13,7 +13,7 @@
   <div th:replace="~{fragments/layout :: alerts}"></div>
   <form class="form" th:object="${setupForm}" method="post">
     <div class="grid grid-3">
-      <div class="field"><label>Motor</label><select th:field="*{engine}"><option>MariaDB</option><option>MySQL</option></select></div>
+      <div class="field"><label>Motor</label><select th:field="*{engine}"><option value="MariaDB">MariaDB</option><option value="MySQL">MySQL</option></select></div>
       <div class="field"><label>Host</label><input th:field="*{host}"></div>
       <div class="field"><label>Puerto</label><input type="number" th:field="*{port}"></div>
     </div>

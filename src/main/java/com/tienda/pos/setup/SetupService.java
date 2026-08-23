@@ -84,8 +84,8 @@ public class SetupService {
 
     private long insertAdmin(Connection connection, SetupForm form) throws SQLException {
         try (PreparedStatement ps = connection.prepareStatement("""
-                insert into app_user(username, password_hash, first_name, last_name, email, active, created_at, updated_at)
-                values (?, ?, ?, ?, ?, true, current_timestamp, current_timestamp)
+                insert into app_user(username, password_hash, first_name, last_name, email, active, version, created_at, updated_at)
+                values (?, ?, ?, ?, ?, true, 0, current_timestamp, current_timestamp)
                 """, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, form.getAdminUsername().trim());
             ps.setString(2, passwordEncoder.encode(form.getAdminPassword()));

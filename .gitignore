@@ -10,3 +10,6 @@ backups/
 data/
 *.log
 *.tmp
+
+tools/
+.downloads/
