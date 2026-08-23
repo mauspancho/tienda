@@ -19,7 +19,11 @@ class CameraScannerAssetTest {
         assertThat(zxing).exists().isRegularFile();
         assertThat(Files.readString(scanner))
                 .contains("class CameraBarcodeScanner")
-                .contains("COOLDOWN_MS = 1500")
+                .contains("SAME_BARCODE_RELEASE_MS = 1200")
+                .contains("SUCCESS_PAUSE_MS = 650")
+                .contains("lockedBarcodes")
+                .contains("playScanSuccessBeep")
+                .contains("camera-scan-success")
                 .contains("barcode:detected")
                 .contains("facingMode: { ideal: \"environment\" }");
     }
@@ -40,5 +44,16 @@ class CameraScannerAssetTest {
                 .contains("th:disabled=\"${!cashOpen}\"")
                 .contains("/vendor/zxing/zxing-browser.min.js")
                 .contains("/js/camera-barcode-scanner.js");
+    }
+
+    @Test
+    void posCartQuantitiesUseWholeNumbers() throws Exception {
+        String posScanner = Files.readString(ROOT.resolve("src/main/resources/static/js/barcode-scanner.js"));
+
+        assertThat(posScanner)
+                .contains("function normalizeCartQuantity")
+                .contains("Math.floor")
+                .contains("min=\"1\" step=\"1\"")
+                .contains("quantity: normalizeCartQuantity(item.quantity)");
     }
 }

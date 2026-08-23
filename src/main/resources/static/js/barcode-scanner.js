@@ -41,16 +41,23 @@
     return doc.body?.textContent?.replace(/\s+/g, " ").trim() || text;
   }
 
+  function normalizeCartQuantity(value) {
+    const quantity = Math.floor(Number(value || 0));
+    return Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
+  }
+
   function render() {
     cartBody.innerHTML = "";
     let total = 0;
     for (const item of cart.values()) {
-      const line = Number(item.price) * Number(item.quantity);
+      const quantity = normalizeCartQuantity(item.quantity);
+      item.quantity = quantity;
+      const line = Number(item.price) * quantity;
       total += line;
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td><strong>${item.name}</strong><br><span class="muted">${item.code || ""}</span></td>
-        <td><input aria-label="Cantidad" type="number" min="0.01" step="0.01" value="${Number(item.quantity || 0).toFixed(2)}" data-qty="${item.id}"></td>
+        <td><input aria-label="Cantidad" type="number" min="1" step="1" inputmode="numeric" value="${quantity}" data-qty="${item.id}"></td>
         <td>${money(item.price)}</td>
         <td>${money(line)}</td>
         <td><button class="btn btn-danger" data-remove="${item.id}" type="button">Quitar</button></td>`;
@@ -114,7 +121,7 @@
       }
       const product = await response.json();
       addProduct(product);
-      const result = { status: "found", barcode, product, message: `${product.name} agregado.` };
+      const result = { status: "found", barcode, product, productName: product.name, message: `${product.name} agregado.` };
       notifyCameraLookup(result);
       return result;
     } catch (error) {
@@ -233,7 +240,7 @@
       discount: Number(discountInput?.value || 0),
       receivedAmount: Number(receivedInput?.value || 0),
       paymentMethod: document.querySelector("[name='paymentMethod']:checked")?.value || "CASH",
-      items: [...cart.values()].map(item => ({ productId: item.id, quantity: item.quantity }))
+      items: [...cart.values()].map(item => ({ productId: item.id, quantity: normalizeCartQuantity(item.quantity) }))
     };
     const headers = { "Content-Type": "application/json" };
     if (csrf && csrfHeader) headers[csrfHeader] = csrf;

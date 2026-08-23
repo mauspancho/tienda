@@ -1,7 +1,8 @@
 (() => {
-  const COOLDOWN_MS = 1500;
   const CAMERA_BUTTON_SELECTOR = "[data-camera-scan]";
   const ZXING_PATH = "/vendor/zxing/zxing-browser.min.js";
+  const SAME_BARCODE_RELEASE_MS = 1200;
+  const SUCCESS_PAUSE_MS = 650;
 
   const errorMessages = {
     NotAllowedError: "No se concedio permiso para usar la camara.",
@@ -51,7 +52,9 @@
           <video data-camera-video autoplay playsinline muted></video>
           <div class="camera-guide" aria-hidden="true"><span></span></div>
         </div>
+        <div class="camera-scan-success" data-camera-success hidden></div>
         <p class="camera-status" data-camera-status>Coloca el codigo dentro del recuadro.</p>
+        <p class="camera-session-summary" data-camera-session hidden></p>
         <div class="camera-unregistered" data-camera-unregistered hidden></div>
         <p class="camera-privacy">La camara se utiliza unicamente para leer codigos de barras. El video no se envia ni se almacena.</p>
         <div class="camera-actions">
@@ -64,17 +67,17 @@
   }
 
   class CameraBarcodeScanner {
-    constructor({ videoElement, onDetected, onError, onStatus, onTorchAvailable, cooldownMs = COOLDOWN_MS } = {}) {
+    constructor({ videoElement, onDetected, onError, onStatus, onTorchAvailable, releaseMs = SAME_BARCODE_RELEASE_MS } = {}) {
       this.videoElement = videoElement;
       this.onDetected = onDetected || (() => {});
       this.onError = onError || (() => {});
       this.onStatus = onStatus || (() => {});
       this.onTorchAvailable = onTorchAvailable || (() => {});
-      this.cooldownMs = cooldownMs;
+      this.releaseMs = releaseMs;
       this.reader = null;
       this.controls = null;
-      this.lastBarcode = "";
-      this.lastDetectedAt = 0;
+      this.lockedBarcodes = new Map();
+      this.acceptPausedUntil = 0;
       this.paused = false;
       this.running = false;
       this.torchOn = false;
@@ -106,8 +109,8 @@
       this.stop();
       this.paused = false;
       this.running = true;
-      this.lastBarcode = "";
-      this.lastDetectedAt = 0;
+      this.lockedBarcodes.clear();
+      this.acceptPausedUntil = 0;
       this.reader = new window.ZXingBrowser.BrowserMultiFormatReader(undefined, {
         delayBetweenScanAttempts: 180,
         delayBetweenScanSuccess: 220
@@ -136,19 +139,33 @@
       }
     }
 
+    pruneReleasedBarcodes(now) {
+      for (const [barcode, lastSeenAt] of this.lockedBarcodes.entries()) {
+        if (now - lastSeenAt > this.releaseMs) this.lockedBarcodes.delete(barcode);
+      }
+    }
+
     handleResult(result) {
       if (this.paused) return;
       const barcode = normalizeBarcode(typeof result.getText === "function" ? result.getText() : result.text || result);
       if (!barcode) return;
       const now = Date.now();
-      if (barcode === this.lastBarcode && now - this.lastDetectedAt < this.cooldownMs) return;
-      this.lastBarcode = barcode;
-      this.lastDetectedAt = now;
+      this.pruneReleasedBarcodes(now);
+      if (this.lockedBarcodes.has(barcode)) {
+        this.lockedBarcodes.set(barcode, now);
+        return;
+      }
+      if (now < this.acceptPausedUntil) return;
+      this.lockedBarcodes.set(barcode, now);
       this.onDetected(barcode, result);
     }
 
     pause() {
       this.paused = true;
+    }
+
+    pauseAcceptance(ms = SUCCESS_PAUSE_MS) {
+      this.acceptPausedUntil = Date.now() + ms;
     }
 
     resume() {
@@ -183,6 +200,8 @@
     stop() {
       this.running = false;
       this.paused = false;
+      this.acceptPausedUntil = 0;
+      this.lockedBarcodes.clear();
       document.removeEventListener("visibilitychange", this.visibilityHandler);
       window.removeEventListener("pagehide", this.pageHideHandler);
       try {
@@ -210,13 +229,19 @@
       this.video = this.modal.querySelector("[data-camera-video]");
       this.preview = this.modal.querySelector("[data-camera-preview]");
       this.status = this.modal.querySelector("[data-camera-status]");
+      this.success = this.modal.querySelector("[data-camera-success]");
+      this.session = this.modal.querySelector("[data-camera-session]");
       this.unregistered = this.modal.querySelector("[data-camera-unregistered]");
       this.closeButton = this.modal.querySelector("[data-camera-close]");
       this.finishButton = this.modal.querySelector("[data-camera-finish]");
       this.torchButton = this.modal.querySelector("[data-camera-torch]");
       this.scanner = null;
+      this.audioContext = null;
       this.mode = "single";
       this.lastDetectedBarcode = "";
+      this.lastProductName = "";
+      this.sessionCount = 0;
+      this.successTimer = null;
       this.lookupResultHandler = event => this.handleLookupResult(event.detail || {});
       this.closeButton.addEventListener("click", () => this.close());
       this.finishButton.addEventListener("click", () => this.close());
@@ -229,11 +254,16 @@
     async open({ mode = "single", label = "Escanear codigo" } = {}) {
       this.mode = mode;
       this.lastDetectedBarcode = "";
+      this.lastProductName = "";
+      this.sessionCount = 0;
       this.modal.hidden = false;
       this.modal.querySelector("#camera-modal-title").textContent = label;
       this.finishButton.textContent = mode === "continuous" ? "Terminar escaneo" : "Cerrar camara";
       this.setStatus("Solicitando permiso de camara...", "info");
+      this.hideSuccess();
       this.clearUnregistered();
+      this.updateSessionSummary();
+      await this.prepareAudio();
       document.addEventListener("barcode:lookup-result", this.lookupResultHandler);
       this.scanner = new CameraBarcodeScanner({
         videoElement: this.video,
@@ -249,12 +279,43 @@
       }
     }
 
+    async prepareAudio() {
+      const AudioCtor = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtor) return;
+      try {
+        if (!this.audioContext || this.audioContext.state === "closed") this.audioContext = new AudioCtor();
+        if (this.audioContext.state === "suspended") await this.audioContext.resume();
+      } catch (error) {
+        this.audioContext = null;
+      }
+    }
+
+    playScanSuccessBeep() {
+      if (!this.audioContext) return;
+      try {
+        const duration = 0.1;
+        const now = this.audioContext.currentTime;
+        const oscillator = this.audioContext.createOscillator();
+        const gain = this.audioContext.createGain();
+        oscillator.type = "square";
+        oscillator.frequency.setValueAtTime(1120, now);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.08, now + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+        oscillator.connect(gain);
+        gain.connect(this.audioContext.destination);
+        oscillator.start(now);
+        oscillator.stop(now + duration);
+      } catch (error) {
+        // Audio feedback is optional; camera scanning must continue without it.
+      }
+    }
+
     detected(barcode) {
       this.lastDetectedBarcode = barcode;
       this.clearUnregistered();
-      this.flashSuccess();
-      this.setStatus(`Codigo detectado: ${barcode}`, "success");
-      navigator.vibrate?.(80);
+      this.hideSuccess();
+      this.setStatus(`Codigo detectado: ${barcode}. Consultando...`, "info");
       document.dispatchEvent(new CustomEvent("barcode:detected", {
         detail: { barcode, source: "camera", mode: this.mode }
       }));
@@ -267,7 +328,15 @@
       if (this.mode !== "continuous") return;
       if (detail.barcode && detail.barcode !== this.lastDetectedBarcode) return;
       if (detail.status === "found") {
-        this.setStatus(detail.message || "Producto agregado.", "success");
+        const productName = detail.productName || detail.product?.name || "Producto";
+        this.sessionCount += 1;
+        this.lastProductName = productName;
+        this.scanner?.pauseAcceptance(SUCCESS_PAUSE_MS);
+        this.playScanSuccessBeep();
+        navigator.vibrate?.(80);
+        this.flashSuccess();
+        this.showSuccess(productName);
+        this.updateSessionSummary();
         return;
       }
       if (detail.status === "error") {
@@ -276,6 +345,7 @@
       }
       if (detail.status === "missing") {
         this.scanner?.pause();
+        this.hideSuccess();
         this.setStatus("Producto no registrado.", "error");
         this.unregistered.hidden = false;
         this.unregistered.innerHTML = `
@@ -290,6 +360,37 @@
           this.scanner?.resume();
         }, { once: true });
       }
+    }
+
+    showSuccess(productName) {
+      clearTimeout(this.successTimer);
+      this.success.hidden = false;
+      this.success.innerHTML = `<strong>✓ Producto agregado</strong><span>${productName}</span>`;
+      this.setStatus("Producto agregado. Mueve el producto para escanear otro.", "success");
+      this.successTimer = setTimeout(() => {
+        this.hideSuccess();
+        if (!this.modal.hidden && this.mode === "continuous" && this.unregistered.hidden) {
+          this.setStatus("Buscando codigo...", "info");
+        }
+      }, 1000);
+    }
+
+    hideSuccess() {
+      clearTimeout(this.successTimer);
+      this.successTimer = null;
+      this.success.hidden = true;
+      this.success.innerHTML = "";
+    }
+
+    updateSessionSummary() {
+      if (!this.session) return;
+      if (this.sessionCount <= 0) {
+        this.session.hidden = true;
+        this.session.textContent = "";
+        return;
+      }
+      this.session.hidden = false;
+      this.session.textContent = `Ultimo: ${this.lastProductName}. Escaneados en esta sesion: ${this.sessionCount}.`;
     }
 
     setStatus(text, kind = "info") {
@@ -321,7 +422,13 @@
       document.removeEventListener("barcode:lookup-result", this.lookupResultHandler);
       this.scanner?.stop();
       this.scanner = null;
+      this.hideSuccess();
       this.clearUnregistered();
+      this.updateSessionSummary();
+      if (this.audioContext && this.audioContext.state !== "closed") {
+        this.audioContext.close().catch(() => {});
+      }
+      this.audioContext = null;
       this.modal.hidden = true;
     }
   }

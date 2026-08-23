@@ -1369,3 +1369,94 @@ html[data-theme="sunset"] .camera-privacy {
     flex: 1 1 100%;
   }
 }
+
+/* compact POS camera feedback */
+.camera-scan-success {
+  display: grid;
+  gap: .15rem;
+  margin-top: .65rem;
+  border: 1px solid rgba(134, 239, 172, .82);
+  border-radius: 8px;
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+  padding: .75rem .85rem;
+  box-shadow: 0 14px 34px rgba(22, 163, 74, .28);
+}
+.camera-scan-success[hidden] {
+  display: none !important;
+}
+.camera-scan-success strong {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  font-size: 1rem;
+}
+.camera-scan-success span {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  font-weight: 900;
+}
+.camera-session-summary {
+  margin-top: .3rem;
+  font-size: .86rem;
+  font-weight: 800;
+  color: color-mix(in srgb, hsl(var(--bc)) 78%, transparent);
+}
+html[data-theme="sunset"] .camera-session-summary {
+  color: rgba(255, 255, 255, .82) !important;
+  -webkit-text-fill-color: rgba(255, 255, 255, .82) !important;
+}
+@media (max-width: 640px) {
+  .camera-modal-backdrop {
+    align-items: start;
+    padding: .45rem;
+  }
+  .camera-modal {
+    width: min(100%, 24rem);
+    max-height: 65dvh;
+    padding: .6rem;
+  }
+  .camera-modal-header {
+    margin-bottom: .45rem;
+    gap: .55rem;
+  }
+  .camera-modal-header h2 {
+    font-size: 1rem;
+  }
+  .camera-preview {
+    height: clamp(220px, 32dvh, 280px);
+    min-height: 0;
+    aspect-ratio: auto;
+  }
+  .camera-guide span {
+    width: min(82%, 20rem);
+    height: 30%;
+    border-width: 2px;
+  }
+  .camera-scan-success {
+    margin-top: .5rem;
+    padding: .55rem .65rem;
+  }
+  .camera-status {
+    margin-top: .45rem;
+    font-size: .88rem;
+  }
+  .camera-session-summary {
+    margin-top: .2rem;
+    font-size: .76rem;
+  }
+  .camera-privacy {
+    margin-top: .35rem;
+    font-size: .68rem;
+    line-height: 1.25;
+  }
+  .camera-actions,
+.camera-unregistered-actions {
+    gap: .45rem;
+    margin-top: .55rem;
+  }
+  .camera-actions > .btn,
+.camera-unregistered-actions > .btn {
+    min-height: 2.35rem;
+  }
+}
