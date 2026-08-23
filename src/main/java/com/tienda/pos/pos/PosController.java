@@ -61,7 +61,7 @@ public class PosController {
     @PostMapping("/pos/cash/close")
     public String closeCash(@RequestParam Long sessionId, @RequestParam BigDecimal countedAmount,
                             RedirectAttributes redirectAttributes) {
-        cashService.close(sessionId, countedAmount);
+        cashService.close(CurrentUser.username(), sessionId, countedAmount);
         redirectAttributes.addFlashAttribute("success", "Caja cerrada. Las ventas quedan bloqueadas hasta abrir otra caja.");
         return "redirect:/pos";
     }

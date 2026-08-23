@@ -42,7 +42,7 @@ public class CashController {
     @PostMapping("/cash/close")
     public String close(@RequestParam Long sessionId, @RequestParam BigDecimal countedAmount,
                         RedirectAttributes redirectAttributes) {
-        cashService.close(sessionId, countedAmount);
+        cashService.close(CurrentUser.username(), sessionId, countedAmount);
         redirectAttributes.addFlashAttribute("success", "Caja cerrada.");
         return "redirect:/cash";
     }

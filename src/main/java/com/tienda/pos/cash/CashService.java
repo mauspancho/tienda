@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @Service
 @NormalMode
@@ -45,8 +46,10 @@ public class CashService {
     }
 
     @Transactional
-    public void close(Long sessionId, BigDecimal countedAmount) {
+    public void close(String username, Long sessionId, BigDecimal countedAmount) {
+        AppUser closer = userRepository.findByUsername(username).orElseThrow();
         CashRegisterSession session = sessionRepository.findById(sessionId).orElseThrow();
+        ensureCanClose(closer, session);
         BigDecimal expected = movementRepository.expectedAmount(sessionId);
         session.setExpectedAmount(MoneyUtils.money(expected));
         session.setCountedAmount(MoneyUtils.money(countedAmount));
@@ -54,6 +57,16 @@ public class CashService {
         session.setClosedAt(LocalDateTime.now());
         session.setOpen(false);
         sessionRepository.save(session);
+    }
+
+    private void ensureCanClose(AppUser closer, CashRegisterSession session) {
+        if (closer.hasRole("ROLE_ADMIN")) {
+            return;
+        }
+        AppUser sessionCashier = session.getCashier();
+        if (sessionCashier == null || !Objects.equals(sessionCashier.getId(), closer.getId())) {
+            throw new DomainException("Solo un administrador puede cerrar la caja de otro usuario.");
+        }
     }
 
     public BigDecimal difference(BigDecimal expected, BigDecimal counted) {
