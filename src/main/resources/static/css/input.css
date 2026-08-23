@@ -722,6 +722,22 @@ html[data-theme="sunset"] .badge-outline {
   color: #fff7ed !important;
   -webkit-text-fill-color: #fff7ed !important;
 }
+html[data-theme="sunset"] .badge-green,
+html[data-theme="sunset"] .badge-yellow {
+  box-shadow: 0 0 0 1px rgba(255, 247, 237, .12), 0 8px 18px rgba(0, 0, 0, .18) !important;
+}
+html[data-theme="sunset"] .badge-green {
+  background: #bbf7d0 !important;
+  border-color: #86efac !important;
+  color: #052e16 !important;
+  -webkit-text-fill-color: #052e16 !important;
+}
+html[data-theme="sunset"] .badge-yellow {
+  background: #fde68a !important;
+  border-color: #fbbf24 !important;
+  color: #451a03 !important;
+  -webkit-text-fill-color: #451a03 !important;
+}
 html[data-theme="sunset"] .badge-success,
 html[data-theme="sunset"] .brand-mark {
   background: #22c55e !important;
