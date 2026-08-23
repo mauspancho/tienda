@@ -23,17 +23,8 @@
               <span class="mega-section-title">Venta diaria</span>
               <ul>
                 <li><a th:href="@{/}">Dashboard</a></li>
-                <li><a th:href="@{/pos}">Punto de Venta</a></li>
                 <li><a th:href="@{/sales}">Ventas</a></li>
                 <li><a th:href="@{/cash}">Caja</a></li>
-              </ul>
-            </li>
-            <li>
-              <span class="mega-section-title">Trabajo rápido</span>
-              <ul>
-                <li><a th:href="@{/pos}">Cobrar con scanner</a></li>
-                <li><a th:href="@{/sales}">Reimprimir ticket</a></li>
-                <li><a th:href="@{/cash}">Abrir / cerrar caja</a></li>
               </ul>
             </li>
           </ul>
@@ -60,7 +51,6 @@
               <span class="mega-section-title">Existencias</span>
               <ul>
                 <li><a th:href="@{/inventory}">Movimientos</a></li>
-                <li><a th:href="@{/inventory}">Ajustar inventario</a></li>
                 <li><a th:href="@{/purchases}">Compras</a></li>
               </ul>
             </li>
@@ -88,7 +78,6 @@
               <span class="mega-section-title">Sistema</span>
               <ul>
                 <li><a th:href="@{/users}">Usuarios</a></li>
-                <li><a th:href="@{/settings}">Respaldo</a></li>
               </ul>
             </li>
           </ul>
@@ -122,7 +111,6 @@
       <ul class="menu dropdown-content z-50 mt-3 w-72 rounded-box bg-base-100 p-2 shadow-xl">
 
         <li><a th:href="@{/}">Dashboard</a></li>
-        <li><a th:href="@{/pos}">Punto de Venta</a></li>
         <li><a th:href="@{/sales}">Ventas</a></li>
         <li><a th:href="@{/cash}">Caja</a></li>
         <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/products}">Productos</a></li>

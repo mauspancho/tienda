@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
@@ -57,6 +58,15 @@ public class ProductController {
         return "products/form";
     }
 
+    @GetMapping("/products/generate-code")
+    @ResponseBody
+    public GeneratedCode generateCode(@RequestParam(defaultValue = "code") String type) {
+        String value = "barcode".equalsIgnoreCase(type)
+                ? productService.generateUniqueBarcode()
+                : productService.generateUniqueProductCode();
+        return new GeneratedCode(value);
+    }
+
     @PostMapping("/products")
     public String save(@Valid @ModelAttribute("productForm") ProductForm form, BindingResult bindingResult,
                        Model model, RedirectAttributes redirectAttributes) {
@@ -74,5 +84,8 @@ public class ProductController {
         model.addAttribute("categories", categoryRepository.findByActiveTrueOrderByNameAsc());
         model.addAttribute("suppliers", supplierRepository.findByActiveTrueOrderByNameAsc());
         model.addAttribute("units", UnitType.values());
+    }
+
+    public record GeneratedCode(String value) {
     }
 }

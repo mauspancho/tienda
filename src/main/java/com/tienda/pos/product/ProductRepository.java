@@ -17,6 +17,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     boolean existsByCode(String code);
 
+    boolean existsByBarcode(String barcode);
+
     @Query("""
             select p from Product p
             left join fetch p.category

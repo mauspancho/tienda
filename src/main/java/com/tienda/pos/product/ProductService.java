@@ -13,10 +13,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.security.SecureRandom;
 
 @Service
 @NormalMode
 public class ProductService {
+
+    private static final SecureRandom RANDOM = new SecureRandom();
+    private static final int MAX_GENERATION_ATTEMPTS = 50;
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
@@ -68,7 +72,49 @@ public class ProductService {
         return saved;
     }
 
+    public String generateUniqueProductCode() {
+        for (int i = 0; i < MAX_GENERATION_ATTEMPTS; i++) {
+            String candidate = "PRD-" + randomDigits(8);
+            if (!productRepository.existsByCode(candidate)) {
+                return candidate;
+            }
+        }
+        throw new DomainException("No fue posible generar un código de producto único.");
+    }
+
+    public String generateUniqueBarcode() {
+        for (int i = 0; i < MAX_GENERATION_ATTEMPTS; i++) {
+            String candidate = generateInternalEan13();
+            if (!productRepository.existsByBarcode(candidate)) {
+                return candidate;
+            }
+        }
+        throw new DomainException("No fue posible generar un código de barras único.");
+    }
+
     private String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private String generateInternalEan13() {
+        String base = "20" + randomDigits(10);
+        return base + ean13CheckDigit(base);
+    }
+
+    private String randomDigits(int length) {
+        StringBuilder value = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            value.append(RANDOM.nextInt(10));
+        }
+        return value.toString();
+    }
+
+    static int ean13CheckDigit(String base) {
+        int sum = 0;
+        for (int i = 0; i < base.length(); i++) {
+            int digit = Character.digit(base.charAt(i), 10);
+            sum += digit * (i % 2 == 0 ? 1 : 3);
+        }
+        return (10 - (sum % 10)) % 10;
     }
 }
