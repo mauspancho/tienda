@@ -1,7 +1,7 @@
 (function () {
   const storageKey = "tienda-theme";
-  const defaultTheme = "dark";
-  const themes = ["dark", "forest", "abyss", "sunset", "halloween", "tienda"];
+  const defaultTheme = "tienda";
+  const themes = ["tienda", "sunset"];
 
   function preferredTheme() {
     try {

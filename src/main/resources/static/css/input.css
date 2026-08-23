@@ -288,3 +288,158 @@ th {
 .dropdown-content {
   background-color: rgba(10, 16, 32, .98) !important;
 }
+
+/* final two-theme contrast rules */
+html[data-theme="tienda"],
+body[data-theme="tienda"] {
+  color-scheme: light;
+  background: #f6f7fb !important;
+  color: #162033 !important;
+}
+html[data-theme="tienda"] .app-shell,
+html[data-theme="tienda"] .main,
+html[data-theme="tienda"] .content {
+  background: #f6f7fb !important;
+  color: #162033 !important;
+}
+html[data-theme="tienda"] .app-nav,
+html[data-theme="tienda"] .header,
+html[data-theme="tienda"] .card,
+html[data-theme="tienda"] .setup-card,
+html[data-theme="tienda"] .login-card,
+html[data-theme="tienda"] .table-wrap,
+html[data-theme="tienda"] .product-hit {
+  background: #ffffff !important;
+  border-color: #d9e0ea !important;
+  color: #162033 !important;
+  box-shadow: 0 8px 24px rgba(16, 24, 40, .08) !important;
+}
+html[data-theme="tienda"] .mega-panel,
+html[data-theme="tienda"] .dropdown-content {
+  background: rgba(255, 255, 255, .98) !important;
+  border-color: #cbd5e1 !important;
+  color: #162033 !important;
+  box-shadow: 0 24px 70px rgba(16, 24, 40, .18), 0 0 0 1px rgba(15, 23, 42, .04) inset !important;
+  backdrop-filter: blur(14px) saturate(1.08);
+  -webkit-backdrop-filter: blur(14px) saturate(1.08);
+}
+html[data-theme="tienda"] .mega-button,
+html[data-theme="tienda"] .mega-panel .menu :where(li > a),
+html[data-theme="tienda"] .mega-panel .menu :where(li > span:not(.mega-section-title)),
+html[data-theme="tienda"] .table :where(th, td),
+html[data-theme="tienda"] table :where(th, td) {
+  color: #162033 !important;
+}
+html[data-theme="tienda"] .mega-section-title,
+html[data-theme="tienda"] .mega-panel .menu-title,
+html[data-theme="tienda"] .muted,
+html[data-theme="tienda"] label {
+  color: #475467 !important;
+}
+html[data-theme="tienda"] .select,
+html[data-theme="tienda"] .input,
+html[data-theme="tienda"] .textarea,
+html[data-theme="tienda"] input,
+html[data-theme="tienda"] select,
+html[data-theme="tienda"] textarea {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #162033 !important;
+}
+html[data-theme="tienda"] th,
+html[data-theme="tienda"] .table :where(thead th),
+html[data-theme="tienda"] table :where(thead th) {
+  background: #f8fafc !important;
+  color: #344054 !important;
+}
+
+html[data-theme="sunset"],
+body[data-theme="sunset"] {
+  color-scheme: dark;
+  background: #111018 !important;
+  color: #fff7ed !important;
+}
+html[data-theme="sunset"] .app-shell,
+html[data-theme="sunset"] .main,
+html[data-theme="sunset"] .content {
+  background: #111018 !important;
+  color: #fff7ed !important;
+}
+html[data-theme="sunset"] .app-nav,
+html[data-theme="sunset"] .header {
+  background: rgba(18, 17, 28, .98) !important;
+  border-color: rgba(255, 247, 237, .32) !important;
+  color: #fff7ed !important;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .36) !important;
+}
+html[data-theme="sunset"] .card,
+html[data-theme="sunset"] .setup-card,
+html[data-theme="sunset"] .login-card,
+html[data-theme="sunset"] .table-wrap,
+html[data-theme="sunset"] .product-hit {
+  background: rgba(28, 24, 37, .98) !important;
+  border-color: rgba(255, 247, 237, .38) !important;
+  color: #fff7ed !important;
+  box-shadow: 0 16px 42px rgba(0, 0, 0, .34) !important;
+}
+html[data-theme="sunset"] .mega-panel,
+html[data-theme="sunset"] .dropdown-content {
+  background: rgba(24, 20, 32, .98) !important;
+  border-color: rgba(255, 247, 237, .48) !important;
+  color: #fff7ed !important;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, .66), 0 0 0 1px rgba(255, 255, 255, .08) inset !important;
+  backdrop-filter: blur(18px) saturate(1.18);
+  -webkit-backdrop-filter: blur(18px) saturate(1.18);
+}
+html[data-theme="sunset"] .mega-button,
+html[data-theme="sunset"] .mega-panel .menu :where(li > a),
+html[data-theme="sunset"] .mega-panel .menu :where(li > span:not(.mega-section-title)),
+html[data-theme="sunset"] .table :where(th, td),
+html[data-theme="sunset"] table :where(th, td),
+html[data-theme="sunset"] .card h1,
+html[data-theme="sunset"] .card h2,
+html[data-theme="sunset"] .card h3,
+html[data-theme="sunset"] .page-title h1,
+html[data-theme="sunset"] .metric {
+  color: #fff7ed !important;
+}
+html[data-theme="sunset"] .mega-section-title,
+html[data-theme="sunset"] .mega-panel .menu-title,
+html[data-theme="sunset"] .muted,
+html[data-theme="sunset"] label {
+  color: rgba(255, 247, 237, .76) !important;
+}
+html[data-theme="sunset"] .mega-panel .menu :where(li > a:hover),
+html[data-theme="sunset"] .mega-panel .menu :where(li > a:focus-visible),
+html[data-theme="sunset"] .mega-button:hover,
+html[data-theme="sunset"] .mega-button:focus-visible {
+  background: rgba(255, 247, 237, .14) !important;
+  color: #ffffff !important;
+}
+html[data-theme="sunset"] .select,
+html[data-theme="sunset"] .input,
+html[data-theme="sunset"] .textarea,
+html[data-theme="sunset"] input,
+html[data-theme="sunset"] select,
+html[data-theme="sunset"] textarea {
+  background: rgba(17, 16, 24, .98) !important;
+  border-color: rgba(255, 247, 237, .42) !important;
+  color: #fff7ed !important;
+}
+html[data-theme="sunset"] .btn-outline {
+  border-color: rgba(255, 247, 237, .62) !important;
+  color: #fff7ed !important;
+}
+html[data-theme="sunset"] th,
+html[data-theme="sunset"] .table :where(thead th),
+html[data-theme="sunset"] table :where(thead th) {
+  background: rgba(17, 16, 24, .98) !important;
+  color: #fff7ed !important;
+}
+html[data-theme="sunset"] td,
+html[data-theme="sunset"] th {
+  border-color: rgba(255, 247, 237, .32) !important;
+}
+html[data-theme="sunset"] .badge-success {
+  color: #052e16 !important;
+}
