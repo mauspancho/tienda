@@ -13,3 +13,5 @@ data/
 
 tools/
 .downloads/
+
+node_modules/

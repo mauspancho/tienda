@@ -1,28 +1,137 @@
 <!doctype html>
 <html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
 <body>
-<aside th:fragment="sidebar" class="sidebar">
-  <div class="brand"><span class="brand-mark">TP</span><span>Tienda POS</span></div>
-  <a class="nav-link" th:href="@{/}">Dashboard</a>
-  <a class="nav-link" th:href="@{/pos}">Punto de Venta</a>
-  <a class="nav-link" th:href="@{/products}" sec:authorize="hasRole('ADMIN')">Productos</a>
-  <a class="nav-link" th:href="@{/categories}" sec:authorize="hasRole('ADMIN')">Categorías</a>
-  <a class="nav-link" th:href="@{/inventory}" sec:authorize="hasRole('ADMIN')">Inventario</a>
-  <a class="nav-link" th:href="@{/purchases}" sec:authorize="hasRole('ADMIN')">Compras</a>
-  <a class="nav-link" th:href="@{/suppliers}" sec:authorize="hasRole('ADMIN')">Proveedores</a>
-  <a class="nav-link" th:href="@{/sales}">Ventas</a>
-  <a class="nav-link" th:href="@{/cash}">Caja</a>
-  <a class="nav-link" th:href="@{/expenses}" sec:authorize="hasRole('ADMIN')">Gastos</a>
-  <a class="nav-link" th:href="@{/reports}" sec:authorize="hasRole('ADMIN')">Reportes</a>
-  <a class="nav-link" th:href="@{/users}" sec:authorize="hasRole('ADMIN')">Usuarios</a>
-  <a class="nav-link" th:href="@{/settings}" sec:authorize="hasRole('ADMIN')">Configuración</a>
-  <form th:action="@{/logout}" method="post" style="margin-top:16px">
-    <button class="nav-link" style="border:0;width:100%;background:transparent;text-align:left" type="submit">Cerrar sesión</button>
-  </form>
-</aside>
-<header th:fragment="header" class="header">
-  <div><strong sec:authentication="name">usuario</strong><br><span class="muted">Sistema activo</span></div>
-  <div class="muted" th:text="${#temporals.format(#temporals.createNow(), 'dd/MM/yyyy HH:mm')}">fecha</div>
+<nav th:fragment="sidebar" class="navbar app-nav px-4" data-theme="tienda">
+  <div class="navbar-start gap-2">
+    <a th:href="@{/}" class="btn btn-ghost text-xl font-black tracking-normal">
+      <span class="badge badge-success badge-lg text-success-content">TP</span>
+      Tienda POS
+    </a>
+  </div>
+
+  <div class="navbar-center hidden lg:flex">
+    <div class="megamenu megamenu-full" id="pos-megamenu">
+      <span class="megamenu-active"></span>
+
+      <button class="mega-button" type="button" popovertarget="menu-operacion">Operación</button>
+      <div id="menu-operacion" class="mega-panel mega-panel-mobile" popover>
+        <div class="flex items-start gap-6">
+          <ul class="menu w-full md:menu-horizontal">
+            <li>
+              <span class="mega-section-title">Venta diaria</span>
+              <ul>
+                <li><a th:href="@{/}">Dashboard</a></li>
+                <li><a th:href="@{/pos}">Punto de Venta</a></li>
+                <li><a th:href="@{/sales}">Ventas</a></li>
+                <li><a th:href="@{/cash}">Caja</a></li>
+              </ul>
+            </li>
+            <li>
+              <span class="mega-section-title">Trabajo rápido</span>
+              <ul>
+                <li><a th:href="@{/pos}">Cobrar con scanner</a></li>
+                <li><a th:href="@{/sales}">Reimprimir ticket</a></li>
+                <li><a th:href="@{/cash}">Abrir / cerrar caja</a></li>
+              </ul>
+            </li>
+          </ul>
+          <div class="mega-feature">
+            <strong>Venta rápida, caja clara.</strong>
+            <span>Accesos listos para cobrar, consultar tickets y revisar el dinero esperado.</span>
+          </div>
+        </div>
+      </div>
+
+      <button class="mega-button" type="button" popovertarget="menu-inventario" sec:authorize="hasRole('ADMIN')">Inventario</button>
+      <div id="menu-inventario" class="mega-panel mega-panel-mobile" popover sec:authorize="hasRole('ADMIN')">
+        <div class="flex items-start gap-6">
+          <ul class="menu w-full md:menu-horizontal">
+            <li>
+              <span class="mega-section-title">Catálogo</span>
+              <ul>
+                <li><a th:href="@{/products}">Productos</a></li>
+                <li><a th:href="@{/categories}">Categorías</a></li>
+                <li><a th:href="@{/suppliers}">Proveedores</a></li>
+              </ul>
+            </li>
+            <li>
+              <span class="mega-section-title">Existencias</span>
+              <ul>
+                <li><a th:href="@{/inventory}">Movimientos</a></li>
+                <li><a th:href="@{/inventory}">Ajustar inventario</a></li>
+                <li><a th:href="@{/purchases}">Compras</a></li>
+              </ul>
+            </li>
+          </ul>
+          <div class="mega-feature">
+            <strong>Stock bajo control.</strong>
+            <span>Productos, compras y movimientos trazables desde el mismo menú.</span>
+          </div>
+        </div>
+      </div>
+
+      <button class="mega-button" type="button" popovertarget="menu-admin" sec:authorize="hasRole('ADMIN')">Administración</button>
+      <div id="menu-admin" class="mega-panel mega-panel-mobile" popover sec:authorize="hasRole('ADMIN')">
+        <div class="flex items-start gap-6">
+          <ul class="menu w-full md:menu-horizontal">
+            <li>
+              <span class="mega-section-title">Negocio</span>
+              <ul>
+                <li><a th:href="@{/expenses}">Gastos</a></li>
+                <li><a th:href="@{/reports}">Reportes</a></li>
+                <li><a th:href="@{/settings}">Configuración</a></li>
+              </ul>
+            </li>
+            <li>
+              <span class="mega-section-title">Sistema</span>
+              <ul>
+                <li><a th:href="@{/users}">Usuarios</a></li>
+                <li><a th:href="@{/settings}">Respaldo</a></li>
+              </ul>
+            </li>
+          </ul>
+          <div class="mega-feature">
+            <strong>Menos ERP, más tienda.</strong>
+            <span>Reportes, gastos, usuarios y configuración sin perder velocidad.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="navbar-end gap-2">
+    <div class="hidden md:block text-right leading-tight">
+      <strong sec:authentication="name">usuario</strong><br>
+      <span class="text-xs opacity-60" th:text="${#temporals.format(#temporals.createNow(), 'dd/MM/yyyy HH:mm')}">fecha</span>
+    </div>
+    <details class="dropdown dropdown-end lg:hidden">
+      <summary class="btn btn-ghost">Menú</summary>
+      <ul class="menu dropdown-content z-50 mt-3 w-72 rounded-box bg-base-100 p-2 shadow-xl">
+        <li><a th:href="@{/}">Dashboard</a></li>
+        <li><a th:href="@{/pos}">Punto de Venta</a></li>
+        <li><a th:href="@{/sales}">Ventas</a></li>
+        <li><a th:href="@{/cash}">Caja</a></li>
+        <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/products}">Productos</a></li>
+        <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/categories}">Categorías</a></li>
+        <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/inventory}">Inventario</a></li>
+        <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/purchases}">Compras</a></li>
+        <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/suppliers}">Proveedores</a></li>
+        <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/expenses}">Gastos</a></li>
+        <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/reports}">Reportes</a></li>
+        <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/users}">Usuarios</a></li>
+        <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/settings}">Configuración</a></li>
+      </ul>
+    </details>
+    <form th:action="@{/logout}" method="post">
+      <button class="btn btn-outline btn-sm" type="submit">Salir</button>
+    </form>
+  </div>
+</nav>
+<header th:fragment="header" class="header flex items-center justify-between">
+  <div class="breadcrumbs text-sm">
+    <ul><li><a th:href="@{/}">Inicio</a></li><li>Sistema</li></ul>
+  </div>
+  <span class="badge badge-success">Caja / sesión activa</span>
 </header>
 <div th:fragment="alerts">
   <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>

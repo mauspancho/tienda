@@ -8,7 +8,7 @@ public class UserForm {
     private Long id;
     @NotBlank
     private String username;
-    @Size(min = 8, max = 128)
+    @Size(max = 128)
     private String password;
     @NotBlank
     private String firstName;
@@ -19,6 +19,23 @@ public class UserForm {
     private boolean admin;
     private boolean cashier = true;
     private boolean active = true;
+
+    public static UserForm from(AppUser user) {
+        UserForm form = new UserForm();
+        form.id = user.getId();
+        form.username = user.getUsername();
+        form.firstName = user.getFirstName();
+        form.lastName = user.getLastName();
+        form.email = user.getEmail();
+        form.active = user.isActive();
+        form.admin = user.hasRole("ROLE_ADMIN");
+        form.cashier = user.hasRole("ROLE_CAJERO");
+        return form;
+    }
+
+    public boolean hasPassword() {
+        return password != null && !password.isBlank();
+    }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }

@@ -1,1 +1,78 @@
-<!doctype html><html lang="es" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Usuarios</title><link rel="stylesheet" th:href="@{/css/app.css}"></head><body><div class="app-shell"><div th:replace="~{fragments/layout :: sidebar}"></div><main class="main"><div th:replace="~{fragments/layout :: header}"></div><section class="content"><h1>Usuarios</h1><div th:replace="~{fragments/layout :: alerts}"></div><div class="grid grid-2"><form class="card form" th:object="${userForm}" th:action="@{/users}" method="post"><div class="grid grid-2"><div class="field"><label>Nombre</label><input th:field="*{firstName}"></div><div class="field"><label>Apellido</label><input th:field="*{lastName}"></div></div><div class="grid grid-2"><div class="field"><label>Usuario</label><input th:field="*{username}"></div><div class="field"><label>Contraseña</label><input type="password" th:field="*{password}"></div></div><div class="field"><label>Email</label><input th:field="*{email}"></div><label><input type="checkbox" th:field="*{admin}"> Administrador</label><label><input type="checkbox" th:field="*{cashier}"> Cajero</label><button class="btn btn-success">Crear usuario</button></form><div class="table-wrap"><table><tr><th>Usuario</th><th>Nombre</th><th>Roles</th><th>Estado</th></tr><tr th:each="u:${users.content}"><td th:text="${u.username}"></td><td th:text="${u.fullName()}"></td><td th:text="${u.roles}"></td><td><span th:class="${u.active ? 'badge badge-green' : 'badge badge-red'}" th:text="${u.active ? 'Activo' : 'Inactivo'}"></span></td></tr></table></div></div></section></main></div></body></html>
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Usuarios</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body data-theme="tienda">
+<div class="app-shell">
+  <div th:replace="~{fragments/layout :: sidebar}"></div>
+  <main class="main">
+    <div th:replace="~{fragments/layout :: header}"></div>
+    <section class="content">
+      <div class="page-title">
+        <div>
+          <h1>Usuarios</h1>
+          <p class="muted">Administra accesos, roles y estado de cada usuario.</p>
+        </div>
+        <a class="btn btn-ghost" th:href="@{/users}" th:if="${mode == 'edit'}">Cancelar edición</a>
+      </div>
+      <div th:replace="~{fragments/layout :: alerts}"></div>
+
+      <div class="grid grid-2">
+        <form class="card form" th:object="${userForm}" th:action="${mode == 'edit'} ? @{/users/{id}(id=*{id})} : @{/users}" method="post">
+          <input type="hidden" th:field="*{id}">
+          <h2 th:text="${mode == 'edit'} ? 'Editar usuario' : 'Crear usuario'">Crear usuario</h2>
+          <div class="grid grid-2">
+            <div class="field"><label>Nombre</label><input class="input input-bordered" th:field="*{firstName}"></div>
+            <div class="field"><label>Apellido</label><input class="input input-bordered" th:field="*{lastName}"></div>
+          </div>
+          <div class="grid grid-2">
+            <div class="field"><label>Usuario</label><input class="input input-bordered" th:field="*{username}"></div>
+            <div class="field">
+              <label th:text="${mode == 'edit'} ? 'Nueva contraseña (opcional)' : 'Contraseña'">Contraseña</label>
+              <input class="input input-bordered" type="password" th:field="*{password}" autocomplete="new-password">
+            </div>
+          </div>
+          <div class="field"><label>Email</label><input class="input input-bordered" th:field="*{email}"></div>
+          <div class="flex flex-wrap gap-4">
+            <label class="label cursor-pointer gap-2"><input class="checkbox checkbox-primary" type="checkbox" th:field="*{admin}"> <span>Administrador</span></label>
+            <label class="label cursor-pointer gap-2"><input class="checkbox checkbox-primary" type="checkbox" th:field="*{cashier}"> <span>Cajero</span></label>
+            <label class="label cursor-pointer gap-2"><input class="toggle toggle-success" type="checkbox" th:field="*{active}"> <span>Activo</span></label>
+          </div>
+          <button class="btn btn-success" type="submit" th:text="${mode == 'edit'} ? 'Guardar cambios' : 'Crear usuario'">Crear usuario</button>
+        </form>
+
+        <div class="card overflow-x-auto">
+          <h2>Usuarios registrados</h2>
+          <table class="table table-zebra">
+            <thead><tr><th>Usuario</th><th>Nombre</th><th>Roles</th><th>Estado</th><th class="text-right">Acciones</th></tr></thead>
+            <tbody>
+            <tr th:each="u:${users.content}">
+              <td><strong th:text="${u.username}"></strong><br><span class="muted" th:text="${u.email}"></span></td>
+              <td th:text="${u.fullName()}"></td>
+              <td><span class="badge badge-outline" th:each="r:${u.roles}" th:text="${r.name}"></span></td>
+              <td><span th:class="${u.active ? 'badge badge-success' : 'badge badge-error'}" th:text="${u.active ? 'Activo' : 'Inactivo'}"></span></td>
+              <td class="text-right">
+                <div class="join">
+                  <a class="btn btn-sm join-item" th:href="@{/users/{id}/edit(id=${u.id})}">Editar</a>
+                  <form class="join-item" th:action="@{/users/{id}/toggle(id=${u.id})}" method="post">
+                    <button class="btn btn-sm" type="submit" th:text="${u.active ? 'Desactivar' : 'Activar'}">Desactivar</button>
+                  </form>
+                  <form class="join-item" th:action="@{/users/{id}/delete(id=${u.id})}" method="post" onsubmit="return confirm('Si el usuario tiene historial se desactivará. Si no tiene historial se eliminará. ¿Continuar?')">
+                    <button class="btn btn-sm btn-error" type="submit">Eliminar</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+</body>
+</html>
