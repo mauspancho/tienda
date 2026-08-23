@@ -168,3 +168,123 @@ label,
   background: white;
   color: black;
 }
+
+/* readability fixes for dark daisyUI themes */
+.app-nav {
+  background: color-mix(in srgb, hsl(var(--b1)) 94%, black) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .28);
+}
+.header {
+  background: color-mix(in srgb, hsl(var(--b1)) 90%, black) !important;
+}
+.content {
+  background: color-mix(in srgb, hsl(var(--b2)) 92%, black);
+}
+.card,
+.setup-card,
+.login-card,
+.table-wrap,
+.product-hit {
+  background: color-mix(in srgb, hsl(var(--b1)) 88%, white 4%) !important;
+  border-color: color-mix(in srgb, hsl(var(--bc)) 28%, transparent) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .18);
+}
+.card h1,
+.card h2,
+.card h3,
+.page-title h1,
+.metric {
+  color: hsl(var(--bc));
+  text-shadow: 0 1px 12px rgba(0, 0, 0, .24);
+}
+.mega-button {
+  color: hsl(var(--bc));
+}
+.mega-button:hover,
+.mega-button:focus-visible,
+.mega-button[aria-expanded="true"] {
+  background: color-mix(in srgb, hsl(var(--bc)) 16%, transparent);
+}
+.mega-panel {
+  background: color-mix(in srgb, hsl(var(--b1)) 96%, black 4%) !important;
+  border: 1px solid color-mix(in srgb, hsl(var(--bc)) 35%, transparent) !important;
+  color: hsl(var(--bc)) !important;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, .64), 0 0 0 1px rgba(255, 255, 255, .06) inset !important;
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  opacity: 1;
+}
+.mega-panel .menu,
+.mega-panel .menu ul {
+  background: transparent;
+}
+.mega-section-title,
+.mega-panel .menu-title {
+  color: color-mix(in srgb, hsl(var(--bc)) 78%, hsl(var(--p)) 22%) !important;
+  font-weight: 900;
+}
+.mega-panel .menu :where(li > a),
+.mega-panel .menu :where(li > span:not(.mega-section-title)) {
+  color: hsl(var(--bc));
+}
+.mega-panel .menu :where(li > a:hover),
+.mega-panel .menu :where(li > a:focus-visible) {
+  background: color-mix(in srgb, hsl(var(--p)) 22%, transparent);
+  color: hsl(var(--bc));
+}
+.mega-feature {
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .36);
+}
+.dropdown-content {
+  background: color-mix(in srgb, hsl(var(--b1)) 96%, black 4%) !important;
+  border: 1px solid color-mix(in srgb, hsl(var(--bc)) 28%, transparent);
+  color: hsl(var(--bc));
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .58);
+  backdrop-filter: blur(16px) saturate(1.15);
+  -webkit-backdrop-filter: blur(16px) saturate(1.15);
+}
+.select,
+.input,
+.textarea,
+input,
+select,
+textarea {
+  background: color-mix(in srgb, hsl(var(--b1)) 82%, black) !important;
+  border-color: color-mix(in srgb, hsl(var(--bc)) 30%, transparent) !important;
+  color: hsl(var(--bc)) !important;
+}
+.select option,
+select option {
+  background: hsl(var(--b1));
+  color: hsl(var(--bc));
+}
+.table :where(th, td),
+table :where(th, td) {
+  color: hsl(var(--bc));
+}
+.table :where(thead th),
+table :where(thead th),
+th {
+  background: color-mix(in srgb, hsl(var(--b1)) 78%, black) !important;
+  color: hsl(var(--bc)) !important;
+}
+.badge-success {
+  color: hsl(var(--suc-content, var(--bc)));
+}
+
+/* solid fallbacks for browsers before applying theme mixing */
+.app-nav {
+  background-color: rgba(8, 13, 28, .98) !important;
+}
+.header,
+.card,
+.setup-card,
+.login-card,
+.table-wrap,
+.product-hit {
+  background-color: rgba(15, 23, 42, .98) !important;
+}
+.mega-panel,
+.dropdown-content {
+  background-color: rgba(10, 16, 32, .98) !important;
+}
