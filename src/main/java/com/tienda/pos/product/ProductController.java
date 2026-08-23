@@ -28,13 +28,16 @@ public class ProductController {
     private final ProductService productService;
     private final CategoryRepository categoryRepository;
     private final SupplierRepository supplierRepository;
+    private final BarcodeLabelService barcodeLabelService;
 
     public ProductController(ProductRepository productRepository, ProductService productService,
-                             CategoryRepository categoryRepository, SupplierRepository supplierRepository) {
+                             CategoryRepository categoryRepository, SupplierRepository supplierRepository,
+                             BarcodeLabelService barcodeLabelService) {
         this.productRepository = productRepository;
         this.productService = productService;
         this.categoryRepository = categoryRepository;
         this.supplierRepository = supplierRepository;
+        this.barcodeLabelService = barcodeLabelService;
     }
 
     @GetMapping("/products")
@@ -67,6 +70,16 @@ public class ProductController {
         model.addAttribute("initialBarcode", "");
         model.addAttribute("autoLookup", false);
         return "products/form";
+    }
+
+    @GetMapping("/products/{id}/barcode-label")
+    public String barcodeLabel(@PathVariable Long id, Model model) {
+        Product product = productRepository.findById(id).orElseThrow();
+        String barcode = product.getBarcode();
+        model.addAttribute("product", product);
+        model.addAttribute("barcode", barcode);
+        model.addAttribute("barcodeSvg", barcodeLabelService.code128Svg(barcode));
+        return "products/barcode-label";
     }
 
     @GetMapping("/products/generate-code")
