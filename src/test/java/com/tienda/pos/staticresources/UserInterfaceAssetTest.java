@@ -61,4 +61,13 @@ class UserInterfaceAssetTest {
                 .contains("String imageUrl")
                 .contains("product.getImageUrl()");
     }
+
+    @Test
+    void uploadedProductImagesArePublicWithoutLogin() throws Exception {
+        String securityConfig = Files.readString(ROOT.resolve("src/main/java/com/tienda/pos/security/SecurityConfig.java"));
+
+        assertThat(securityConfig)
+                .contains("/uploads/products/**")
+                .contains(".requestMatchers(\"/css/**\", \"/js/**\", \"/uploads/products/**\", \"/login\", \"/error\").permitAll()");
+    }
 }

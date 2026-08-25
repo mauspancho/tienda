@@ -29,7 +29,7 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationSuccessHandler successHandler) throws Exception {
         return http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/css/**", "/js/**", "/login", "/error").permitAll()
+                        .requestMatchers("/css/**", "/js/**", "/uploads/products/**", "/login", "/error").permitAll()
                         .requestMatchers("/users/**", "/settings/**", "/reports/**", "/cash/**").hasRole("ADMIN")
                         .requestMatchers("/products/**", "/categories/**", "/suppliers/**", "/purchases/**",
                                 "/inventory/**", "/expenses/**").hasRole("ADMIN")
