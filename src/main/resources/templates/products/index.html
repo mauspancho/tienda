@@ -18,7 +18,7 @@
           <button class="btn btn-muted btn-sm" type="button" th:if="${p.barcode != null and !#strings.isEmpty(p.barcode)}" th:data-label-url="@{/products/{id}/barcode-label(id=${p.id})}" th:data-label-product="${p.name}" th:data-label-barcode="${p.barcode}" data-open-label-modal>Imprimir</button>
         </div>
       </td>
-      <td><strong th:text="${p.name}"></strong><br><span class="muted" th:text="${p.barcode}"></span></td>
+      <td><div class="product-list-product"><img class="product-thumb" th:if="${p.imageUrl != null and !#strings.isEmpty(p.imageUrl)}" th:src="${p.imageUrl}" alt="" loading="lazy"><span class="product-thumb product-thumb-placeholder" th:unless="${p.imageUrl != null and !#strings.isEmpty(p.imageUrl)}">▣</span><div><strong th:text="${p.name}"></strong><br><span class="muted" th:text="${p.barcode}"></span></div></div></td>
       <td th:text="${@display.money(p.salePrice)}"></td>
       <td th:text="${@display.money(p.purchaseCost)}"></td>
       <td><span th:class="${p.hasLowStock() ? 'badge badge-yellow' : 'badge badge-green'}" th:text="${@display.number(p.currentStock)}"></span></td>

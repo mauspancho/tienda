@@ -33,8 +33,9 @@ class ProductServiceTest {
     private final SupplierRepository supplierRepository = mock(SupplierRepository.class);
     private final InventoryMovementRepository movementRepository = mock(InventoryMovementRepository.class);
     private final ExternalProductService externalProductService = mock(ExternalProductService.class);
+    private final ProductImageService productImageService = mock(ProductImageService.class);
     private final ProductService service = new ProductService(productRepository, categoryRepository,
-            supplierRepository, movementRepository, externalProductService);
+            supplierRepository, movementRepository, externalProductService, productImageService);
 
     @Test
     void calculatesEan13CheckDigit() {

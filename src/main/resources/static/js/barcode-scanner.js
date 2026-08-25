@@ -40,6 +40,33 @@
     return doc.body?.textContent?.replace(/\s+/g, " ").trim() || text;
   }
 
+
+  function safeImageUrl(url) {
+    if (!url || typeof url !== "string") return "";
+    const value = url.trim();
+    return value.startsWith("https://") || value.startsWith("/uploads/products/") ? value : "";
+  }
+
+  function productImageNode(imageUrl) {
+    const safeUrl = safeImageUrl(imageUrl);
+    if (!safeUrl) {
+      const placeholder = document.createElement("span");
+      placeholder.className = "product-thumb product-thumb-placeholder";
+      placeholder.textContent = "▣";
+      return placeholder;
+    }
+    const img = document.createElement("img");
+    img.className = "product-thumb";
+    img.alt = "";
+    img.src = safeUrl;
+    img.addEventListener("error", () => {
+      const placeholder = document.createElement("span");
+      placeholder.className = "product-thumb product-thumb-placeholder";
+      placeholder.textContent = "▣";
+      img.replaceWith(placeholder);
+    }, { once: true });
+    return img;
+  }
   function normalizeCartQuantity(value) {
     const quantity = Math.floor(Number(value || 0));
     return Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
@@ -61,14 +88,45 @@
       const quantity = normalizeCartQuantity(item.quantity);
       item.quantity = quantity;
       const line = Number(item.price) * quantity;
-      total += line;
       const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td><strong>${item.name}</strong><br><span class="muted">${item.code || ""}</span></td>
-        <td><input aria-label="Cantidad" type="number" min="1" step="1" inputmode="numeric" value="${quantity}" data-qty="${item.id}"></td>
-        <td>${money(item.price)}</td>
-        <td>${money(line)}</td>
-        <td><button class="btn btn-danger" data-remove="${item.id}" type="button">Quitar</button></td>`;
+      const productTd = document.createElement("td");
+      const productCell = document.createElement("div");
+      productCell.className = "pos-product-cell";
+      productCell.appendChild(productImageNode(item.imageUrl));
+      const productText = document.createElement("div");
+      const productName = document.createElement("strong");
+      productName.className = "pos-product-name";
+      productName.textContent = item.name || "Producto";
+      const productCode = document.createElement("span");
+      productCode.className = "muted pos-product-code";
+      productCode.textContent = item.code || item.barcode || "";
+      productText.append(productName, productCode);
+      productCell.appendChild(productText);
+      productTd.appendChild(productCell);
+
+      const qtyTd = document.createElement("td");
+      const qtyInput = document.createElement("input");
+      qtyInput.setAttribute("aria-label", "Cantidad");
+      qtyInput.type = "number";
+      qtyInput.setAttribute("min", "1");
+      qtyInput.setAttribute("step", "1");
+      qtyInput.inputMode = "numeric";
+      qtyInput.value = String(quantity);
+      qtyInput.dataset.qty = String(item.id);
+      qtyTd.appendChild(qtyInput);
+
+      const priceTd = document.createElement("td");
+      priceTd.textContent = money(item.price);
+      const lineTd = document.createElement("td");
+      lineTd.textContent = money(line);
+      const removeTd = document.createElement("td");
+      const removeButton = document.createElement("button");
+      removeButton.className = "btn btn-danger";
+      removeButton.dataset.remove = String(item.id);
+      removeButton.type = "button";
+      removeButton.textContent = "Quitar";
+      removeTd.appendChild(removeButton);
+      tr.append(productTd, qtyTd, priceTd, lineTd, removeTd);
       cartBody.appendChild(tr);
     }
     totalEl.textContent = money(cartTotal());
@@ -157,8 +215,16 @@
     products.forEach(product => {
       const node = document.createElement("button");
       node.type = "button";
-      node.className = "product-hit";
-      node.innerHTML = `<strong>${product.name}</strong><br><span class="muted">${money(product.price)} · Stock ${number(product.stock)}</span>`;
+      node.className = "product-hit pos-product-cell";
+      node.appendChild(productImageNode(product.imageUrl));
+      const text = document.createElement("span");
+      const name = document.createElement("strong");
+      name.textContent = product.name || "Producto";
+      const meta = document.createElement("span");
+      meta.className = "muted pos-product-code";
+      meta.textContent = `${money(product.price)} · Stock ${number(product.stock)}`;
+      text.append(name, document.createElement("br"), meta);
+      node.appendChild(text);
       node.addEventListener("click", () => addProduct(product));
       results.appendChild(node);
     });

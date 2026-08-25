@@ -13,6 +13,12 @@
   const priceInput = document.querySelector("[data-price-input]");
   const profitPreview = document.querySelector("[data-profit-preview]");
   const marginPreview = document.querySelector("[data-margin-preview]");
+  const imageUrlInput = document.querySelector("[data-product-image-url]");
+  const imageFileInput = document.querySelector("[data-product-image-file]");
+  const imageRemoveInput = document.querySelector("[data-product-remove-image]");
+  const imageClearButton = document.querySelector("[data-product-image-clear]");
+  const imageFileInfo = document.querySelector("[data-product-image-file-info]");
+  let previewObjectUrl = null;
 
   async function generate(type) {
     const response = await fetch(`/products/generate-code?type=${encodeURIComponent(type)}`, {
@@ -69,17 +75,57 @@
     if (input && value) input.value = value;
   }
 
-  function updateImagePreview(url) {
+  function revokePreviewObjectUrl() {
+    if (previewObjectUrl) {
+      URL.revokeObjectURL(previewObjectUrl);
+      previewObjectUrl = null;
+    }
+  }
+
+  function isPersistableImageUrl(url) {
+    return url.startsWith("https://") || url.startsWith("/uploads/products/");
+  }
+
+  function setRemoveImage(value) {
+    if (imageRemoveInput) imageRemoveInput.checked = value;
+  }
+
+  function updateImagePreview(url, temporary = false) {
     const preview = document.querySelector("[data-image-preview]");
     const image = document.querySelector("[data-image-preview-img]");
     if (!preview || !image) return;
-    if (!url) {
+    if (!temporary) revokePreviewObjectUrl();
+    if (!url || (!temporary && !isPersistableImageUrl(url))) {
       preview.hidden = true;
       image.removeAttribute("src");
       return;
     }
     image.src = url;
     preview.hidden = false;
+  }
+
+  function formatBytes(bytes) {
+    if (!Number.isFinite(bytes)) return "0 KB";
+    if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+    return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  }
+
+  function showSelectedImage(file) {
+    revokePreviewObjectUrl();
+    if (!file) return;
+    previewObjectUrl = URL.createObjectURL(file);
+    updateImagePreview(previewObjectUrl, true);
+    setRemoveImage(false);
+    if (imageFileInfo) imageFileInfo.textContent = `${file.name} · ${formatBytes(file.size)}. Se optimizará al guardar.`;
+  }
+
+  function clearSelectedImage() {
+    revokePreviewObjectUrl();
+    if (imageFileInput) imageFileInput.value = "";
+    if (imageUrlInput) imageUrlInput.value = "";
+    setRemoveImage(true);
+    updateImagePreview("");
+    if (imageFileInfo) imageFileInfo.textContent = "Imagen marcada para quitar. Puedes elegir otra antes de guardar.";
   }
 
   function showCategorySuggestion(result) {
@@ -117,8 +163,11 @@
     setField("[data-product-name]", result.name);
     setField("[data-product-brand]", result.brand);
     setField("[data-product-presentation]", result.presentation);
+    if (imageFileInput) imageFileInput.value = "";
+    setRemoveImage(false);
     setField("[data-product-image-url]", result.imageUrl);
-    updateImagePreview(result.imageUrl);
+    updateImagePreview(result.imageUrl || "");
+    if (imageFileInfo) imageFileInfo.textContent = result.imageUrl ? "Imagen externa detectada. Puedes reemplazarla subiendo una foto." : "Máximo 5 MB. Formatos: JPEG, PNG o WebP.";
     showCategorySuggestion(result);
 
     if (externalBox) {
@@ -128,7 +177,7 @@
       externalBox.querySelector("[data-external-presentation]").textContent = result.presentation || "";
       externalBox.querySelector("[data-external-separator]").hidden = !result.brand || !result.presentation;
       const image = externalBox.querySelector("[data-external-image]");
-      if (result.imageUrl) {
+      if (result.imageUrl && isPersistableImageUrl(result.imageUrl)) {
         image.src = result.imageUrl;
         image.hidden = false;
       } else {
@@ -144,7 +193,7 @@
     hideLookupResults();
     await ensureProductCode();
     setField('[data-code-target="barcode"]', barcode);
-    updateImagePreview("");
+    updateImagePreview(imageUrlInput?.value?.trim() || "");
     showCategorySuggestion({});
     setMessage(externalError
       ? "No fue posible consultar la base externa en este momento. Puedes continuar registrando el producto manualmente."
@@ -209,9 +258,17 @@
     lookupInput.focus();
   });
 
+  imageFileInput?.addEventListener("change", event => showSelectedImage(event.target.files?.[0]));
+  imageClearButton?.addEventListener("click", clearSelectedImage);
+  imageUrlInput?.addEventListener("input", event => {
+    if (imageFileInput) imageFileInput.value = "";
+    setRemoveImage(false);
+    updateImagePreview(event.target.value.trim());
+    if (imageFileInfo) imageFileInfo.textContent = event.target.value.trim() ? "Usando URL de imagen." : "Máximo 5 MB. Formatos: JPEG, PNG o WebP.";
+  });
+
   costInput?.addEventListener("input", updateMarginPreview);
   priceInput?.addEventListener("input", updateMarginPreview);
-  document.querySelector("[data-product-image-url]")?.addEventListener("input", event => updateImagePreview(event.target.value.trim()));
 
   form?.addEventListener("submit", event => {
     const cost = Number(costInput?.value || 0);
@@ -222,6 +279,7 @@
   });
 
   updateMarginPreview();
+  updateImagePreview(imageUrlInput?.value?.trim() || "");
   if (lookupCard?.dataset.initialBarcode) {
     lookupInput.value = lookupCard.dataset.initialBarcode;
   }
@@ -230,4 +288,5 @@
   } else {
     setTimeout(() => lookupInput?.focus(), 40);
   }
+  window.addEventListener("pagehide", revokePreviewObjectUrl);
 })();

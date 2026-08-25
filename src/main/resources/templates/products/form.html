@@ -40,7 +40,8 @@
   </div>
 </div>
 
-<form class="card form" th:object="${productForm}" th:action="@{/products}" method="post" data-product-form><input type="hidden" th:field="*{id}">
+<form class="card form" th:object="${productForm}" th:action="@{/products}" method="post" enctype="multipart/form-data" data-product-form><input type="hidden" th:field="*{id}">
+<div th:if="${#fields.hasGlobalErrors()}" class="alert alert-error" th:each="err : ${#fields.globalErrors()}" th:text="${err}"></div>
 <h2>Información del producto</h2>
 <div class="grid grid-3">
   <div class="field"><label>Código</label><div class="join w-full"><input class="join-item" th:field="*{code}" data-code-target="code"><button class="btn btn-muted join-item" type="button" data-generate-code="code">Generar</button></div></div>
@@ -50,10 +51,23 @@
 <div class="grid grid-3">
   <div class="field"><label>Marca</label><input th:field="*{brand}" data-product-brand></div>
   <div class="field"><label>Presentación</label><input th:field="*{presentation}" data-product-presentation placeholder="600 ml"></div>
-  <div class="field"><label>URL imagen</label><input th:field="*{imageUrl}" data-product-image-url></div>
+  <div class="field"><label>URL de imagen</label><input th:field="*{imageUrl}" data-product-image-url placeholder="https://..."></div>
 </div>
-<div data-image-preview hidden>
-  <img data-image-preview-img alt="Vista previa producto" style="max-height:180px;object-fit:contain">
+<div class="product-image-field">
+  <div>
+    <h2>Imagen producto</h2>
+    <p class="muted">Puedes subir una foto local o usar una URL de imagen. Si subes una foto, reemplaza la URL guardada.</p>
+  </div>
+  <div class="product-image-preview" data-image-preview hidden>
+    <img data-image-preview-img alt="Vista previa producto">
+  </div>
+  <div class="product-image-actions">
+    <label class="btn btn-primary" for="imageFile">Elegir foto / Tomar foto</label>
+    <input id="imageFile" class="sr-only" name="imageFile" type="file" accept="image/jpeg,image/png,image/webp" data-product-image-file>
+    <button class="btn btn-muted" type="button" data-product-image-clear>Quitar imagen</button>
+  </div>
+  <p class="muted" data-product-image-file-info>Máximo 5 MB. Formatos: JPEG, PNG o WebP. La imagen será optimizada automáticamente.</p>
+  <label class="hidden"><input type="checkbox" th:field="*{removeImage}" data-product-remove-image> Quitar imagen</label>
 </div>
 <div class="field"><label>Descripción</label><textarea th:field="*{description}"></textarea></div>
 <div data-category-suggestion class="alert alert-success" hidden></div>

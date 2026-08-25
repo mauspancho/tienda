@@ -51,10 +51,10 @@ public class ProductApiController {
     }
 
     public record ProductDto(Long id, String code, String barcode, String name, BigDecimal price,
-                             BigDecimal stock, String unit) {
+                             BigDecimal stock, String unit, String imageUrl) {
         static ProductDto from(Product product) {
             return new ProductDto(product.getId(), product.getCode(), product.getBarcode(), product.getName(),
-                    product.getSalePrice(), product.getCurrentStock(), product.getUnit().name());
+                    product.getSalePrice(), product.getCurrentStock(), product.getUnit().name(), product.getImageUrl());
         }
     }
 }

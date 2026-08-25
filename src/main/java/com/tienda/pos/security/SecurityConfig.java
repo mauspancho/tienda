@@ -3,6 +3,7 @@ package com.tienda.pos.security;
 import com.tienda.pos.common.NormalMode;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -50,6 +51,7 @@ public class SecurityConfig {
                         .sessionFixation().migrateSession()
                         .maximumSessions(1))
                 .headers(headers -> headers
+                        .contentTypeOptions(Customizer.withDefaults())
                         .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
                         .contentSecurityPolicy(csp -> csp.policyDirectives("script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; object-src 'none'; frame-ancestors 'self'")))
                 .build();

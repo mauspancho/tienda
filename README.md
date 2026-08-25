@@ -47,16 +47,17 @@ tienda-pos/
 ├── logs/
 ├── backups/
 └── data/
+    └── products/
 ```
 
-`config/application.yml`, `.env`, `logs/` y `backups/` están ignorados por Git.
+`config/application.yml`, `.env`, `logs/`, `backups/` y `data/` están ignorados por Git.
 
 ## Módulos incluidos
 
 - Setup inicial sin datasource externo.
 - Login/logout con Spring Security, BCrypt, CSRF y roles `ROLE_ADMIN` / `ROLE_CAJERO`.
 - Dashboard.
-- Productos, categorías y proveedores, con alta asistida por código de barras usando Open Food Facts.
+- Productos, categorías y proveedores, con imágenes locales y alta asistida por código de barras usando Open Food Facts.
 - Compras con actualización transaccional de inventario.
 - Inventario con movimientos trazables.
 - POS con lector USB tipo teclado (`input + Enter`).
@@ -88,6 +89,36 @@ npm run css:build
 
 No es necesario Node.js para ejecutar el JAR.
 
+## Imágenes de productos
+
+Los productos conservan la referencia final en la columna `product.image_url`. Si escribes una URL externa, solo se guarda la URL; si subes un archivo manual, la aplicación guarda una copia optimizada fuera del JAR en:
+
+```text
+data/products/
+```
+
+Las imágenes locales se publican como:
+
+```text
+/uploads/products/{uuid}.jpg
+```
+
+La configuración por defecto es:
+
+```yaml
+tienda:
+  product-images:
+    directory: ./data/products
+    public-path: /uploads/products
+    max-upload-size: 5MB
+    max-width: 800
+    max-height: 800
+    webp-quality: 0.82
+```
+
+El formulario acepta JPEG, PNG o WebP de hasta 5 MB, valida que el archivo sea una imagen real y genera nombres UUID para evitar usar nombres originales. Para no agregar dependencias nuevas, la copia optimizada se guarda como JPEG. Al reemplazar o quitar una imagen solo se eliminan archivos locales bajo `/uploads/products/`; nunca se borra una URL externa.
+
+Open Food Facts puede precargar una URL de imagen, pero la aplicación no la descarga automáticamente. Si subes una imagen manualmente, esa imagen reemplaza la URL externa.
 ## Logs
 
 Los logs se escriben en:
@@ -100,7 +131,7 @@ con rotación por tamaño e historial.
 
 ## Backup
 
-La pantalla de configuración incluye una acción inicial de respaldo. Si `mysqldump` o `mariadb-dump` está disponible en el servidor, úsalo para generar respaldos completos en `backups/`.
+La pantalla de configuración incluye una acción inicial de respaldo. Si `mysqldump` o `mariadb-dump` está disponible en el servidor, úsalo para generar respaldos completos en `backups/`. Además respalda `data/products/`, porque ahí viven las imágenes locales de productos y no van dentro del JAR ni de la base de datos.
 
 ## Roles
 

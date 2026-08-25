@@ -2,6 +2,7 @@ package com.tienda.pos.product;
 
 import com.tienda.pos.category.CategoryRepository;
 import com.tienda.pos.common.NormalMode;
+import com.tienda.pos.exception.DomainException;
 import com.tienda.pos.supplier.SupplierRepository;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.PageRequest;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
@@ -96,6 +98,7 @@ public class ProductController {
 
     @PostMapping("/products")
     public String save(@Valid @ModelAttribute("productForm") ProductForm form, BindingResult bindingResult,
+                       @RequestParam(required = false) MultipartFile imageFile,
                        Model model, RedirectAttributes redirectAttributes) {
         if (bindingResult.hasErrors()) {
             prepareForm(model, form);
@@ -103,7 +106,15 @@ public class ProductController {
             model.addAttribute("autoLookup", false);
             return "products/form";
         }
-        productService.save(form);
+        try {
+            productService.save(form, imageFile);
+        } catch (DomainException ex) {
+            bindingResult.reject("product.image", ex.getMessage());
+            prepareForm(model, form);
+            model.addAttribute("initialBarcode", "");
+            model.addAttribute("autoLookup", false);
+            return "products/form";
+        }
         redirectAttributes.addFlashAttribute("success", "Producto guardado correctamente.");
         return "redirect:/products";
     }

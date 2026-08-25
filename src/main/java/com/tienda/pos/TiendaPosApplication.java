@@ -1,6 +1,7 @@
 package com.tienda.pos;
 
 import com.tienda.pos.externalproduct.ExternalProductsProperties;
+import com.tienda.pos.product.ProductImagesProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -10,7 +11,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 @SpringBootApplication
 @EnableMethodSecurity
 @EnableScheduling
-@EnableConfigurationProperties(ExternalProductsProperties.class)
+@EnableConfigurationProperties({ExternalProductsProperties.class, ProductImagesProperties.class})
 public class TiendaPosApplication {
 
     public static void main(String[] args) {

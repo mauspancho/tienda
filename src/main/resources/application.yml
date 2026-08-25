@@ -11,6 +11,10 @@ spring:
     name: tienda-pos
   thymeleaf:
     cache: false
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
   jpa:
     hibernate:
       ddl-auto: validate
@@ -39,6 +43,13 @@ tienda:
   timezone: America/Mexico_City
   currency: MXN
   currency-symbol: "$"
+  product-images:
+    directory: ./data/products
+    public-path: /uploads/products
+    max-upload-size: 5MB
+    max-width: 800
+    max-height: 800
+    webp-quality: 0.82
 
 external:
   products:

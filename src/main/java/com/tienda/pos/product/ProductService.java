@@ -15,11 +15,15 @@ import com.tienda.pos.inventory.InventoryMovementType;
 import com.tienda.pos.supplier.SupplierRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.text.Normalizer;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -34,58 +38,81 @@ public class ProductService {
     private final SupplierRepository supplierRepository;
     private final InventoryMovementRepository movementRepository;
     private final ExternalProductService externalProductService;
+    private final ProductImageService productImageService;
 
     public ProductService(ProductRepository productRepository, CategoryRepository categoryRepository,
                           SupplierRepository supplierRepository, InventoryMovementRepository movementRepository,
-                          ExternalProductService externalProductService) {
+                          ExternalProductService externalProductService, ProductImageService productImageService) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.supplierRepository = supplierRepository;
         this.movementRepository = movementRepository;
         this.externalProductService = externalProductService;
+        this.productImageService = productImageService;
     }
 
     @Transactional
     public Product save(ProductForm form) {
+        return save(form, null);
+    }
+
+    @Transactional
+    public Product save(ProductForm form, MultipartFile imageFile) {
         Product product = form.getId() == null ? new Product() : productRepository.findByIdForUpdate(form.getId())
                 .orElseThrow(() -> new DomainException("Producto no encontrado."));
         BigDecimal previousStock = product.getCurrentStock() == null ? BigDecimal.ZERO : product.getCurrentStock();
-        String barcode = blankToNull(form.getBarcode());
-        validateUniqueCode(form.getCode(), form.getId());
-        validateUniqueBarcode(barcode, form.getId());
-        product.setCode(form.getCode().trim());
-        product.setBarcode(barcode);
-        product.setName(form.getName().trim());
-        product.setBrand(blankToNull(form.getBrand()));
-        product.setPresentation(blankToNull(form.getPresentation()));
-        product.setImageUrl(blankToNull(form.getImageUrl()));
-        product.setDescription(form.getDescription());
-        product.setCategory(form.getCategoryId() == null ? null : categoryRepository.findById(form.getCategoryId()).orElse(null));
-        product.setSupplier(form.getSupplierId() == null ? null : supplierRepository.findById(form.getSupplierId()).orElse(null));
-        product.setPurchaseCost(MoneyUtils.money(form.getPurchaseCost()));
-        product.setSalePrice(MoneyUtils.money(form.getSalePrice()));
-        product.setCurrentStock(form.getCurrentStock());
-        product.setMinimumStock(form.getMinimumStock());
-        product.setUnit(form.getUnit());
-        product.setTax(MoneyUtils.money(form.getTax()));
-        product.setActive(form.isActive());
-        product.setUpdatedBy(CurrentUser.username());
-        Product saved = productRepository.save(product);
-        if (form.getId() == null && form.getCurrentStock().compareTo(BigDecimal.ZERO) > 0
-                || form.getId() != null && previousStock.compareTo(form.getCurrentStock()) != 0) {
-            InventoryMovement movement = new InventoryMovement();
-            movement.setProduct(saved);
-            movement.setMovementType(InventoryMovementType.INITIAL_STOCK);
-            movement.setPreviousStock(previousStock);
-            movement.setQuantity(form.getCurrentStock().subtract(previousStock));
-            movement.setNewStock(form.getCurrentStock());
-            movement.setReferenceType("PRODUCT");
-            movement.setReferenceId(saved.getId());
-            movement.setNotes("Inventario inicial/actualización desde ficha de producto");
-            movement.setCreatedBy(CurrentUser.username());
-            movementRepository.save(movement);
+        String previousImageUrl = product.getImageUrl();
+        String newLocalImageUrl = null;
+        boolean uploadedImage = imageFile != null && !imageFile.isEmpty();
+        try {
+            String barcode = blankToNull(form.getBarcode());
+            validateUniqueCode(form.getCode(), form.getId());
+            validateUniqueBarcode(barcode, form.getId());
+            String imageUrl = form.isRemoveImage() ? null : productImageService.cleanImageReference(form.getImageUrl());
+            if (uploadedImage) {
+                newLocalImageUrl = productImageService.store(imageFile);
+                imageUrl = newLocalImageUrl;
+            }
+            product.setCode(form.getCode().trim());
+            product.setBarcode(barcode);
+            product.setName(form.getName().trim());
+            product.setBrand(blankToNull(form.getBrand()));
+            product.setPresentation(blankToNull(form.getPresentation()));
+            product.setImageUrl(imageUrl);
+            product.setDescription(form.getDescription());
+            product.setCategory(form.getCategoryId() == null ? null : categoryRepository.findById(form.getCategoryId()).orElse(null));
+            product.setSupplier(form.getSupplierId() == null ? null : supplierRepository.findById(form.getSupplierId()).orElse(null));
+            product.setPurchaseCost(MoneyUtils.money(form.getPurchaseCost()));
+            product.setSalePrice(MoneyUtils.money(form.getSalePrice()));
+            product.setCurrentStock(form.getCurrentStock());
+            product.setMinimumStock(form.getMinimumStock());
+            product.setUnit(form.getUnit());
+            product.setTax(MoneyUtils.money(form.getTax()));
+            product.setActive(form.isActive());
+            product.setUpdatedBy(CurrentUser.username());
+            Product saved = productRepository.save(product);
+            if (form.getId() == null && form.getCurrentStock().compareTo(BigDecimal.ZERO) > 0
+                    || form.getId() != null && previousStock.compareTo(form.getCurrentStock()) != 0) {
+                InventoryMovement movement = new InventoryMovement();
+                movement.setProduct(saved);
+                movement.setMovementType(InventoryMovementType.INITIAL_STOCK);
+                movement.setPreviousStock(previousStock);
+                movement.setQuantity(form.getCurrentStock().subtract(previousStock));
+                movement.setNewStock(form.getCurrentStock());
+                movement.setReferenceType("PRODUCT");
+                movement.setReferenceId(saved.getId());
+                movement.setNotes("Inventario inicial/actualización desde ficha de producto");
+                movement.setCreatedBy(CurrentUser.username());
+                movementRepository.save(movement);
+            }
+            scheduleImageCleanup(previousImageUrl, newLocalImageUrl, product.getImageUrl());
+            return saved;
+        } catch (RuntimeException ex) {
+            if (newLocalImageUrl != null) {
+                productImageService.deleteLocalImage(newLocalImageUrl);
+            }
+            throw ex;
         }
-        return saved;
     }
 
     @Transactional(readOnly = true)
@@ -143,6 +170,35 @@ public class ProductService {
         String normalized = value.replaceAll("\\s+", "").trim();
         if (normalized.isBlank() || !normalized.matches("\\d+")) return null;
         return normalized;
+    }
+
+    private void scheduleImageCleanup(String previousImageUrl, String newLocalImageUrl, String finalImageUrl) {
+        boolean replacedPreviousLocal = productImageService.isLocalImage(previousImageUrl)
+                && !Objects.equals(previousImageUrl, finalImageUrl);
+        if (!replacedPreviousLocal && newLocalImageUrl == null) {
+            return;
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            if (replacedPreviousLocal) {
+                productImageService.deleteLocalImage(previousImageUrl);
+            }
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                if (replacedPreviousLocal) {
+                    productImageService.deleteLocalImage(previousImageUrl);
+                }
+            }
+
+            @Override
+            public void afterCompletion(int status) {
+                if (status != STATUS_COMMITTED && newLocalImageUrl != null) {
+                    productImageService.deleteLocalImage(newLocalImageUrl);
+                }
+            }
+        });
     }
 
     private void validateUniqueCode(String code, Long currentId) {

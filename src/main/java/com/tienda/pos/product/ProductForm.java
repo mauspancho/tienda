@@ -34,6 +34,7 @@ public class ProductForm {
     private Long supplierId;
     private BigDecimal tax = BigDecimal.ZERO;
     private boolean active = true;
+    private boolean removeImage;
 
     public static ProductForm from(Product product) {
         ProductForm form = new ProductForm();
@@ -91,4 +92,6 @@ public class ProductForm {
     public void setTax(BigDecimal tax) { this.tax = tax; }
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
+    public boolean isRemoveImage() { return removeImage; }
+    public void setRemoveImage(boolean removeImage) { this.removeImage = removeImage; }
 }

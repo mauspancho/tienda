@@ -1486,3 +1486,89 @@ html[data-theme="sunset"] .camera-session-summary {
     min-height: 2.35rem;
   }
 }
+/* product images */
+.product-image-field {
+  display: grid;
+  gap: .8rem;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, hsl(var(--bc)) 28%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, hsl(var(--b1)) 94%, transparent);
+}
+.product-image-preview {
+  display: grid;
+  place-items: center;
+  min-height: 12rem;
+  border: 1px dashed color-mix(in srgb, hsl(var(--bc)) 34%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, hsl(var(--b1)) 88%, #000 6%);
+  overflow: hidden;
+}
+.product-image-preview[hidden] {
+  display: none !important;
+}
+.product-image-preview img {
+  max-width: 100%;
+  max-height: 18rem;
+  object-fit: contain;
+}
+.product-image-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+}
+.product-list-product,
+.pos-product-cell {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  min-width: 0;
+}
+.product-thumb {
+  width: 3rem;
+  height: 3rem;
+  flex: 0 0 3rem;
+  border: 1px solid color-mix(in srgb, hsl(var(--bc)) 28%, transparent);
+  border-radius: 8px;
+  object-fit: cover;
+  background: color-mix(in srgb, hsl(var(--b1)) 88%, #000 8%);
+}
+.product-thumb-placeholder {
+  display: inline-grid;
+  place-items: center;
+  color: color-mix(in srgb, hsl(var(--bc)) 78%, transparent);
+  -webkit-text-fill-color: color-mix(in srgb, hsl(var(--bc)) 78%, transparent);
+  font-weight: 1000;
+  font-size: 1.15rem;
+}
+.pos-product-name {
+  display: block;
+  color: hsl(var(--bc));
+  -webkit-text-fill-color: hsl(var(--bc));
+  font-weight: 1000;
+}
+.pos-product-code {
+  display: block;
+}
+html[data-theme="sunset"] .product-image-field,
+html[data-theme="sunset"] .product-image-preview,
+html[data-theme="sunset"] .product-thumb {
+  border-color: rgba(255, 255, 255, .52);
+}
+html[data-theme="sunset"] .product-image-field {
+  background: rgba(24, 20, 32, .58);
+}
+html[data-theme="sunset"] .product-thumb,
+html[data-theme="sunset"] .product-image-preview {
+  background: rgba(17, 16, 24, .82);
+}
+@media (max-width: 640px) {
+  .product-image-actions > .btn {
+    flex: 1 1 100%;
+  }
+  .product-thumb {
+    width: 2.75rem;
+    height: 2.75rem;
+    flex-basis: 2.75rem;
+  }
+}

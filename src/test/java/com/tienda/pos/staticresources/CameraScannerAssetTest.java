@@ -53,7 +53,8 @@ class CameraScannerAssetTest {
         assertThat(posScanner)
                 .contains("function normalizeCartQuantity")
                 .contains("Math.floor")
-                .contains("min=\"1\" step=\"1\"")
+                .contains("qtyInput.setAttribute(\"min\", \"1\")")
+                .contains("qtyInput.setAttribute(\"step\", \"1\")")
                 .contains("quantity: normalizeCartQuantity(item.quantity)");
     }
 
