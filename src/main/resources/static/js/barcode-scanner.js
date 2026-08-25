@@ -3,7 +3,6 @@
   const cartBody = document.querySelector("[data-cart-body]");
   const totalEl = document.querySelector("[data-cart-total]");
   const discountInput = document.querySelector("[data-discount]");
-  const receivedInput = document.querySelector("[data-received]");
   const message = document.querySelector("[data-pos-message]");
   const results = document.querySelector("[data-search-results]");
   const checkoutButton = document.querySelector("[data-checkout]");
@@ -46,9 +45,18 @@
     return Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
   }
 
+  function cartTotal() {
+    let total = 0;
+    for (const item of cart.values()) {
+      const quantity = normalizeCartQuantity(item.quantity);
+      item.quantity = quantity;
+      total += Number(item.price) * quantity;
+    }
+    const discount = Number(discountInput?.value || 0);
+    return Math.max(total - discount, 0);
+  }
   function render() {
     cartBody.innerHTML = "";
-    let total = 0;
     for (const item of cart.values()) {
       const quantity = normalizeCartQuantity(item.quantity);
       item.quantity = quantity;
@@ -63,8 +71,7 @@
         <td><button class="btn btn-danger" data-remove="${item.id}" type="button">Quitar</button></td>`;
       cartBody.appendChild(tr);
     }
-    const discount = Number(discountInput?.value || 0);
-    totalEl.textContent = money(Math.max(total - discount, 0));
+    totalEl.textContent = money(cartTotal());
   }
 
   function registerUrlFor(barcode) {
@@ -238,7 +245,7 @@
     const csrfHeader = document.querySelector("meta[name='_csrf_header']")?.content;
     const body = {
       discount: Number(discountInput?.value || 0),
-      receivedAmount: Number(receivedInput?.value || 0),
+      receivedAmount: cartTotal(),
       paymentMethod: document.querySelector("[name='paymentMethod']:checked")?.value || "CASH",
       items: [...cart.values()].map(item => ({ productId: item.id, quantity: normalizeCartQuantity(item.quantity) }))
     };

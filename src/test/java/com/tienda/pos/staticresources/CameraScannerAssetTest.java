@@ -56,4 +56,19 @@ class CameraScannerAssetTest {
                 .contains("min=\"1\" step=\"1\"")
                 .contains("quantity: normalizeCartQuantity(item.quantity)");
     }
+
+    @Test
+    void posCheckoutChargesTheDisplayedTotalWithoutReceivedInput() throws Exception {
+        String pos = Files.readString(ROOT.resolve("src/main/resources/templates/pos/index.html"));
+        String posScanner = Files.readString(ROOT.resolve("src/main/resources/static/js/barcode-scanner.js"));
+
+        assertThat(pos)
+                .doesNotContain("data-received")
+                .doesNotContain("Recibido");
+        assertThat(posScanner)
+                .contains("function cartTotal()")
+                .contains("receivedAmount: cartTotal()")
+                .doesNotContain("receivedInput")
+                .doesNotContain("[data-received]");
+    }
 }

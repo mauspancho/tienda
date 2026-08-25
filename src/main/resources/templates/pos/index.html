@@ -48,7 +48,6 @@
       <label><input type="radio" name="paymentMethod" value="CARD" th:disabled="${!cashOpen}"> Tarjeta</label>
       <label><input type="radio" name="paymentMethod" value="TRANSFER" th:disabled="${!cashOpen}"> Transferencia</label>
     </div>
-    <div class="field"><label>Recibido</label><input data-received type="number" step="0.01" value="0.00" th:disabled="${!cashOpen}"></div>
     <button data-checkout class="btn btn-success" type="button" th:disabled="${!cashOpen}">Cobrar</button>
   </aside>
 </div>
