@@ -44,16 +44,19 @@ class SalesAccessPolicyTest {
         assertThat(controller)
                 .contains("findByCashierUsernameOrderBySaleDateDesc(username")
                 .contains("dashboardService.today(username, admin)")
-                .contains("dashboardService.today(CurrentUser.username(), CurrentUser.hasRole(\"ROLE_ADMIN\"))");
+                .contains("dashboardService.today(CurrentUser.username(), CurrentUser.hasRole(\"ROLE_ADMIN\"))")
+                .contains("dashboardService.profitAnalysis(date, period, CurrentUser.username(), CurrentUser.hasRole(\"ROLE_ADMIN\"))");
         assertThat(service)
                 .contains("totalSalesByCashier")
                 .contains("grossProfitByCashier")
                 .contains("soldUnitsByCashier")
                 .contains("dailySalesSinceByCashier")
+                .contains("dailyGrossProfitBetweenByCashier")
                 .contains("topProductsByCashier");
         assertThat(repository)
                 .contains("countByCashierUsernameAndSaleDateBetweenAndStatus")
                 .contains("dailySalesSinceByCashier")
+                .contains("dailyGrossProfitBetweenByCashier")
                 .contains("topProductsByCashier");
     }
 }

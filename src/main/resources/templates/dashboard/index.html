@@ -21,12 +21,34 @@
         <div class="card"><span class="muted">Gastos día</span><div class="metric" th:text="${@display.money(summary.todayExpenses)}">$0</div></div>
         <div class="card"><span class="muted">Inversión inventario</span><div class="metric" th:text="${@display.money(summary.inventoryInvestment)}">$0</div></div>
       </div>
+
       <div class="grid grid-2" style="margin-top:16px">
         <div class="card"><h2>Ventas últimos 7 días</h2><div class="chart-panel"><canvas id="salesChart"></canvas></div></div>
+        <div class="card form">
+          <div class="page-title dashboard-profit-title">
+            <h2>Ganancias</h2>
+            <div class="join dashboard-profit-controls">
+              <input class="join-item" id="profitDate" type="date" th:value="${#temporals.format(profitDate, 'yyyy-MM-dd')}">
+              <select class="join-item" id="profitPeriod">
+                <option value="day">Día</option>
+                <option value="week">Semana</option>
+                <option value="month">Mes</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid grid-2 dashboard-profit-metrics">
+            <div><span class="muted">Ganancia fecha</span><div class="metric" id="selectedDateProfit">$0.00</div></div>
+            <div><span class="muted" id="periodProfitLabel">Periodo</span><div class="metric" id="periodProfit">$0.00</div></div>
+          </div>
+          <div class="chart-panel"><canvas id="profitChart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="grid grid-2" style="margin-top:16px">
         <div class="card"><h2>Productos con stock bajo</h2><div class="table-wrap"><table><tr><th>Producto</th><th>Stock</th></tr><tr th:each="p:${lowStock}"><td th:text="${p.name}"></td><td><span class="badge badge-yellow" th:text="${@display.number(p.currentStock) + ' / mínimo ' + @display.number(p.minimumStock)}"></span></td></tr></table></div></div>
+        <div class="card"><h2>Últimas ventas</h2><div class="table-wrap"><table><tr><th>Folio</th><th>Total</th></tr><tr th:each="s:${latestSales}"><td><a th:href="@{'/admin/sales/' + ${s.folio}}" th:text="${s.folio}"></a></td><td th:text="${@display.money(s.total)}"></td></tr></table></div></div>
       </div>
       <div class="grid grid-2" style="margin-top:16px">
-        <div class="card"><h2>Últimas ventas</h2><div class="table-wrap"><table><tr><th>Folio</th><th>Total</th></tr><tr th:each="s:${latestSales}"><td><a th:href="@{'/admin/sales/' + ${s.folio}}" th:text="${s.folio}"></a></td><td th:text="${@display.money(s.total)}"></td></tr></table></div></div>
         <div class="card"><h2>Compras recientes</h2><div class="table-wrap"><table><tr><th>Fecha</th><th>Total</th></tr><tr th:each="p:${latestPurchases}"><td th:text="${p.purchaseDate}"></td><td th:text="${@display.money(p.total)}"></td></tr></table></div></div>
       </div>
     </section>
@@ -58,6 +80,10 @@ function dashboardChartPalette() {
       };
 }
 
+function money(value) {
+  return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(Number(value || 0));
+}
+
 function applyDashboardChartTheme(chart) {
   const palette = dashboardChartPalette();
   const dataset = chart.data.datasets[0];
@@ -79,49 +105,91 @@ function applyDashboardChartTheme(chart) {
   chart.update();
 }
 
+function chartOptions(palette) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: palette.tooltipBg,
+        borderColor: palette.border,
+        borderWidth: 1,
+        titleColor: palette.tooltipText,
+        bodyColor: palette.tooltipText,
+        callbacks: { label: context => `${context.dataset.label}: ${money(context.parsed.y)}` }
+      }
+    },
+    scales: {
+      x: { ticks: { color: palette.text }, grid: { color: palette.grid }, border: { color: palette.border } },
+      y: { ticks: { color: palette.text, callback: value => money(value) }, grid: { color: palette.grid }, border: { color: palette.border } }
+    }
+  };
+}
+
+function dataset(label, rows, palette) {
+  return {
+    label,
+    data: rows.map(r => r.profit ?? r[1]),
+    borderColor: palette.accent,
+    backgroundColor: palette.fill,
+    pointBackgroundColor: palette.point,
+    pointBorderColor: palette.accent,
+    pointHoverBackgroundColor: palette.accent,
+    pointHoverBorderColor: palette.point,
+    fill: true,
+    tension: .25
+  };
+}
+
+let salesChart;
+let profitChart;
+
 fetch('/admin/api/dashboard/summary')
   .then(response => response.json())
   .then(data => {
-    const rows = data.dailySales || [];
+    const rows = (data.dailySales || []).map(r => ({ label: r[0], profit: r[1] }));
     const palette = dashboardChartPalette();
-    const salesChart = new Chart(document.getElementById('salesChart'), {
+    salesChart = new Chart(document.getElementById('salesChart'), {
       type: 'line',
-      data: {
-        labels: rows.map(r => r[0]),
-        datasets: [{
-          label: 'Ventas',
-          data: rows.map(r => r[1]),
-          borderColor: palette.accent,
-          backgroundColor: palette.fill,
-          pointBackgroundColor: palette.point,
-          pointBorderColor: palette.accent,
-          pointHoverBackgroundColor: palette.accent,
-          pointHoverBorderColor: palette.point,
-          fill: true,
-          tension: .25
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: palette.tooltipBg,
-            borderColor: palette.border,
-            borderWidth: 1,
-            titleColor: palette.tooltipText,
-            bodyColor: palette.tooltipText
-          }
-        },
-        scales: {
-          x: { ticks: { color: palette.text }, grid: { color: palette.grid }, border: { color: palette.border } },
-          y: { ticks: { color: palette.text }, grid: { color: palette.grid }, border: { color: palette.border } }
-        }
-      }
+      data: { labels: rows.map(r => r.label), datasets: [dataset('Ventas', rows, palette)] },
+      options: chartOptions(palette)
     });
-    document.addEventListener('tienda:theme-changed', () => applyDashboardChartTheme(salesChart));
   });
+
+function loadProfitChart() {
+  const date = document.getElementById('profitDate').value;
+  const period = document.getElementById('profitPeriod').value;
+  return fetch(`/admin/api/dashboard/profit?date=${encodeURIComponent(date)}&period=${encodeURIComponent(period)}`)
+    .then(response => response.json())
+    .then(data => {
+      const rows = data.points || [];
+      const palette = dashboardChartPalette();
+      document.getElementById('selectedDateProfit').textContent = money(data.selectedDateProfit);
+      document.getElementById('periodProfitLabel').textContent = data.periodLabel || 'Periodo';
+      document.getElementById('periodProfit').textContent = money(data.periodProfit);
+      if (profitChart) {
+        profitChart.data.labels = rows.map(r => r.label);
+        profitChart.data.datasets = [dataset('Ganancia', rows, palette)];
+        applyDashboardChartTheme(profitChart);
+        return;
+      }
+      profitChart = new Chart(document.getElementById('profitChart'), {
+        type: 'line',
+        data: { labels: rows.map(r => r.label), datasets: [dataset('Ganancia', rows, palette)] },
+        options: chartOptions(palette)
+      });
+    });
+}
+
+document.getElementById('profitDate').addEventListener('change', loadProfitChart);
+document.getElementById('profitPeriod').addEventListener('change', loadProfitChart);
+loadProfitChart();
+
+document.addEventListener('tienda:theme-changed', () => {
+  if (salesChart) applyDashboardChartTheme(salesChart);
+  if (profitChart) applyDashboardChartTheme(profitChart);
+});
 </script>
 </body>
 </html>

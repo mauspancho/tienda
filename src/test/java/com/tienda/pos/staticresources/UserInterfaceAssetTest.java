@@ -100,4 +100,20 @@ class UserInterfaceAssetTest {
                 .contains(".logo-preview")
                 .contains(".check-card:has(input:checked)");
     }
+    @Test
+    void dashboardProfitFiltersAreRendered() throws Exception {
+        String dashboard = Files.readString(ROOT.resolve("src/main/resources/templates/dashboard/index.html"));
+        String css = Files.readString(ROOT.resolve("src/main/resources/static/css/input.css"));
+
+        assertThat(dashboard)
+                .contains("id=\"profitDate\"")
+                .contains("id=\"profitPeriod\"")
+                .contains("/admin/api/dashboard/profit")
+                .contains("selectedDateProfit")
+                .contains("periodProfit");
+        assertThat(css)
+                .contains(".dashboard-profit-controls")
+                .contains(".dashboard-profit-metrics");
+    }
 }
+

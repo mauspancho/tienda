@@ -6,10 +6,14 @@ import com.tienda.pos.product.ProductRepository;
 import com.tienda.pos.purchase.PurchaseRepository;
 import com.tienda.pos.sale.SaleRepository;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+
+import java.time.LocalDate;
 
 @Controller
 @NormalMode
@@ -41,6 +45,7 @@ public class DashboardController {
         model.addAttribute("lowStock", productRepository.findLowStock(PageRequest.of(0, 8)));
         model.addAttribute("latestSales", latestSales);
         model.addAttribute("latestPurchases", purchaseRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(0, 8)).getContent());
+        model.addAttribute("profitDate", LocalDate.now());
         return "dashboard/index";
     }
 
@@ -48,5 +53,12 @@ public class DashboardController {
     @ResponseBody
     public DashboardSummary summary() {
         return dashboardService.today(CurrentUser.username(), CurrentUser.hasRole("ROLE_ADMIN"));
+    }
+
+    @GetMapping("/api/dashboard/profit")
+    @ResponseBody
+    public DashboardProfitAnalysis profit(@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+                                          @RequestParam(defaultValue = "day") String period) {
+        return dashboardService.profitAnalysis(date, period, CurrentUser.username(), CurrentUser.hasRole("ROLE_ADMIN"));
     }
 }

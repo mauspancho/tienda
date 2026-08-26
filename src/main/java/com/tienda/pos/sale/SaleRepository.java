@@ -67,6 +67,24 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
     List<Object[]> dailySalesSinceByCashier(@Param("username") String username, @Param("start") LocalDateTime start);
 
     @Query("""
+            select date(i.sale.saleDate), coalesce(sum(i.profit), 0)
+            from SaleItem i
+            where i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'
+            group by date(i.sale.saleDate)
+            order by date(i.sale.saleDate)
+            """)
+    List<Object[]> dailyGrossProfitBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    @Query("""
+            select date(i.sale.saleDate), coalesce(sum(i.profit), 0)
+            from SaleItem i
+            where i.sale.cashier.username = :username and i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'
+            group by date(i.sale.saleDate)
+            order by date(i.sale.saleDate)
+            """)
+    List<Object[]> dailyGrossProfitBetweenByCashier(@Param("username") String username, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    @Query("""
             select i.productNameSnapshot, coalesce(sum(i.quantity), 0), coalesce(sum(i.subtotal), 0), coalesce(sum(i.profit), 0)
             from SaleItem i
             where i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'

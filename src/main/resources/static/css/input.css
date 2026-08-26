@@ -2079,3 +2079,45 @@ html[data-theme="sunset"] .product-image-preview {
   }
 }
 
+
+/* Dashboard profit filters */
+.dashboard-profit-title {
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.dashboard-profit-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: .5rem;
+}
+
+.dashboard-profit-controls input,
+.dashboard-profit-controls select {
+  min-height: 2.75rem;
+  border: 1px solid color-mix(in srgb, hsl(var(--bc)) 34%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, hsl(var(--b1)) 92%, #000 4%);
+  color: hsl(var(--bc));
+  padding: .55rem .75rem;
+  font-weight: 900;
+}
+
+.dashboard-profit-metrics {
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 640px) {
+  .dashboard-profit-title,
+  .dashboard-profit-controls {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .dashboard-profit-controls input,
+  .dashboard-profit-controls select {
+    width: 100%;
+  }
+}
