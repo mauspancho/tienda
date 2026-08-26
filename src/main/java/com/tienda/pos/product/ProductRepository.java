@@ -3,6 +3,7 @@ package com.tienda.pos.product;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -60,4 +61,38 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     @Query("select coalesce(sum(p.currentStock * p.purchaseCost), 0) from Product p where p.active = true")
     java.math.BigDecimal inventoryValue();
+
+    @EntityGraph(attributePaths = "category")
+    @Query("""
+            select p from Product p
+            left join p.category c
+            where p.active = true
+              and (:categoryId is null or c.id = :categoryId)
+              and (
+                  :q is null or :q = ''
+                  or lower(p.name) like lower(concat('%', :q, '%'))
+                  or lower(coalesce(p.brand, '')) like lower(concat('%', :q, '%'))
+                  or lower(coalesce(p.presentation, '')) like lower(concat('%', :q, '%'))
+                  or lower(coalesce(c.name, '')) like lower(concat('%', :q, '%'))
+              )
+            order by p.name asc
+            """)
+    Page<Product> catalogSearch(@Param("q") String query, @Param("categoryId") Long categoryId, Pageable pageable);
+
+    @EntityGraph(attributePaths = "category")
+    @Query("""
+            select p from Product p
+            left join p.category c
+            where p.active = true and p.promoted = true
+            order by coalesce(p.promotionOrder, 999999), p.name asc
+            """)
+    List<Product> findCatalogPromotions(Pageable pageable);
+
+    @EntityGraph(attributePaths = "category")
+    Optional<Product> findByIdAndActiveTrue(Long id);
+
+    long countByPromotedTrue();
+
+    @Query("select coalesce(max(p.promotionOrder), 0) from Product p where p.promoted = true")
+    Integer maxPromotionOrder();
 }

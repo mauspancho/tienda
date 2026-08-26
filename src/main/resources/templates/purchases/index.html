@@ -8,7 +8,7 @@
 <div class="app-shell"><div th:replace="~{fragments/layout :: sidebar}"></div><main class="main"><div th:replace="~{fragments/layout :: header}"></div><section class="content">
 <h1>Compras</h1><div th:replace="~{fragments/layout :: alerts}"></div>
 <div class="grid grid-2">
-  <form class="card form" th:object="${purchaseForm}" th:action="@{/purchases}" method="post" data-purchase-form>
+  <form class="card form" th:object="${purchaseForm}" th:action="@{/admin/purchases}" method="post" data-purchase-form>
     <div class="field"><label>Proveedor</label><select th:field="*{supplierId}"><option value="">Sin proveedor</option><option th:each="s:${suppliers}" th:value="${s.id}" th:text="${s.name}"></option></select></div>
     <div class="field"><label>Folio externo</label><input th:field="*{externalFolio}" placeholder="Se asigna automático si lo dejas vacío"></div>
     <div class="field"><label>Producto existente</label><select th:field="*{productId}" data-purchase-product><option value="">Selecciona producto</option><option th:each="p:${products}" th:value="${p.id}" th:text="${p.name + ' · ' + p.code}" th:data-cost="${@display.number(p.purchaseCost)}"></option></select></div>

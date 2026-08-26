@@ -18,7 +18,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/products")
+@RequestMapping("/admin/api/products")
 @NormalMode
 @PreAuthorize("hasAnyRole('ADMIN','CAJERO')")
 public class ProductApiController {

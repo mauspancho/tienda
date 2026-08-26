@@ -133,7 +133,7 @@
   }
 
   function registerUrlFor(barcode) {
-    return `/products/new?barcode=${encodeURIComponent(barcode)}&lookup=true`;
+    return `/admin/products/new?barcode=${encodeURIComponent(barcode)}&lookup=true`;
   }
 
   function notifyCameraLookup(detail) {
@@ -177,7 +177,7 @@
     if (!barcode || busy || !cashOpen) return { status: "ignored", barcode };
     busy = true;
     try {
-      const response = await fetch(`/api/products/barcode/${encodeURIComponent(barcode)}`);
+      const response = await fetch(`/admin/api/products/barcode/${encodeURIComponent(barcode)}`);
       if (!response.ok) {
         showUnregisteredProduct(barcode);
         const result = { status: "missing", barcode, registerUrl: registerUrlFor(barcode) };
@@ -209,7 +209,7 @@
       results.innerHTML = "";
       return;
     }
-    const response = await fetch(`/api/products/search?q=${encodeURIComponent(q)}`);
+    const response = await fetch(`/admin/api/products/search?q=${encodeURIComponent(q)}`);
     const products = await response.json();
     results.innerHTML = "";
     products.forEach(product => {
@@ -317,7 +317,7 @@
     };
     const headers = { "Content-Type": "application/json" };
     if (csrf && csrfHeader) headers[csrfHeader] = csrf;
-    const response = await fetch("/pos/checkout", { method: "POST", headers, body: JSON.stringify(body) });
+    const response = await fetch("/admin/pos/checkout", { method: "POST", headers, body: JSON.stringify(body) });
     if (!response.ok) {
       say(cleanErrorText(await response.text()), "error");
       return;
@@ -326,6 +326,6 @@
     cart.clear();
     render();
     say(`Venta completada. Folio ${result.folio}. Cambio ${money(result.change)}.`);
-    window.open(`/tickets/${result.folio}`, "_blank");
+    window.open(`/admin/tickets/${result.folio}`, "_blank");
   });
 })();

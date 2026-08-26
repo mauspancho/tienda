@@ -15,6 +15,7 @@ import java.time.LocalDate;
 
 @Controller
 @NormalMode
+@org.springframework.web.bind.annotation.RequestMapping("/admin")
 @PreAuthorize("hasRole('ADMIN')")
 public class ExpenseController {
 
@@ -45,6 +46,6 @@ public class ExpenseController {
         expense.setNotes(notes);
         expenseRepository.save(expense);
         redirectAttributes.addFlashAttribute("success", "Gasto registrado.");
-        return "redirect:/expenses";
+        return "redirect:/admin/expenses";
     }
 }

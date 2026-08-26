@@ -36,7 +36,7 @@ El wizard solicita:
 - primer administrador;
 - datos básicos de la tienda.
 
-Después de validar la conexión ejecuta Flyway, crea catálogos iniciales, inserta el administrador con BCrypt y escribe `config/application.yml`. Reinicia la aplicación para entrar a `/login`.
+Después de validar la conexión ejecuta Flyway, crea catálogos iniciales, inserta el administrador con BCrypt y escribe `config/application.yml`. Reinicia la aplicación para entrar a `/admin/login`.
 
 ## Estructura externa
 
@@ -47,7 +47,8 @@ tienda-pos/
 ├── logs/
 ├── backups/
 └── data/
-    └── products/
+    ├── products/
+    └── catalog/
 ```
 
 `config/application.yml`, `.env`, `logs/`, `backups/` y `data/` están ignorados por Git.
@@ -56,11 +57,12 @@ tienda-pos/
 
 - Setup inicial sin datasource externo.
 - Login/logout con Spring Security, BCrypt, CSRF y roles `ROLE_ADMIN` / `ROLE_CAJERO`.
-- Dashboard.
-- Productos, categorías y proveedores, con imágenes locales y alta asistida por código de barras usando Open Food Facts.
+- Dashboard administrativo bajo /admin.
+- Catalogo publico en / y detalle en /producto/{id} sin login.
+- Productos, categorías y proveedores, con imagenes locales publicas y alta asistida por codigo de barras usando Open Food Facts.
 - Compras con actualización transaccional de inventario.
 - Inventario con movimientos trazables.
-- POS con lector USB tipo teclado (`input + Enter`).
+- POS con lector USB tipo teclado y camara movil.
 - Ventas, pagos y ticket térmico aproximado a 80 mm.
 - Gastos, reportes esenciales, usuarios, caja y configuración.
 - Migraciones Flyway iniciales para MariaDB/MySQL.
@@ -89,7 +91,19 @@ npm run css:build
 
 No es necesario Node.js para ejecutar el JAR.
 
-## Imágenes de productos
+## Catalogo publico
+
+La raiz `/` muestra un catalogo publico sin login. El area operativa y administrativa vive bajo `/admin/**`; el login queda en `/admin/login`.
+
+Desde `Configuracion` puedes activar o desactivar el catalogo, cambiar titulo/subtitulo, definir el titulo de promociones y subir el logo publico. El logo se guarda fuera del JAR en:
+
+```text
+data/catalog/
+```
+
+Los productos marcados como promocionados se muestran en el slider publico, con un maximo de 4. Las imagenes publicas permitidas por seguridad son HTTPS o rutas locales bajo `/uploads/products/` y `/uploads/catalog/`.
+
+## Imagenes de productos
 
 Los productos conservan la referencia final en la columna `product.image_url`. Si escribes una URL externa, solo se guarda la URL; si subes un archivo manual, la aplicación guarda una copia optimizada fuera del JAR en:
 
@@ -131,12 +145,12 @@ con rotación por tamaño e historial.
 
 ## Backup
 
-La pantalla de configuración incluye una acción inicial de respaldo. Si `mysqldump` o `mariadb-dump` está disponible en el servidor, úsalo para generar respaldos completos en `backups/`. Además respalda `data/products/`, porque ahí viven las imágenes locales de productos y no van dentro del JAR ni de la base de datos.
+La pantalla de configuración incluye una acción inicial de respaldo. Si `mysqldump` o `mariadb-dump` está disponible en el servidor, úsalo para generar respaldos completos en `backups/`. Ademas respalda `data/products/` y `data/catalog/`, porque ahi viven las imagenes locales de productos y el logo publico; no van dentro del JAR ni de la base de datos.
 
 ## Roles
 
 - `ADMIN`: acceso completo.
-- `CAJERO`: POS, ventas y caja.
+- `CAJERO`: POS y ventas propias. La administracion de caja, reportes, inventario y configuracion queda para administradores.
 
 ## Troubleshooting
 
@@ -187,7 +201,9 @@ Si Open Food Facts no responde, la aplicación permite continuar el alta manual 
 - `presentation`
 - `image_url`
 
-Flyway aplicará esta migración al reiniciar el JAR actualizado. No modifica ni recrea tablas existentes.
+Flyway aplicara esta migracion al reiniciar el JAR actualizado. No modifica ni recrea tablas existentes.
+
+V4__add_public_catalog_fields.sql agrega los campos del catalogo publico: product.promoted, product.promotion_order, business_settings.catalog_enabled, business_settings.catalog_title, business_settings.catalog_subtitle y business_settings.promotion_title.
 
 ## Escáner con cámara móvil
 
@@ -209,3 +225,4 @@ Pruebas manuales sugeridas:
 - POS: abrir caja, tocar `Usar cámara`, escanear varios productos y confirmar que el carrito suma cantidades repetidas sin cerrar la cámara.
 - Producto no registrado: escanear un código inexistente y verificar las opciones `Buscar informacion y registrar` y `Continuar escaneando`.
 - Permisos: denegar cámara y confirmar que aparece un mensaje claro sin romper captura manual ni lector USB.
+

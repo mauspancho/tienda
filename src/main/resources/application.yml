@@ -43,6 +43,13 @@ tienda:
   timezone: America/Mexico_City
   currency: MXN
   currency-symbol: "$"
+  catalog-images:
+    directory: ./data/catalog
+    public-path: /uploads/catalog
+    max-upload-size: 5MB
+    max-width: 1200
+    max-height: 600
+    image-quality: 0.82
   product-images:
     directory: ./data/products
     public-path: /uploads/products

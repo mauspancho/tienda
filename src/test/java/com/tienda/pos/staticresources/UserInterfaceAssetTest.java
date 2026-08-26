@@ -63,11 +63,41 @@ class UserInterfaceAssetTest {
     }
 
     @Test
-    void uploadedProductImagesArePublicWithoutLogin() throws Exception {
+    void uploadedProductAndCatalogImagesArePublicWithoutLogin() throws Exception {
         String securityConfig = Files.readString(ROOT.resolve("src/main/java/com/tienda/pos/security/SecurityConfig.java"));
 
         assertThat(securityConfig)
                 .contains("/uploads/products/**")
-                .contains(".requestMatchers(\"/css/**\", \"/js/**\", \"/uploads/products/**\", \"/login\", \"/error\").permitAll()");
+                .contains("/uploads/catalog/**")
+                .contains("/admin/login")
+                .contains(".permitAll()");
+    }
+
+    @Test
+    void publicCatalogAssetsAndSettingsAreWired() throws Exception {
+        String catalogIndex = Files.readString(ROOT.resolve("src/main/resources/templates/catalog/index.html"));
+        String catalogProduct = Files.readString(ROOT.resolve("src/main/resources/templates/catalog/product.html"));
+        String settings = Files.readString(ROOT.resolve("src/main/resources/templates/settings/index.html"));
+        String css = Files.readString(ROOT.resolve("src/main/resources/static/css/input.css"));
+
+        assertThat(catalogIndex)
+                .contains("catalog-slider")
+                .contains("/uploads/catalog/")
+                .contains("@{/producto/{id}(id=${p.id})}")
+                .contains("catalogEnabled");
+        assertThat(catalogProduct)
+                .contains("catalog-detail")
+                .contains("product.imageUrl")
+                .contains("product-placeholder.svg");
+        assertThat(settings)
+                .contains("enctype=\"multipart/form-data\"")
+                .contains("th:field=\"*{catalogEnabled}\"")
+                .contains("th:field=\"*{catalogTitle}\"")
+                .contains("name=\"logoFile\"")
+                .contains("name=\"removeLogo\"");
+        assertThat(css)
+                .contains(".catalog-page")
+                .contains(".logo-preview")
+                .contains(".check-card:has(input:checked)");
     }
 }

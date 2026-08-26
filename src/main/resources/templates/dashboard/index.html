@@ -26,7 +26,7 @@
         <div class="card"><h2>Productos con stock bajo</h2><div class="table-wrap"><table><tr><th>Producto</th><th>Stock</th></tr><tr th:each="p:${lowStock}"><td th:text="${p.name}"></td><td><span class="badge badge-yellow" th:text="${@display.number(p.currentStock) + ' / mínimo ' + @display.number(p.minimumStock)}"></span></td></tr></table></div></div>
       </div>
       <div class="grid grid-2" style="margin-top:16px">
-        <div class="card"><h2>Últimas ventas</h2><div class="table-wrap"><table><tr><th>Folio</th><th>Total</th></tr><tr th:each="s:${latestSales}"><td><a th:href="@{'/sales/' + ${s.folio}}" th:text="${s.folio}"></a></td><td th:text="${@display.money(s.total)}"></td></tr></table></div></div>
+        <div class="card"><h2>Últimas ventas</h2><div class="table-wrap"><table><tr><th>Folio</th><th>Total</th></tr><tr th:each="s:${latestSales}"><td><a th:href="@{'/admin/sales/' + ${s.folio}}" th:text="${s.folio}"></a></td><td th:text="${@display.money(s.total)}"></td></tr></table></div></div>
         <div class="card"><h2>Compras recientes</h2><div class="table-wrap"><table><tr><th>Fecha</th><th>Total</th></tr><tr th:each="p:${latestPurchases}"><td th:text="${p.purchaseDate}"></td><td th:text="${@display.money(p.total)}"></td></tr></table></div></div>
       </div>
     </section>
@@ -79,7 +79,7 @@ function applyDashboardChartTheme(chart) {
   chart.update();
 }
 
-fetch('/api/dashboard/summary')
+fetch('/admin/api/dashboard/summary')
   .then(response => response.json())
   .then(data => {
     const rows = data.dailySales || [];

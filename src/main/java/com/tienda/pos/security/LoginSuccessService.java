@@ -31,6 +31,8 @@ public class LoginSuccessService implements AuthenticationSuccessHandler {
             user.setLastLogin(LocalDateTime.now());
             userRepository.save(user);
         });
-        response.sendRedirect("/");
+        boolean admin = authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+        response.sendRedirect(admin ? "/admin" : "/admin/pos");
     }
 }

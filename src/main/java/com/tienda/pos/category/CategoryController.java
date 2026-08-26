@@ -16,6 +16,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @NormalMode
+@org.springframework.web.bind.annotation.RequestMapping("/admin")
 @PreAuthorize("hasRole('ADMIN')")
 public class CategoryController {
 
@@ -40,11 +41,11 @@ public class CategoryController {
                        RedirectAttributes redirectAttributes) {
         if (bindingResult.hasErrors()) {
             redirectAttributes.addFlashAttribute("error", "El nombre de la categoría es obligatorio.");
-            return "redirect:/categories";
+            return "redirect:/admin/categories";
         }
         categoryRepository.save(category);
         redirectAttributes.addFlashAttribute("success", "Categoría guardada correctamente.");
-        return "redirect:/categories";
+        return "redirect:/admin/categories";
     }
 
     @PostMapping("/categories/{id}/toggle")
@@ -53,6 +54,6 @@ public class CategoryController {
         category.setActive(!category.isActive());
         categoryRepository.save(category);
         redirectAttributes.addFlashAttribute("success", "Categoría actualizada.");
-        return "redirect:/categories";
+        return "redirect:/admin/categories";
     }
 }

@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 @Controller
 @NormalMode
+@org.springframework.web.bind.annotation.RequestMapping("/admin")
 @PreAuthorize("hasAnyRole('ADMIN','CAJERO')")
 public class SaleController {
 

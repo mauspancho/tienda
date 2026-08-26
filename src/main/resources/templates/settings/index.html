@@ -1,1 +1,114 @@
-<!doctype html><html lang="es" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Configuración</title><link rel="stylesheet" th:href="@{/css/app.css}"></head><body><div class="app-shell"><div th:replace="~{fragments/layout :: sidebar}"></div><main class="main"><div th:replace="~{fragments/layout :: header}"></div><section class="content"><h1>Configuración</h1><div th:replace="~{fragments/layout :: alerts}"></div><form class="card form" th:object="${settings}" th:action="@{/settings}" method="post"><input type="hidden" th:field="*{id}"><div class="grid grid-3"><div class="field"><label>Nombre tienda</label><input th:field="*{storeName}"></div><div class="field"><label>Moneda</label><input th:field="*{currency}"></div><div class="field"><label>Símbolo</label><input th:field="*{currencySymbol}"></div></div><div class="grid grid-3"><div class="field"><label>Zona horaria</label><input th:field="*{timezone}"></div><div class="field"><label>Teléfono</label><input th:field="*{phone}"></div><div class="field"><label>RFC</label><input th:field="*{taxId}"></div></div><div class="field"><label>Dirección</label><input th:field="*{address}"></div><label><input type="checkbox" th:field="*{negativeStockAllowed}"> Permitir stock negativo</label><button class="btn btn-success">Guardar configuración</button></form><form style="margin-top:16px" th:action="@{/settings/backup}" method="post"><button class="btn btn-muted">Generar respaldo</button></form></section></main></div></body></html>
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Configuración</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-shell">
+  <div th:replace="~{fragments/layout :: sidebar}"></div>
+  <main class="main">
+    <div th:replace="~{fragments/layout :: header}"></div>
+    <section class="content">
+      <h1>Configuración</h1>
+      <div th:replace="~{fragments/layout :: alerts}"></div>
+
+      <form class="card form" th:object="${settings}" th:action="@{/admin/settings}" method="post" enctype="multipart/form-data">
+        <input type="hidden" th:field="*{id}">
+
+        <h2>Datos de la tienda</h2>
+        <div class="grid grid-3">
+          <div class="field">
+            <label>Nombre tienda</label>
+            <input th:field="*{storeName}">
+          </div>
+          <div class="field">
+            <label>Moneda</label>
+            <input th:field="*{currency}">
+          </div>
+          <div class="field">
+            <label>Símbolo</label>
+            <input th:field="*{currencySymbol}">
+          </div>
+        </div>
+
+        <div class="grid grid-3">
+          <div class="field">
+            <label>Zona horaria</label>
+            <input th:field="*{timezone}">
+          </div>
+          <div class="field">
+            <label>Teléfono</label>
+            <input th:field="*{phone}">
+          </div>
+          <div class="field">
+            <label>RFC</label>
+            <input th:field="*{taxId}">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Dirección</label>
+          <input th:field="*{address}">
+        </div>
+
+        <label class="check-card">
+          <input type="checkbox" th:field="*{negativeStockAllowed}">
+          <span>Permitir stock negativo</span>
+        </label>
+
+        <h2>Catálogo público</h2>
+        <label class="check-card">
+          <input type="checkbox" th:field="*{catalogEnabled}">
+          <span>Catálogo activo en la página pública</span>
+        </label>
+
+        <div class="grid grid-2">
+          <div class="field">
+            <label>Título del catálogo</label>
+            <input th:field="*{catalogTitle}" placeholder="Tienda POS">
+          </div>
+          <div class="field">
+            <label>Título de promociones</label>
+            <input th:field="*{promotionTitle}" placeholder="Productos destacados">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Subtítulo del catálogo</label>
+          <textarea rows="3" th:field="*{catalogSubtitle}" placeholder="Productos disponibles, precios y promociones"></textarea>
+        </div>
+
+        <div class="grid grid-2">
+          <div class="field">
+            <label>Logo público</label>
+            <input type="file" name="logoFile" accept="image/jpeg,image/png,image/webp">
+            <small class="muted">JPG, PNG o WebP. Se optimiza y queda público en /uploads/catalog.</small>
+          </div>
+          <div class="field">
+            <label>Logo actual</label>
+            <div class="logo-preview">
+              <img th:if="${settings.logoPath != null and !#strings.isEmpty(settings.logoPath)}" th:src="${settings.logoPath}" alt="Logo actual">
+              <span th:unless="${settings.logoPath != null and !#strings.isEmpty(settings.logoPath)}">Sin logo</span>
+            </div>
+            <label class="check-card check-card-compact" th:if="${settings.logoPath != null and !#strings.isEmpty(settings.logoPath)}">
+              <input type="checkbox" name="removeLogo" value="true">
+              <span>Quitar logo actual</span>
+            </label>
+          </div>
+        </div>
+
+        <button class="btn btn-success">Guardar configuración</button>
+      </form>
+
+      <form class="card form settings-backup-form" th:action="@{/admin/settings/backup}" method="post">
+        <h2>Respaldo</h2>
+        <button class="btn btn-muted">Generar respaldo</button>
+      </form>
+    </section>
+  </main>
+</div>
+</body>
+</html>

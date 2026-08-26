@@ -24,6 +24,7 @@ import java.math.BigDecimal;
 
 @Controller
 @NormalMode
+@org.springframework.web.bind.annotation.RequestMapping("/admin")
 @PreAuthorize("hasAnyRole('ADMIN','CAJERO')")
 public class PosController {
 
@@ -55,7 +56,7 @@ public class PosController {
                            RedirectAttributes redirectAttributes) {
         cashService.open(CurrentUser.username(), openingAmount);
         redirectAttributes.addFlashAttribute("success", "Caja abierta. Ya puedes vender.");
-        return "redirect:/pos";
+        return "redirect:/admin/pos";
     }
 
     @PostMapping("/pos/cash/close")
@@ -63,7 +64,7 @@ public class PosController {
                             RedirectAttributes redirectAttributes) {
         cashService.close(CurrentUser.username(), sessionId, countedAmount);
         redirectAttributes.addFlashAttribute("success", "Caja cerrada. Las ventas quedan bloqueadas hasta abrir otra caja.");
-        return "redirect:/pos";
+        return "redirect:/admin/pos";
     }
 
     @PostMapping("/pos/checkout")

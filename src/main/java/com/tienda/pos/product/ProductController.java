@@ -23,6 +23,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @NormalMode
+@org.springframework.web.bind.annotation.RequestMapping("/admin")
 @PreAuthorize("hasRole('ADMIN')")
 public class ProductController {
 
@@ -116,9 +117,27 @@ public class ProductController {
             return "products/form";
         }
         redirectAttributes.addFlashAttribute("success", "Producto guardado correctamente.");
-        return "redirect:/products";
+        return "redirect:/admin/products";
     }
 
+
+    @PostMapping("/products/{id}/promote")
+    public String promote(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        try {
+            productService.promote(id);
+            redirectAttributes.addFlashAttribute("success", "Producto promocionado.");
+        } catch (DomainException ex) {
+            redirectAttributes.addFlashAttribute("error", ex.getMessage());
+        }
+        return "redirect:/admin/products";
+    }
+
+    @PostMapping("/products/{id}/unpromote")
+    public String unpromote(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        productService.removePromotion(id);
+        redirectAttributes.addFlashAttribute("success", "Promoción retirada.");
+        return "redirect:/admin/products";
+    }
     private void prepareForm(Model model, ProductForm form) {
         model.addAttribute("productForm", form);
         model.addAttribute("categories", categoryRepository.findByActiveTrueOrderByNameAsc());

@@ -14,6 +14,7 @@ import java.time.LocalDate;
 
 @Controller
 @NormalMode
+@org.springframework.web.bind.annotation.RequestMapping("/admin")
 @PreAuthorize("hasRole('ADMIN')")
 public class ReportController {
 

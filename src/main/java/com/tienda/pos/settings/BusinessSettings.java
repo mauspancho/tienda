@@ -22,6 +22,11 @@ public class BusinessSettings extends BaseEntity {
     @Column(precision = 8, scale = 2)
     private BigDecimal defaultTax = BigDecimal.ZERO;
     private String logoPath;
+    private boolean catalogEnabled = true;
+    private String catalogTitle;
+    @Column(length = 500)
+    private String catalogSubtitle;
+    private String promotionTitle = "Productos destacados";
     private boolean negativeStockAllowed = false;
 
     public String getStoreName() { return storeName; }
@@ -42,6 +47,14 @@ public class BusinessSettings extends BaseEntity {
     public void setDefaultTax(BigDecimal defaultTax) { this.defaultTax = defaultTax; }
     public String getLogoPath() { return logoPath; }
     public void setLogoPath(String logoPath) { this.logoPath = logoPath; }
+    public boolean isCatalogEnabled() { return catalogEnabled; }
+    public void setCatalogEnabled(boolean catalogEnabled) { this.catalogEnabled = catalogEnabled; }
+    public String getCatalogTitle() { return catalogTitle; }
+    public void setCatalogTitle(String catalogTitle) { this.catalogTitle = catalogTitle; }
+    public String getCatalogSubtitle() { return catalogSubtitle; }
+    public void setCatalogSubtitle(String catalogSubtitle) { this.catalogSubtitle = catalogSubtitle; }
+    public String getPromotionTitle() { return promotionTitle; }
+    public void setPromotionTitle(String promotionTitle) { this.promotionTitle = promotionTitle; }
     public boolean isNegativeStockAllowed() { return negativeStockAllowed; }
     public void setNegativeStockAllowed(boolean negativeStockAllowed) { this.negativeStockAllowed = negativeStockAllowed; }
 }

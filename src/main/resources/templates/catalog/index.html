@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title th:text="${catalogTitle}">Catálogo</title>
+  <meta name="description" th:content="${catalogSubtitle}">
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="catalog-page">
+<header class="catalog-header" id="inicio">
+  <nav class="catalog-nav">
+    <a class="catalog-brand" th:href="@{/}">
+      <img th:if="${settings.logoPath != null and (#strings.startsWith(settings.logoPath, '/uploads/catalog/') or #strings.startsWith(settings.logoPath, 'https://'))}" th:src="${settings.logoPath}" alt="" class="catalog-logo">
+      <span th:unless="${settings.logoPath != null and (#strings.startsWith(settings.logoPath, '/uploads/catalog/') or #strings.startsWith(settings.logoPath, 'https://'))}" class="catalog-logo-fallback" th:text="${#strings.substring(catalogTitle,0,1)}">T</span>
+      <span th:text="${catalogTitle}">Mi tienda</span>
+    </a>
+    <div class="catalog-nav-links">
+      <a href="#inicio">Inicio</a>
+      <a href="#categorias">Categorías</a>
+      <a href="#buscar">Buscar</a>
+    </div>
+  </nav>
+  <section class="catalog-hero">
+    <div>
+      <p class="catalog-eyebrow">Catálogo público</p>
+      <h1 th:text="${catalogTitle}">Mi tienda</h1>
+      <p th:text="${catalogSubtitle}">Consulta nuestros productos</p>
+    </div>
+    <form class="catalog-search" th:action="@{/}" method="get" id="buscar">
+      <input name="q" th:value="${q}" placeholder="Buscar productos..." autocomplete="off">
+      <input type="hidden" name="category" th:if="${selectedCategory != null}" th:value="${selectedCategory}">
+      <button type="submit">Buscar</button>
+    </form>
+  </section>
+</header>
+
+<main>
+  <section th:if="${!settings.catalogEnabled}" class="catalog-section">
+    <div class="catalog-empty">El catálogo público no está disponible por el momento.</div>
+  </section>
+
+  <section th:if="${settings.catalogEnabled}" class="catalog-section catalog-promotions" aria-label="Promociones">
+    <div th:if="${!#lists.isEmpty(promotions)}" class="catalog-slider" data-catalog-slider>
+      <div class="catalog-slider-track" data-slider-track>
+        <article class="catalog-slide" th:each="p,iter:${promotions}" th:classappend="${iter.index == 0} ? ' is-active' : ''">
+          <div class="catalog-slide-copy">
+            <span th:text="${settings.promotionTitle != null and !#strings.isEmpty(settings.promotionTitle) ? settings.promotionTitle : 'Productos destacados'}">Productos destacados</span>
+            <h2 th:text="${p.name}">Producto</h2>
+            <p th:text="${p.details}">Presentación</p>
+            <strong th:text="${@display.money(p.salePrice)}">$0.00</strong>
+            <a th:href="@{/producto/{id}(id=${p.id})}">Ver producto</a>
+          </div>
+          <img th:src="${p.imageUrl != null ? p.imageUrl : '/images/product-placeholder.svg'}" th:alt="${p.name}" th:attr="loading=${iter.index == 0 ? 'eager' : 'lazy'}" onerror="this.src='/images/product-placeholder.svg'">
+        </article>
+      </div>
+      <button class="catalog-slider-btn catalog-slider-prev" type="button" data-slider-prev aria-label="Anterior">‹</button>
+      <button class="catalog-slider-btn catalog-slider-next" type="button" data-slider-next aria-label="Siguiente">›</button>
+      <div class="catalog-slider-dots" data-slider-dots></div>
+    </div>
+    <div th:if="${#lists.isEmpty(promotions)}" class="catalog-welcome">
+      <img th:if="${settings.logoPath != null and (#strings.startsWith(settings.logoPath, '/uploads/catalog/') or #strings.startsWith(settings.logoPath, 'https://'))}" th:src="${settings.logoPath}" alt="" class="catalog-welcome-logo">
+      <h2 th:text="${'Bienvenido a ' + catalogTitle}">Bienvenido</h2>
+      <p>Consulta nuestros productos</p>
+    </div>
+  </section>
+
+  <section th:if="${settings.catalogEnabled}" class="catalog-section" id="categorias">
+    <div class="catalog-section-title">
+      <h2>Categorías</h2>
+      <a th:href="@{/(q=${q})}" th:classappend="${selectedCategory == null} ? ' is-selected' : ''">Todos</a>
+    </div>
+    <div class="catalog-category-list">
+      <a th:each="c:${categories}" th:href="@{/(q=${q},category=${c.id})}" th:text="${c.name}" th:classappend="${selectedCategory != null and selectedCategory == c.id} ? ' is-selected' : ''">Categoría</a>
+    </div>
+  </section>
+
+  <section th:if="${settings.catalogEnabled}" class="catalog-section">
+    <div class="catalog-section-title">
+      <h2>Productos</h2>
+      <span th:text="${products.totalElements + ' resultado(s)'}">0 resultados</span>
+    </div>
+    <div class="catalog-grid">
+      <article class="catalog-card" th:each="p:${products.content}">
+        <a th:href="@{/producto/{id}(id=${p.id})}" class="catalog-card-image">
+          <img th:src="${p.imageUrl != null ? p.imageUrl : '/images/product-placeholder.svg'}" th:alt="${p.name}" loading="lazy" onerror="this.src='/images/product-placeholder.svg'">
+        </a>
+        <div class="catalog-card-body">
+          <span th:if="${p.category != null and !#strings.isEmpty(p.category)}" th:text="${p.category}">Categoría</span>
+          <h3><a th:href="@{/producto/{id}(id=${p.id})}" th:text="${p.name}">Producto</a></h3>
+          <p th:text="${p.details}">Marca presentación</p>
+          <div class="catalog-card-footer">
+            <strong th:text="${@display.money(p.salePrice)}">$0.00</strong>
+            <em th:text="${p.available ? 'Disponible' : 'Agotado'}">Disponible</em>
+          </div>
+        </div>
+      </article>
+    </div>
+    <div th:if="${products.empty}" class="catalog-empty">No encontramos productos con esos filtros.</div>
+    <nav class="catalog-pagination" th:if="${products.totalPages > 1}">
+      <a th:if="${products.hasPrevious()}" th:href="@{/(q=${q},category=${selectedCategory},page=${products.number - 1})}">Anterior</a>
+      <span th:text="${(products.number + 1) + ' / ' + products.totalPages}">1 / 1</span>
+      <a th:if="${products.hasNext()}" th:href="@{/(q=${q},category=${selectedCategory},page=${products.number + 1})}">Siguiente</a>
+    </nav>
+  </section>
+</main>
+
+<footer class="catalog-footer">
+  <strong th:text="${catalogTitle}">Mi tienda</strong>
+  <span th:if="${settings.address}" th:text="${settings.address}">Dirección</span>
+  <span th:if="${settings.phone}" th:text="${settings.phone}">Teléfono</span>
+  <a th:href="@{/admin}">Administración</a>
+</footer>
+<script th:src="@{/js/catalog/slider.js}"></script>
+</body>
+</html>

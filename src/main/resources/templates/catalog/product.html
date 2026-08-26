@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title th:text="${product.name + ' | ' + catalogTitle}">Producto</title>
+  <meta name="description" th:content="${product.description != null ? product.description : catalogSubtitle}">
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="catalog-page">
+<header class="catalog-nav catalog-nav-standalone">
+  <a class="catalog-brand" th:href="@{/}">
+    <span class="catalog-logo-fallback" th:text="${#strings.substring(catalogTitle,0,1)}">T</span>
+    <span th:text="${catalogTitle}">Mi tienda</span>
+  </a>
+  <a class="catalog-back" th:href="@{/}">Volver al catálogo</a>
+</header>
+<main class="catalog-detail">
+  <section class="catalog-detail-media">
+    <img th:src="${product.imageUrl != null ? product.imageUrl : '/images/product-placeholder.svg'}" th:alt="${product.name}" onerror="this.src='/images/product-placeholder.svg'">
+  </section>
+  <section class="catalog-detail-info">
+    <span th:if="${product.category != null and !#strings.isEmpty(product.category)}" th:text="${product.category}">Categoría</span>
+    <h1 th:text="${product.name}">Producto</h1>
+    <p class="catalog-detail-meta" th:text="${product.details}">Marca presentación</p>
+    <strong class="catalog-detail-price" th:text="${@display.money(product.salePrice)}">$0.00</strong>
+    <em th:text="${product.available ? 'Disponible' : 'Agotado'}">Disponible</em>
+    <p th:if="${product.description}" th:text="${product.description}">Descripción</p>
+  </section>
+</main>
+<footer class="catalog-footer">
+  <strong th:text="${catalogTitle}">Mi tienda</strong>
+  <a th:href="@{/admin}">Administración</a>
+</footer>
+</body>
+</html>

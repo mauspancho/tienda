@@ -21,7 +21,7 @@
   let previewObjectUrl = null;
 
   async function generate(type) {
-    const response = await fetch(`/products/generate-code?type=${encodeURIComponent(type)}`, {
+    const response = await fetch(`/admin/products/generate-code?type=${encodeURIComponent(type)}`, {
       headers: { "Accept": "application/json" },
       credentials: "same-origin"
     });
@@ -151,8 +151,8 @@
     localBox.querySelector("[data-local-product-code]").textContent = result.code || result.barcode || "";
     localBox.querySelector("[data-local-product-stock]").textContent = number(result.stock || 0);
     localBox.querySelector("[data-local-product-price]").textContent = money(result.price || 0);
-    localBox.querySelector("[data-local-view]").href = `/products?q=${encodeURIComponent(result.barcode || result.code || "")}`;
-    localBox.querySelector("[data-local-edit]").href = `/products/${result.productId}/edit`;
+    localBox.querySelector("[data-local-view]").href = `/admin/products?q=${encodeURIComponent(result.barcode || result.code || "")}`;
+    localBox.querySelector("[data-local-edit]").href = `/admin/products/${result.productId}/edit`;
     setMessage("Este producto ya está registrado.");
   }
 
@@ -217,7 +217,7 @@
     hideLookupResults();
     setMessage("Buscando información del producto...");
     try {
-      const response = await fetch(`/api/products/barcode/${encodeURIComponent(clean)}/lookup`, {
+      const response = await fetch(`/admin/api/products/barcode/${encodeURIComponent(clean)}/lookup`, {
         headers: { "Accept": "application/json" },
         credentials: "same-origin"
       });

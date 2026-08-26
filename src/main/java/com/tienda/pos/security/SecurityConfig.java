@@ -29,20 +29,23 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationSuccessHandler successHandler) throws Exception {
         return http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/css/**", "/js/**", "/uploads/products/**", "/login", "/error").permitAll()
-                        .requestMatchers("/users/**", "/settings/**", "/reports/**", "/cash/**").hasRole("ADMIN")
-                        .requestMatchers("/products/**", "/categories/**", "/suppliers/**", "/purchases/**",
-                                "/inventory/**", "/expenses/**").hasRole("ADMIN")
-                        .requestMatchers("/pos/**", "/sales/**", "/tickets/**", "/api/products/**").hasAnyRole("ADMIN", "CAJERO")
+                        .requestMatchers("/", "/producto/**", "/catalog/**", "/css/**", "/js/**", "/vendor/**",
+                                "/images/**", "/uploads/products/**", "/uploads/catalog/**", "/admin/login", "/error").permitAll()
+                        .requestMatchers("/admin/users/**", "/admin/settings/**", "/admin/reports/**", "/admin/cash/**").hasRole("ADMIN")
+                        .requestMatchers("/admin/products/**", "/admin/categories/**", "/admin/suppliers/**", "/admin/purchases/**",
+                                "/admin/inventory/**", "/admin/expenses/**").hasRole("ADMIN")
+                        .requestMatchers("/admin/pos/**", "/admin/sales/**", "/admin/tickets/**", "/admin/api/products/**").hasAnyRole("ADMIN", "CAJERO")
+                        .requestMatchers("/admin/**").authenticated()
                         .anyRequest().authenticated())
                 .formLogin(form -> form
-                        .loginPage("/login")
+                        .loginPage("/admin/login")
+                        .loginProcessingUrl("/admin/login")
                         .successHandler(successHandler)
-                        .failureUrl("/login?error")
+                        .failureUrl("/admin/login?error")
                         .permitAll())
                 .logout(logout -> logout
-                        .logoutUrl("/logout")
-                        .logoutSuccessUrl("/login?logout")
+                        .logoutUrl("/admin/logout")
+                        .logoutSuccessUrl("/admin/login?logout")
                         .invalidateHttpSession(true)
                         .clearAuthentication(true)
                         .deleteCookies("JSESSIONID")

@@ -1,5 +1,6 @@
 package com.tienda.pos;
 
+import com.tienda.pos.catalog.CatalogImagesProperties;
 import com.tienda.pos.externalproduct.ExternalProductsProperties;
 import com.tienda.pos.product.ProductImagesProperties;
 import org.springframework.boot.SpringApplication;
@@ -11,7 +12,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 @SpringBootApplication
 @EnableMethodSecurity
 @EnableScheduling
-@EnableConfigurationProperties({ExternalProductsProperties.class, ProductImagesProperties.class})
+@EnableConfigurationProperties({ExternalProductsProperties.class, ProductImagesProperties.class, CatalogImagesProperties.class})
 public class TiendaPosApplication {
 
     public static void main(String[] args) {

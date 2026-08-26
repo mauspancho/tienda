@@ -16,6 +16,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @NormalMode
+@org.springframework.web.bind.annotation.RequestMapping("/admin")
 @PreAuthorize("hasRole('ADMIN')")
 public class InventoryController {
 
@@ -46,10 +47,10 @@ public class InventoryController {
                          RedirectAttributes redirectAttributes) {
         if (bindingResult.hasErrors()) {
             redirectAttributes.addFlashAttribute("error", "Revisa los datos del ajuste.");
-            return "redirect:/inventory";
+            return "redirect:/admin/inventory";
         }
         inventoryService.adjust(form);
         redirectAttributes.addFlashAttribute("success", "Inventario actualizado.");
-        return "redirect:/inventory";
+        return "redirect:/admin/inventory";
     }
 }

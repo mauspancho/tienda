@@ -17,12 +17,12 @@
           <h1>Usuarios</h1>
           <p class="muted">Administra accesos, roles y estado de cada usuario.</p>
         </div>
-        <a class="btn btn-ghost" th:href="@{/users}" th:if="${mode == 'edit'}">Cancelar edición</a>
+        <a class="btn btn-ghost" th:href="@{/admin/users}" th:if="${mode == 'edit'}">Cancelar edición</a>
       </div>
       <div th:replace="~{fragments/layout :: alerts}"></div>
 
       <div class="grid grid-2">
-        <form class="card form" th:object="${userForm}" th:action="${mode == 'edit'} ? @{/users/{id}(id=*{id})} : @{/users}" method="post">
+        <form class="card form" th:object="${userForm}" th:action="${mode == 'edit'} ? @{/admin/users/{id}(id=*{id})} : @{/admin/users}" method="post">
           <input type="hidden" th:field="*{id}">
           <h2 th:text="${mode == 'edit'} ? 'Editar usuario' : 'Crear usuario'">Crear usuario</h2>
           <div class="grid grid-2">
@@ -69,11 +69,11 @@
               <td><span th:class="${u.active ? 'badge badge-success' : 'badge badge-error'}" th:text="${u.active ? 'Activo' : 'Inactivo'}"></span></td>
               <td class="text-right">
                 <div class="join">
-                  <a class="btn btn-sm join-item" th:href="@{/users/{id}/edit(id=${u.id})}">Editar</a>
-                  <form class="join-item" th:action="@{/users/{id}/toggle(id=${u.id})}" method="post">
+                  <a class="btn btn-sm join-item" th:href="@{/admin/users/{id}/edit(id=${u.id})}">Editar</a>
+                  <form class="join-item" th:action="@{/admin/users/{id}/toggle(id=${u.id})}" method="post">
                     <button class="btn btn-sm" type="submit" th:text="${u.active ? 'Desactivar' : 'Activar'}">Desactivar</button>
                   </form>
-                  <form class="join-item" th:action="@{/users/{id}/delete(id=${u.id})}" method="post" onsubmit="return confirm('Si el usuario tiene historial se desactivará. Si no tiene historial se eliminará. ¿Continuar?')">
+                  <form class="join-item" th:action="@{/admin/users/{id}/delete(id=${u.id})}" method="post" onsubmit="return confirm('Si el usuario tiene historial se desactivará. Si no tiene historial se eliminará. ¿Continuar?')">
                     <button class="btn btn-sm btn-error" type="submit">Eliminar</button>
                   </form>
                 </div>

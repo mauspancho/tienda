@@ -201,6 +201,30 @@ public class ProductService {
         });
     }
 
+
+    @Transactional
+    public void promote(Long productId) {
+        Product product = productRepository.findByIdForUpdate(productId)
+                .orElseThrow(() -> new DomainException("Producto no encontrado."));
+        if (product.isPromoted()) {
+            return;
+        }
+        if (productRepository.countByPromotedTrue() >= 4) {
+            throw new DomainException("Ya tienes 4 productos promocionados. Quita uno antes de agregar otro.");
+        }
+        product.setPromoted(true);
+        product.setPromotionOrder(productRepository.maxPromotionOrder() + 1);
+        productRepository.save(product);
+    }
+
+    @Transactional
+    public void removePromotion(Long productId) {
+        Product product = productRepository.findByIdForUpdate(productId)
+                .orElseThrow(() -> new DomainException("Producto no encontrado."));
+        product.setPromoted(false);
+        product.setPromotionOrder(null);
+        productRepository.save(product);
+    }
     private void validateUniqueCode(String code, Long currentId) {
         if (code == null || code.isBlank()) return;
         productRepository.findByCode(code.trim())

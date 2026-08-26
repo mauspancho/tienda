@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 
 @Controller
 @NormalMode
+@org.springframework.web.bind.annotation.RequestMapping("/admin")
 @PreAuthorize("hasRole('ADMIN')")
 public class CashController {
 
@@ -36,7 +37,7 @@ public class CashController {
     public String open(@RequestParam BigDecimal openingAmount, RedirectAttributes redirectAttributes) {
         cashService.open(CurrentUser.username(), openingAmount);
         redirectAttributes.addFlashAttribute("success", "Caja abierta.");
-        return "redirect:/cash";
+        return "redirect:/admin/cash";
     }
 
     @PostMapping("/cash/close")
@@ -44,6 +45,6 @@ public class CashController {
                         RedirectAttributes redirectAttributes) {
         cashService.close(CurrentUser.username(), sessionId, countedAmount);
         redirectAttributes.addFlashAttribute("success", "Caja cerrada.");
-        return "redirect:/cash";
+        return "redirect:/admin/cash";
     }
 }

@@ -16,6 +16,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @NormalMode
+@org.springframework.web.bind.annotation.RequestMapping("/admin")
 @PreAuthorize("hasRole('ADMIN')")
 public class UserController {
 
@@ -49,7 +50,7 @@ public class UserController {
                          RedirectAttributes redirectAttributes) {
         if (bindingResult.hasErrors()) {
             redirectAttributes.addFlashAttribute("error", "Revisa los datos del usuario.");
-            return "redirect:/users";
+            return "redirect:/admin/users";
         }
         try {
             userService.create(form);
@@ -57,7 +58,7 @@ public class UserController {
         } catch (DomainException ex) {
             redirectAttributes.addFlashAttribute("error", ex.getMessage());
         }
-        return "redirect:/users";
+        return "redirect:/admin/users";
     }
 
     @PostMapping("/users/{id}")
@@ -65,15 +66,15 @@ public class UserController {
                          RedirectAttributes redirectAttributes) {
         if (bindingResult.hasErrors()) {
             redirectAttributes.addFlashAttribute("error", "Revisa los datos del usuario.");
-            return "redirect:/users/" + id + "/edit";
+            return "redirect:/admin/users/" + id + "/edit";
         }
         try {
             userService.update(id, form);
             redirectAttributes.addFlashAttribute("success", "Usuario actualizado correctamente.");
-            return "redirect:/users";
+            return "redirect:/admin/users";
         } catch (DomainException ex) {
             redirectAttributes.addFlashAttribute("error", ex.getMessage());
-            return "redirect:/users/" + id + "/edit";
+            return "redirect:/admin/users/" + id + "/edit";
         }
     }
 
@@ -85,7 +86,7 @@ public class UserController {
         } catch (DomainException ex) {
             redirectAttributes.addFlashAttribute("error", ex.getMessage());
         }
-        return "redirect:/users";
+        return "redirect:/admin/users";
     }
 
     @PostMapping("/users/{id}/delete")
@@ -96,6 +97,6 @@ public class UserController {
         } catch (DomainException ex) {
             redirectAttributes.addFlashAttribute("error", ex.getMessage());
         }
-        return "redirect:/users";
+        return "redirect:/admin/users";
     }
 }

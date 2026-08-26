@@ -1,17 +1,17 @@
-package com.tienda.pos.product;
+package com.tienda.pos.catalog;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.util.unit.DataSize;
 
-@ConfigurationProperties(prefix = "tienda.product-images")
-public class ProductImagesProperties {
+@ConfigurationProperties(prefix = "tienda.catalog-images")
+public class CatalogImagesProperties {
 
-    private String directory = "./data/products";
-    private String publicPath = "/uploads/products";
+    private String directory = "./data/catalog";
+    private String publicPath = "/uploads/catalog";
     private DataSize maxUploadSize = DataSize.ofMegabytes(5);
-    private int maxWidth = 800;
-    private int maxHeight = 800;
-    private float webpQuality = 0.82f;
+    private int maxWidth = 1200;
+    private int maxHeight = 600;
+    private float imageQuality = 0.82f;
     private int maxOriginalWidth = 12000;
     private int maxOriginalHeight = 12000;
 
@@ -25,8 +25,8 @@ public class ProductImagesProperties {
     public void setMaxWidth(int maxWidth) { this.maxWidth = maxWidth; }
     public int getMaxHeight() { return maxHeight; }
     public void setMaxHeight(int maxHeight) { this.maxHeight = maxHeight; }
-    public float getWebpQuality() { return webpQuality; }
-    public void setWebpQuality(float webpQuality) { this.webpQuality = webpQuality; }
+    public float getImageQuality() { return imageQuality; }
+    public void setImageQuality(float imageQuality) { this.imageQuality = imageQuality; }
     public int getMaxOriginalWidth() { return maxOriginalWidth; }
     public void setMaxOriginalWidth(int maxOriginalWidth) { this.maxOriginalWidth = maxOriginalWidth; }
     public int getMaxOriginalHeight() { return maxOriginalHeight; }
@@ -34,7 +34,7 @@ public class ProductImagesProperties {
 
     public String normalizedPublicPath() {
         if (publicPath == null || publicPath.isBlank()) {
-            return "/uploads/products";
+            return "/uploads/catalog";
         }
         String normalized = publicPath.trim();
         if (!normalized.startsWith("/")) {

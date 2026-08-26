@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480" role="img" aria-label="Producto sin imagen">
+  <rect width="640" height="480" rx="36" fill="#f3f6fb"/>
+  <rect x="168" y="116" width="304" height="248" rx="28" fill="#ffffff" stroke="#d8e0ec" stroke-width="8"/>
+  <circle cx="256" cy="198" r="38" fill="#dbeafe"/>
+  <path d="M202 320l82-86 56 58 34-34 64 62H202z" fill="#93c5fd"/>
+  <text x="320" y="412" text-anchor="middle" font-family="Arial,sans-serif" font-size="26" font-weight="700" fill="#334155">Tienda POS</text>
+</svg>

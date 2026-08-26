@@ -14,6 +14,7 @@ import java.time.format.DateTimeFormatter;
 
 @Controller
 @NormalMode
+@org.springframework.web.bind.annotation.RequestMapping("/admin")
 @PreAuthorize("hasRole('ADMIN')")
 public class BackupController {
 
@@ -25,6 +26,6 @@ public class BackupController {
                 "Respaldo solicitado desde la aplicación.\n"
                         + "Instala mysqldump/mariadb-dump en el servidor para generar dumps completos desde línea de comandos.\n");
         redirectAttributes.addFlashAttribute("success", "Se creó una nota de respaldo en backups/. Si mysqldump está disponible, ejecútalo desde el servidor.");
-        return "redirect:/settings";
+        return "redirect:/admin/settings";
     }
 }

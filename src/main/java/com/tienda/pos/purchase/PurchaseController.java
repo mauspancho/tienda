@@ -16,6 +16,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @NormalMode
+@org.springframework.web.bind.annotation.RequestMapping("/admin")
 @PreAuthorize("hasRole('ADMIN')")
 public class PurchaseController {
 
@@ -46,10 +47,10 @@ public class PurchaseController {
                        RedirectAttributes redirectAttributes) {
         if (bindingResult.hasErrors()) {
             redirectAttributes.addFlashAttribute("error", "Revisa los datos de la compra.");
-            return "redirect:/purchases";
+            return "redirect:/admin/purchases";
         }
         Purchase purchase = purchaseService.register(form);
         redirectAttributes.addFlashAttribute("success", "Compra registrada. Inventario actualizado.");
-        return "redirect:/purchases";
+        return "redirect:/admin/purchases";
     }
 }

@@ -352,7 +352,7 @@
           <strong>Producto no registrado</strong>
           <span>Codigo: ${detail.barcode || this.lastDetectedBarcode}</span>
           <div class="camera-unregistered-actions">
-            <a class="btn btn-muted" href="${detail.registerUrl || `/products/new?barcode=${encodeURIComponent(detail.barcode || this.lastDetectedBarcode)}&lookup=true`}">Buscar informacion y registrar</a>
+            <a class="btn btn-muted" href="${detail.registerUrl || `/admin/products/new?barcode=${encodeURIComponent(detail.barcode || this.lastDetectedBarcode)}&lookup=true`}">Buscar informacion y registrar</a>
             <button class="btn btn-primary" type="button" data-camera-continue>Continuar escaneando</button>
           </div>`;
         this.unregistered.querySelector("[data-camera-continue]").addEventListener("click", () => {

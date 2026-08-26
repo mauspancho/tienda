@@ -6,7 +6,7 @@
 </head>
 <body>
 <div class="app-shell"><div th:replace="~{fragments/layout :: sidebar}"></div><main class="main"><div th:replace="~{fragments/layout :: header}"></div><section class="content">
-<div class="page-title"><h1>Producto</h1><a class="btn btn-muted" th:href="@{/products}">Volver</a></div>
+<div class="page-title"><h1>Producto</h1><a class="btn btn-muted" th:href="@{/admin/products}">Volver</a></div>
 
 <div class="card form" data-product-lookup th:data-initial-barcode="${initialBarcode}" th:data-auto-lookup="${autoLookup}">
   <h2>Escanear producto</h2>
@@ -40,7 +40,7 @@
   </div>
 </div>
 
-<form class="card form" th:object="${productForm}" th:action="@{/products}" method="post" enctype="multipart/form-data" data-product-form><input type="hidden" th:field="*{id}">
+<form class="card form" th:object="${productForm}" th:action="@{/admin/products}" method="post" enctype="multipart/form-data" data-product-form><input type="hidden" th:field="*{id}">
 <div th:if="${#fields.hasGlobalErrors()}" class="alert alert-error" th:each="err : ${#fields.globalErrors()}" th:text="${err}"></div>
 <h2>Información del producto</h2>
 <div class="grid grid-3">

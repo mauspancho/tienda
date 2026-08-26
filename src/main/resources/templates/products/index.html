@@ -6,7 +6,7 @@
 </head>
 <body>
 <div class="app-shell"><div th:replace="~{fragments/layout :: sidebar}"></div><main class="main"><div th:replace="~{fragments/layout :: header}"></div><section class="content">
-<div class="page-title"><h1>Productos</h1><a class="btn btn-primary" th:href="@{/products/new}">Nuevo producto</a></div><div th:replace="~{fragments/layout :: alerts}"></div>
+<div class="page-title"><h1>Productos</h1><a class="btn btn-primary" th:href="@{/admin/products/new}">Nuevo producto</a></div><div th:replace="~{fragments/layout :: alerts}"></div>
 <form class="card" method="get"><div class="field"><label>Buscar</label><input name="q" th:value="${q}" placeholder="Nombre, código o código de barras"></div></form>
 <div class="table-wrap" style="margin-top:16px">
   <table>
@@ -15,7 +15,7 @@
       <td>
         <div class="flex items-center gap-2">
           <span th:text="${p.code}"></span>
-          <button class="btn btn-muted btn-sm" type="button" th:if="${p.barcode != null and !#strings.isEmpty(p.barcode)}" th:data-label-url="@{/products/{id}/barcode-label(id=${p.id})}" th:data-label-product="${p.name}" th:data-label-barcode="${p.barcode}" data-open-label-modal>Imprimir</button>
+          <button class="btn btn-muted btn-sm" type="button" th:if="${p.barcode != null and !#strings.isEmpty(p.barcode)}" th:data-label-url="@{/admin/products/{id}/barcode-label(id=${p.id})}" th:data-label-product="${p.name}" th:data-label-barcode="${p.barcode}" data-open-label-modal>Imprimir</button>
         </div>
       </td>
       <td><div class="product-list-product"><img class="product-thumb" th:if="${p.imageUrl != null and !#strings.isEmpty(p.imageUrl)}" th:src="${p.imageUrl}" alt="" loading="lazy"><span class="product-thumb product-thumb-placeholder" th:unless="${p.imageUrl != null and !#strings.isEmpty(p.imageUrl)}">▣</span><div><strong th:text="${p.name}"></strong><br><span class="muted" th:text="${p.barcode}"></span></div></div></td>
@@ -23,7 +23,7 @@
       <td th:text="${@display.money(p.purchaseCost)}"></td>
       <td><span th:class="${p.hasLowStock() ? 'badge badge-yellow' : 'badge badge-green'}" th:text="${@display.number(p.currentStock)}"></span></td>
       <td th:text="${@display.percent(p.marginPercent())}"></td>
-      <td><a class="btn btn-muted" th:href="@{'/products/' + ${p.id} + '/edit'}">Editar</a></td>
+      <td><div class="join"><a class="btn btn-muted join-item" th:href="@{'/admin/products/' + ${p.id} + '/edit'}">Editar</a><form class="join-item" th:if="${!p.promoted}" th:action="@{/admin/products/{id}/promote(id=${p.id})}" method="post"><button class="btn btn-primary" type="submit">Promocionar</button></form><form class="join-item" th:if="${p.promoted}" th:action="@{/admin/products/{id}/unpromote(id=${p.id})}" method="post"><button class="btn btn-muted" type="submit">Quitar promoción</button></form></div><span th:if="${p.promoted}" class="badge badge-yellow mt-2">★ Promocionado</span></td>
     </tr>
   </table>
 </div>

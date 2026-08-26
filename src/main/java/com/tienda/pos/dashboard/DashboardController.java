@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 @Controller
 @NormalMode
+@org.springframework.web.bind.annotation.RequestMapping("/admin")
 public class DashboardController {
 
     private final DashboardService dashboardService;
@@ -28,7 +29,7 @@ public class DashboardController {
         this.purchaseRepository = purchaseRepository;
     }
 
-    @GetMapping("/")
+    @GetMapping({"", "/"})
     public String dashboard(Model model) {
         boolean admin = CurrentUser.hasRole("ROLE_ADMIN");
         String username = CurrentUser.username();

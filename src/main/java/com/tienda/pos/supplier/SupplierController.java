@@ -15,6 +15,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @NormalMode
+@org.springframework.web.bind.annotation.RequestMapping("/admin")
 @PreAuthorize("hasRole('ADMIN')")
 public class SupplierController {
 
@@ -39,10 +40,10 @@ public class SupplierController {
                        RedirectAttributes redirectAttributes) {
         if (bindingResult.hasErrors()) {
             redirectAttributes.addFlashAttribute("error", "Revisa los datos del proveedor.");
-            return "redirect:/suppliers";
+            return "redirect:/admin/suppliers";
         }
         supplierRepository.save(supplier);
         redirectAttributes.addFlashAttribute("success", "Proveedor guardado correctamente.");
-        return "redirect:/suppliers";
+        return "redirect:/admin/suppliers";
     }
 }

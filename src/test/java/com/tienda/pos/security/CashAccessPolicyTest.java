@@ -16,7 +16,7 @@ class CashAccessPolicyTest {
         String cashController = Files.readString(ROOT.resolve("src/main/java/com/tienda/pos/cash/CashController.java"));
 
         assertThat(securityConfig)
-                .contains("/cash/**")
+                .contains("/admin/cash/**")
                 .contains("hasRole(\"ADMIN\")");
         assertThat(cashController)
                 .contains("@PreAuthorize(\"hasRole('ADMIN')\")")
@@ -28,7 +28,7 @@ class CashAccessPolicyTest {
         String layout = Files.readString(ROOT.resolve("src/main/resources/templates/fragments/layout.html"));
 
         assertThat(layout)
-                .contains("<li sec:authorize=\"hasRole('ADMIN')\"><a th:href=\"@{/cash}\">Caja</a></li>")
-                .doesNotContain("<li><a th:href=\"@{/cash}\">Caja</a></li>");
+                .contains("<li sec:authorize=\"hasRole('ADMIN')\"><a th:href=\"@{/admin/cash}\">Caja</a></li>")
+                .doesNotContain("<li><a th:href=\"@{/admin/cash}\">Caja</a></li>");
     }
 }
