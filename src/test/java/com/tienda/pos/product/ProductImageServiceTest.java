@@ -34,7 +34,7 @@ class ProductImageServiceTest {
         assertThat(stored).exists().isRegularFile();
         BufferedImage storedImage = ImageIO.read(stored.toFile());
         assertThat(storedImage.getWidth()).isEqualTo(800);
-        assertThat(storedImage.getHeight()).isEqualTo(600);
+        assertThat(storedImage.getHeight()).isEqualTo(800);
     }
 
     @Test

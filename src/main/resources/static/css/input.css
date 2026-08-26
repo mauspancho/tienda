@@ -2037,3 +2037,45 @@ html[data-theme="sunset"] .product-image-preview {
 .settings-backup-form {
   margin-top: 1rem;
 }
+
+/* Catalog image normalization */
+.catalog-slide img,
+.catalog-card-image img,
+.catalog-detail-media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  object-fit: cover;
+  object-position: center;
+  padding: 0;
+}
+
+.catalog-slide {
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 42%);
+}
+
+.catalog-slide img {
+  aspect-ratio: 1 / 1;
+  align-self: stretch;
+  min-height: 260px;
+  background: #ffffff;
+}
+
+.catalog-card-image {
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+}
+
+.catalog-detail-media {
+  aspect-ratio: 1 / 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (max-width: 720px) {
+  .catalog-slide img {
+    min-height: 220px;
+  }
+}
+

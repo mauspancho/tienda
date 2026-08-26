@@ -128,20 +128,24 @@ public class ProductImageService {
     }
 
     private BufferedImage resize(BufferedImage original) {
+        int canvasWidth = Math.max(1, properties.getMaxWidth());
+        int canvasHeight = Math.max(1, properties.getMaxHeight());
         int width = original.getWidth();
         int height = original.getHeight();
-        double scale = Math.min(1.0, Math.min((double) properties.getMaxWidth() / width, (double) properties.getMaxHeight() / height));
+        double scale = Math.min((double) canvasWidth / width, (double) canvasHeight / height);
         int targetWidth = Math.max(1, (int) Math.round(width * scale));
         int targetHeight = Math.max(1, (int) Math.round(height * scale));
-        BufferedImage output = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
+        int x = (canvasWidth - targetWidth) / 2;
+        int y = (canvasHeight - targetHeight) / 2;
+        BufferedImage output = new BufferedImage(canvasWidth, canvasHeight, BufferedImage.TYPE_INT_RGB);
         Graphics2D graphics = output.createGraphics();
         try {
             graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
             graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
             graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             graphics.setColor(Color.WHITE);
-            graphics.fillRect(0, 0, targetWidth, targetHeight);
-            graphics.drawImage(original, 0, 0, targetWidth, targetHeight, null);
+            graphics.fillRect(0, 0, canvasWidth, canvasHeight);
+            graphics.drawImage(original, x, y, targetWidth, targetHeight, null);
         } finally {
             graphics.dispose();
         }
@@ -183,3 +187,4 @@ public class ProductImageService {
         return resolved;
     }
 }
+
