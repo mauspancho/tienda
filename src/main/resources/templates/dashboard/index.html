@@ -36,9 +36,11 @@
               </select>
             </div>
           </div>
-          <div class="grid grid-2 dashboard-profit-metrics">
+          <div class="grid grid-4 dashboard-profit-metrics">
             <div><span class="muted">Ganancia fecha</span><div class="metric" id="selectedDateProfit">$0.00</div></div>
+            <div><span class="muted">Ajuste fecha</span><div class="metric" id="selectedDateCostAdjustment">$0.00</div></div>
             <div><span class="muted" id="periodProfitLabel">Periodo</span><div class="metric" id="periodProfit">$0.00</div></div>
+            <div><span class="muted">Ajuste periodo</span><div class="metric" id="periodCostAdjustment">$0.00</div></div>
           </div>
           <div class="chart-panel"><canvas id="profitChart"></canvas></div>
         </div>
@@ -166,8 +168,10 @@ function loadProfitChart() {
       const rows = data.points || [];
       const palette = dashboardChartPalette();
       document.getElementById('selectedDateProfit').textContent = money(data.selectedDateProfit);
+      document.getElementById('selectedDateCostAdjustment').textContent = money(data.selectedDateCostAdjustment);
       document.getElementById('periodProfitLabel').textContent = data.periodLabel || 'Periodo';
       document.getElementById('periodProfit').textContent = money(data.periodProfit);
+      document.getElementById('periodCostAdjustment').textContent = money(data.periodCostAdjustment);
       if (profitChart) {
         profitChart.data.labels = rows.map(r => r.label);
         profitChart.data.datasets = [dataset('Ganancia', rows, palette)];
@@ -193,3 +197,4 @@ document.addEventListener('tienda:theme-changed', () => {
 </script>
 </body>
 </html>
+

@@ -13,6 +13,8 @@ public class InventoryAdjustmentForm {
     @NotNull
     @DecimalMin("0.001")
     private BigDecimal quantity = BigDecimal.ONE;
+    @DecimalMin("0.00")
+    private BigDecimal unitCost;
     private String notes;
 
     public Long getProductId() { return productId; }
@@ -21,6 +23,9 @@ public class InventoryAdjustmentForm {
     public void setMovementType(InventoryMovementType movementType) { this.movementType = movementType; }
     public BigDecimal getQuantity() { return quantity; }
     public void setQuantity(BigDecimal quantity) { this.quantity = quantity; }
+    public BigDecimal getUnitCost() { return unitCost; }
+    public void setUnitCost(BigDecimal unitCost) { this.unitCost = unitCost; }
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
 }
+

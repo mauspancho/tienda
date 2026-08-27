@@ -2,6 +2,7 @@ package com.tienda.pos.dashboard;
 
 import com.tienda.pos.common.NormalMode;
 import com.tienda.pos.expense.ExpenseRepository;
+import com.tienda.pos.inventory.InventoryMovementRepository;
 import com.tienda.pos.product.ProductRepository;
 import com.tienda.pos.sale.SaleRepository;
 import com.tienda.pos.sale.SaleStatus;
@@ -31,12 +32,14 @@ public class DashboardService {
     private final SaleRepository saleRepository;
     private final ProductRepository productRepository;
     private final ExpenseRepository expenseRepository;
+    private final InventoryMovementRepository movementRepository;
 
     public DashboardService(SaleRepository saleRepository, ProductRepository productRepository,
-                            ExpenseRepository expenseRepository) {
+                            ExpenseRepository expenseRepository, InventoryMovementRepository movementRepository) {
         this.saleRepository = saleRepository;
         this.productRepository = productRepository;
         this.expenseRepository = expenseRepository;
+        this.movementRepository = movementRepository;
     }
 
     public DashboardSummary today() {
@@ -72,20 +75,30 @@ public class DashboardService {
         LocalDate seriesEnd = periodEnd;
         Map<LocalDate, BigDecimal> daily = dailyProfitMap(seriesStart, seriesEnd, username, admin);
         BigDecimal selectedDateProfit = daily.getOrDefault(date, BigDecimal.ZERO);
+        BigDecimal selectedDateCostAdjustment = admin ? costAdjustmentBetween(date, date) : BigDecimal.ZERO;
         List<DashboardProfitPoint> points = points(daily, seriesStart, seriesEnd, profitPeriod);
         BigDecimal periodProfit = points.stream()
                 .filter(point -> periodLabel(date, profitPeriod).equals(point.label()))
                 .map(DashboardProfitPoint::profit)
                 .findFirst()
                 .orElseGet(() -> sumRange(daily, periodStart, periodEnd));
+        BigDecimal periodCostAdjustment = admin ? costAdjustmentBetween(periodStart, periodEnd) : BigDecimal.ZERO;
         return new DashboardProfitAnalysis(
                 date,
                 selectedDateProfit,
+                selectedDateCostAdjustment,
                 profitPeriod.value,
                 periodLabel(date, profitPeriod),
                 periodProfit,
+                periodCostAdjustment,
                 points
         );
+    }
+
+    private BigDecimal costAdjustmentBetween(LocalDate start, LocalDate end) {
+        LocalDateTime startAt = start.atStartOfDay();
+        LocalDateTime endAt = end.plusDays(1).atStartOfDay().minusNanos(1);
+        return movementRepository.costAdjustmentBetween(startAt, endAt);
     }
 
     private Map<LocalDate, BigDecimal> dailyProfitMap(LocalDate start, LocalDate end, String username, boolean admin) {
@@ -210,3 +223,4 @@ public class DashboardService {
         }
     }
 }
+

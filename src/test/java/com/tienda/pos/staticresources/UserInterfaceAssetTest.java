@@ -110,10 +110,26 @@ class UserInterfaceAssetTest {
                 .contains("id=\"profitPeriod\"")
                 .contains("/admin/api/dashboard/profit")
                 .contains("selectedDateProfit")
-                .contains("periodProfit");
+                .contains("selectedDateCostAdjustment")
+                .contains("periodProfit")
+                .contains("periodCostAdjustment");
         assertThat(css)
                 .contains(".dashboard-profit-controls")
-                .contains(".dashboard-profit-metrics");
+                .contains(".dashboard-profit-metrics")
+                .contains(".grid-4");
+    }
+
+    @Test
+    void inventoryAdjustmentsCaptureCostChanges() throws Exception {
+        String inventory = Files.readString(ROOT.resolve("src/main/resources/templates/inventory/index.html"));
+
+        assertThat(inventory)
+                .contains("th:field=\"*{unitCost}\"")
+                .contains("Costo unitario")
+                .contains("Costo aplicado")
+                .contains("Costo nuevo")
+                .contains("Ajuste costo")
+                .contains("m.costAdjustment");
     }
 }
 

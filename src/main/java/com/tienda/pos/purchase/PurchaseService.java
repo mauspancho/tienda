@@ -67,13 +67,19 @@ public class PurchaseService {
 
         BigDecimal previous = product.getCurrentStock();
         BigDecimal next = previous.add(form.getQuantity());
+        BigDecimal previousPurchaseCost = MoneyUtils.money(product.getPurchaseCost());
+        BigDecimal newPurchaseCost = previousPurchaseCost;
+        BigDecimal costAdjustment = BigDecimal.ZERO;
         product.setCurrentStock(next);
         if (form.isUpdateProductCost()) {
-            product.setPurchaseCost(unitCost);
+            newPurchaseCost = inventoryService.weightedAverageCost(previous, previousPurchaseCost, form.getQuantity(), unitCost);
+            costAdjustment = MoneyUtils.money(newPurchaseCost.subtract(previousPurchaseCost).multiply(previous));
+            product.setPurchaseCost(newPurchaseCost);
         }
         productRepository.save(product);
         inventoryService.createMovement(product, InventoryMovementType.PURCHASE, form.getQuantity(), previous, next,
-                "PURCHASE", saved.getId(), "Compra confirmada " + saved.getExternalFolio());
+                "PURCHASE", saved.getId(), "Compra confirmada " + saved.getExternalFolio(),
+                unitCost, previousPurchaseCost, newPurchaseCost, costAdjustment);
         return saved;
     }
 
@@ -84,3 +90,4 @@ public class PurchaseService {
         return "COMP-" + LocalDate.now().format(FOLIO_DATE) + "-" + ThreadLocalRandom.current().nextInt(1000, 10000);
     }
 }
+

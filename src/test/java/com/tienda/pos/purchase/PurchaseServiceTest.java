@@ -50,6 +50,8 @@ class PurchaseServiceTest {
         form.setUpdateProductCost(true);
 
         when(productRepository.findByIdForUpdate(5L)).thenReturn(Optional.of(product));
+        when(inventoryService.weightedAverageCost(new BigDecimal("24.000"), new BigDecimal("16.87"),
+                new BigDecimal("12.000"), new BigDecimal("17.50"))).thenReturn(new BigDecimal("17.08"));
         when(purchaseRepository.save(any(Purchase.class))).thenAnswer(invocation -> {
             Purchase purchase = invocation.getArgument(0);
             purchase.setId(22L);
@@ -62,11 +64,13 @@ class PurchaseServiceTest {
         assertThat(saved.getExternalFolio()).startsWith("COMP-");
         assertThat(saved.getTotal()).isEqualByComparingTo(new BigDecimal("210.00"));
         assertThat(product.getCurrentStock()).isEqualByComparingTo(new BigDecimal("36.000"));
-        assertThat(product.getPurchaseCost()).isEqualByComparingTo(new BigDecimal("17.50"));
+        assertThat(product.getPurchaseCost()).isEqualByComparingTo(new BigDecimal("17.08"));
         verifyNoInteractions(supplierRepository);
         ArgumentCaptor<BigDecimal> quantityCaptor = ArgumentCaptor.forClass(BigDecimal.class);
         verify(inventoryService).createMovement(any(Product.class), any(InventoryMovementType.class),
-                quantityCaptor.capture(), any(BigDecimal.class), any(BigDecimal.class), any(String.class), any(Long.class), any(String.class));
+                quantityCaptor.capture(), any(BigDecimal.class), any(BigDecimal.class), any(String.class), any(Long.class),
+                any(String.class), any(BigDecimal.class), any(BigDecimal.class), any(BigDecimal.class), any(BigDecimal.class));
         assertThat(quantityCaptor.getValue()).isEqualByComparingTo(new BigDecimal("12.000"));
     }
 }
+

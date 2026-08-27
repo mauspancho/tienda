@@ -7,9 +7,12 @@ import java.util.List;
 public record DashboardProfitAnalysis(
         LocalDate selectedDate,
         BigDecimal selectedDateProfit,
+        BigDecimal selectedDateCostAdjustment,
         String period,
         String periodLabel,
         BigDecimal periodProfit,
+        BigDecimal periodCostAdjustment,
         List<DashboardProfitPoint> points
 ) {
 }
+

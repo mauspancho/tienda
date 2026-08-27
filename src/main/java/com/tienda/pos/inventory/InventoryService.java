@@ -1,6 +1,7 @@
 package com.tienda.pos.inventory;
 
 import com.tienda.pos.common.CurrentUser;
+import com.tienda.pos.common.MoneyUtils;
 import com.tienda.pos.common.NormalMode;
 import com.tienda.pos.exception.DomainException;
 import com.tienda.pos.product.Product;
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.EnumSet;
 
 @Service
@@ -19,6 +21,12 @@ public class InventoryService {
             InventoryMovementType.SALE,
             InventoryMovementType.PURCHASE_RETURN,
             InventoryMovementType.ADJUSTMENT_OUT
+    );
+
+    private static final EnumSet<InventoryMovementType> COST_UPDATE_TYPES = EnumSet.of(
+            InventoryMovementType.PURCHASE,
+            InventoryMovementType.ADJUSTMENT_IN,
+            InventoryMovementType.INITIAL_STOCK
     );
 
     private final ProductRepository productRepository;
@@ -39,15 +47,41 @@ public class InventoryService {
         if (next.compareTo(BigDecimal.ZERO) < 0) {
             throw new DomainException("No hay suficiente inventario.");
         }
+
+        BigDecimal unitCost = null;
+        BigDecimal previousPurchaseCost = null;
+        BigDecimal newPurchaseCost = null;
+        BigDecimal costAdjustment = null;
+        if (updatesCost(form.getMovementType(), delta)) {
+            if (form.getUnitCost() == null || form.getUnitCost().compareTo(BigDecimal.ZERO) < 0) {
+                throw new DomainException("Captura el costo unitario del producto.");
+            }
+            unitCost = MoneyUtils.money(form.getUnitCost());
+            previousPurchaseCost = MoneyUtils.money(product.getPurchaseCost());
+            newPurchaseCost = weightedAverageCost(previous, previousPurchaseCost, delta, unitCost);
+            costAdjustment = MoneyUtils.money(newPurchaseCost.subtract(previousPurchaseCost).multiply(previous));
+            product.setPurchaseCost(newPurchaseCost);
+        }
+
         product.setCurrentStock(next);
         product.setUpdatedBy(CurrentUser.username());
         productRepository.save(product);
-        createMovement(product, form.getMovementType(), delta, previous, next, "ADJUSTMENT", null, form.getNotes());
+        createMovement(product, form.getMovementType(), delta, previous, next, "ADJUSTMENT", null, form.getNotes(),
+                unitCost, previousPurchaseCost, newPurchaseCost, costAdjustment);
     }
 
     @Transactional
     public void createMovement(Product product, InventoryMovementType type, BigDecimal signedQuantity,
                                BigDecimal previous, BigDecimal next, String referenceType, Long referenceId, String notes) {
+        createMovement(product, type, signedQuantity, previous, next, referenceType, referenceId, notes,
+                null, null, null, null);
+    }
+
+    @Transactional
+    public void createMovement(Product product, InventoryMovementType type, BigDecimal signedQuantity,
+                               BigDecimal previous, BigDecimal next, String referenceType, Long referenceId, String notes,
+                               BigDecimal unitCost, BigDecimal previousPurchaseCost, BigDecimal newPurchaseCost,
+                               BigDecimal costAdjustment) {
         InventoryMovement movement = new InventoryMovement();
         movement.setProduct(product);
         movement.setMovementType(type);
@@ -57,6 +91,10 @@ public class InventoryService {
         movement.setReferenceType(referenceType);
         movement.setReferenceId(referenceId);
         movement.setNotes(notes);
+        movement.setUnitCost(unitCost == null ? null : MoneyUtils.money(unitCost));
+        movement.setPreviousPurchaseCost(previousPurchaseCost == null ? null : MoneyUtils.money(previousPurchaseCost));
+        movement.setNewPurchaseCost(newPurchaseCost == null ? null : MoneyUtils.money(newPurchaseCost));
+        movement.setCostAdjustment(costAdjustment == null ? null : MoneyUtils.money(costAdjustment));
         movement.setCreatedBy(CurrentUser.username());
         movementRepository.save(movement);
     }
@@ -64,4 +102,23 @@ public class InventoryService {
     public BigDecimal signedQuantity(InventoryMovementType type, BigDecimal quantity) {
         return OUT_TYPES.contains(type) ? quantity.abs().negate() : quantity.abs();
     }
+
+    public BigDecimal weightedAverageCost(BigDecimal previousStock, BigDecimal previousCost,
+                                          BigDecimal incomingQuantity, BigDecimal incomingCost) {
+        BigDecimal stock = previousStock == null ? BigDecimal.ZERO : previousStock.max(BigDecimal.ZERO);
+        BigDecimal cost = MoneyUtils.money(previousCost);
+        BigDecimal quantity = incomingQuantity == null ? BigDecimal.ZERO : incomingQuantity.abs();
+        BigDecimal unitCost = MoneyUtils.money(incomingCost);
+        BigDecimal totalQuantity = stock.add(quantity);
+        if (totalQuantity.compareTo(BigDecimal.ZERO) <= 0) {
+            return unitCost;
+        }
+        BigDecimal totalValue = cost.multiply(stock).add(unitCost.multiply(quantity));
+        return MoneyUtils.money(totalValue.divide(totalQuantity, 6, RoundingMode.HALF_UP));
+    }
+
+    private boolean updatesCost(InventoryMovementType type, BigDecimal delta) {
+        return COST_UPDATE_TYPES.contains(type) && delta.compareTo(BigDecimal.ZERO) > 0;
+    }
 }
+
