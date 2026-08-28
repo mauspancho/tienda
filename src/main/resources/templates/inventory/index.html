@@ -12,8 +12,8 @@
     <section class="content">
       <h1>Inventario</h1>
       <div th:replace="~{fragments/layout :: alerts}"></div>
-      <div class="grid grid-2">
-        <form class="card form" th:object="${adjustmentForm}" th:action="@{/admin/inventory/adjust}" method="post">
+      <div class="inventory-layout">
+        <form class="card form inventory-adjust-card" th:object="${adjustmentForm}" th:action="@{/admin/inventory/adjust}" method="post">
           <h2>Ajustar inventario</h2>
           <div class="field"><label>Producto</label><select th:field="*{productId}"><option th:each="p:${products}" th:value="${p.id}" th:text="${p.name}"></option></select></div>
           <div class="grid grid-3">
@@ -24,7 +24,7 @@
           <div class="field"><label>Motivo / notas</label><input th:field="*{notes}" placeholder="Merma, producto vencido, error conteo"></div>
           <button class="btn btn-success">Actualizar inventario</button>
         </form>
-        <div class="table-wrap">
+        <div class="table-wrap inventory-movements">
           <table>
             <tr><th>Fecha</th><th>Producto</th><th>Tipo</th><th>Cantidad</th><th>Nuevo</th><th>Costo aplicado</th><th>Costo nuevo</th><th>Ajuste costo</th></tr>
             <tr th:each="m:${movements.content}">

@@ -122,14 +122,24 @@ class UserInterfaceAssetTest {
     @Test
     void inventoryAdjustmentsCaptureCostChanges() throws Exception {
         String inventory = Files.readString(ROOT.resolve("src/main/resources/templates/inventory/index.html"));
+        String css = Files.readString(ROOT.resolve("src/main/resources/static/css/input.css"));
 
         assertThat(inventory)
+                .contains("inventory-layout")
+                .contains("inventory-adjust-card")
+                .contains("inventory-movements")
                 .contains("th:field=\"*{unitCost}\"")
                 .contains("Costo unitario")
                 .contains("Costo aplicado")
                 .contains("Costo nuevo")
                 .contains("Ajuste costo")
                 .contains("m.costAdjustment");
+        assertThat(css)
+                .contains(".inventory-layout")
+                .contains("grid-template-columns: minmax(320px, 520px) minmax(0, 1fr)")
+                .contains(".inventory-adjust-card")
+                .contains(".inventory-movements")
+                .contains("resize: vertical");
     }
 }
 

@@ -2082,6 +2082,41 @@ html[data-theme="sunset"] .product-image-preview {
 
 
 /* Dashboard profit filters */
+
+.inventory-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 520px) minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+}
+.inventory-adjust-card {
+  align-self: start;
+  align-content: start;
+  height: auto;
+}
+.inventory-movements {
+  align-self: start;
+  max-height: clamp(28rem, calc(100vh - 10rem), 48rem);
+  min-height: 22rem;
+  overflow: auto;
+  resize: vertical;
+}
+.inventory-movements table {
+  min-width: 980px;
+}
+.inventory-movements th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+@media (max-width: 1180px) {
+  .inventory-layout {
+    grid-template-columns: 1fr;
+  }
+  .inventory-movements {
+    max-height: 34rem;
+  }
+}
 .dashboard-profit-title {
   align-items: flex-start;
   gap: 1rem;
