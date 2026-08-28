@@ -226,3 +226,19 @@ Pruebas manuales sugeridas:
 - Producto no registrado: escanear un código inexistente y verificar las opciones `Buscar informacion y registrar` y `Continuar escaneando`.
 - Permisos: denegar cámara y confirmar que aparece un mensaje claro sin romper captura manual ni lector USB.
 
+
+## Finanzas
+
+Los administradores pueden entrar a `Administracion -> Finanzas` para revisar ventas, costo vendido, ganancia bruta, gastos, utilidad neta, compras, reinversion, aportaciones del propietario, retiros, inventario valorizado y recuperacion de inversion inicial.
+
+La utilidad usa los costos historicos guardados en cada `SaleItem` (`unitCost` y `profit`), por lo que cambiar el costo actual de un producto no recalcula ventas antiguas.
+
+En `Compras` se captura el origen del dinero:
+
+- `Caja / ventas`: cuenta como reinversion del negocio.
+- `Capital propietario`: cuenta como aportacion del propietario.
+- `Credito proveedor`, `Otro` y `Sin clasificar`: quedan separados para analisis financiero.
+
+La pantalla `Finanzas -> Historico diario` permite consultar por fecha y exportar CSV. La pantalla `Finanzas -> Capital` permite registrar inversion inicial, aportaciones, retiros y ajustes manuales.
+
+`V7__add_finance_module.sql` agrega `capital_movement`, `purchase.funding_source` e indices para consultas financieras.

@@ -62,6 +62,7 @@ class PurchaseServiceTest {
 
         assertThat(saved.getSupplier()).isNull();
         assertThat(saved.getExternalFolio()).startsWith("COMP-");
+        assertThat(saved.getFundingSource()).isEqualTo(PurchaseFundingSource.BUSINESS_CASH);
         assertThat(saved.getTotal()).isEqualByComparingTo(new BigDecimal("210.00"));
         assertThat(product.getCurrentStock()).isEqualByComparingTo(new BigDecimal("36.000"));
         assertThat(product.getPurchaseCost()).isEqualByComparingTo(new BigDecimal("17.08"));

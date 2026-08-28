@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Finanzas diarias</title><link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-shell"><div th:replace="~{fragments/layout :: sidebar}"></div><main class="main"><div th:replace="~{fragments/layout :: header}"></div><section class="content finances-page">
+  <div class="page-title"><div><h1>Histórico diario</h1><p class="muted">Resumen de ventas, costos, gastos, compras y movimientos de capital por fecha.</p></div><a class="btn btn-outline btn-sm" th:href="@{/admin/finances}">Volver</a></div>
+  <form class="card finance-filter" method="get" th:action="@{/admin/finances/daily}">
+    <div class="field"><label>Desde</label><input type="date" name="from" th:value="${range.from}"></div>
+    <div class="field"><label>Hasta</label><input type="date" name="to" th:value="${range.to}"></div>
+    <button class="btn btn-success">Consultar</button>
+    <a class="btn btn-outline" th:href="@{/admin/finances/daily.csv(from=${range.from},to=${range.to})}">Exportar CSV</a>
+  </form>
+
+  <div class="grid grid-4" th:if="${detail != null}">
+    <div class="card"><span class="muted">Ventas del día</span><div class="metric" th:text="${@display.money(detail.sales)}">$0.00</div></div>
+    <div class="card"><span class="muted">Ganancia bruta</span><div class="metric" th:text="${@display.money(detail.grossProfit)}">$0.00</div></div>
+    <div class="card"><span class="muted">Gastos</span><div class="metric" th:text="${@display.money(detail.expenses)}">$0.00</div></div>
+    <div class="card"><span class="muted">Utilidad neta</span><div class="metric" th:text="${@display.money(detail.netProfit)}">$0.00</div></div>
+  </div>
+
+  <div class="card"><div class="table-wrap"><table><tr><th>Fecha</th><th>Ventas</th><th>Costo vendido</th><th>Ganancia bruta</th><th>Gastos</th><th>Utilidad neta</th><th>Compras</th><th>Reinversión</th><th>Aportaciones</th><th>Retiros</th><th>Tickets</th><th>Unidades</th></tr>
+    <tr th:each="d:${days}">
+      <td><a th:href="@{/admin/finances/daily(from=${range.from},to=${range.to},detailDate=${d.date})}" th:text="${#temporals.format(d.date, 'dd/MM/yyyy')}"></a></td>
+      <td th:text="${@display.money(d.sales)}"></td><td th:text="${@display.money(d.costOfGoodsSold)}"></td><td th:text="${@display.money(d.grossProfit)}"></td><td th:text="${@display.money(d.expenses)}"></td><td th:text="${@display.money(d.netProfit)}"></td><td th:text="${@display.money(d.purchases)}"></td><td th:text="${@display.money(d.reinvestment)}"></td><td th:text="${@display.money(d.ownerContributions)}"></td><td th:text="${@display.money(d.ownerWithdrawals)}"></td><td th:text="${d.tickets}"></td><td th:text="${@display.number(d.soldUnits)}"></td>
+    </tr>
+  </table></div></div>
+</section></main></div>
+</body></html>

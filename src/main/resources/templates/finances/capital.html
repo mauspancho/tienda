@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Capital</title><link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-shell"><div th:replace="~{fragments/layout :: sidebar}"></div><main class="main"><div th:replace="~{fragments/layout :: header}"></div><section class="content finances-page">
+  <div class="page-title"><div><h1>Capital</h1><p class="muted">Inversión inicial, aportaciones, retiros y ajustes del propietario.</p></div><div class="finance-actions"><a class="btn btn-outline btn-sm" th:href="@{/admin/finances}">Finanzas</a><a class="btn btn-primary btn-sm" th:href="@{/admin/finances/capital/new}">Nuevo movimiento</a></div></div>
+  <div th:replace="~{fragments/layout :: alerts}"></div>
+  <form class="card finance-filter" method="get" th:action="@{/admin/finances/capital}">
+    <div class="field"><label>Tipo</label><select name="type"><option value="">Todos</option><option th:each="t:${types}" th:value="${t}" th:text="${t.label}" th:selected="${selectedType == t}"></option></select></div>
+    <div class="field"><label>Desde</label><input type="date" name="from" th:value="${range.from}"></div>
+    <div class="field"><label>Hasta</label><input type="date" name="to" th:value="${range.to}"></div>
+    <button class="btn btn-success">Filtrar</button>
+  </form>
+  <div class="card"><div class="table-wrap"><table><tr><th>Fecha</th><th>Tipo</th><th>Monto</th><th>Descripción</th><th>Compra</th></tr>
+    <tr th:each="m:${movements.content}"><td th:text="${#temporals.format(m.movementDate, 'dd/MM/yyyy')}"></td><td><span class="badge badge-info" th:text="${m.type.label}"></span></td><td th:text="${@display.money(m.amount)}"></td><td th:text="${m.description}"></td><td th:text="${m.purchaseId != null ? '#' + m.purchaseId : '-'}"></td></tr>
+  </table></div></div>
+</section></main></div>
+</body></html>

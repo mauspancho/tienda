@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Dashboard</title><link rel="stylesheet" th:href="@{/css/app.css}">
@@ -20,6 +20,7 @@
         <div class="card"><span class="muted">Stock bajo</span><div class="metric" th:text="${summary.lowStockCount}">0</div></div>
         <div class="card"><span class="muted">Gastos día</span><div class="metric" th:text="${@display.money(summary.todayExpenses)}">$0</div></div>
         <div class="card"><span class="muted">Inversión inventario</span><div class="metric" th:text="${@display.money(summary.inventoryInvestment)}">$0</div></div>
+        <div class="card" sec:authorize="hasRole('ADMIN')"><span class="muted">Utilidad neta hoy</span><div class="metric" th:text="${@display.money(summary.grossProfit.subtract(summary.todayExpenses))}">$0</div><a class="btn btn-outline btn-sm" th:href="@{/admin/finances}">Ver finanzas</a></div>
       </div>
 
       <div class="grid grid-2" style="margin-top:16px">

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Movimiento de capital</title><link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-shell"><div th:replace="~{fragments/layout :: sidebar}"></div><main class="main"><div th:replace="~{fragments/layout :: header}"></div><section class="content finances-page">
+  <div class="page-title"><div><h1>Nuevo movimiento de capital</h1><p class="muted">Registra dinero del propietario o retiros. La reinversión se toma desde compras pagadas con caja.</p></div><a class="btn btn-outline btn-sm" th:href="@{/admin/finances/capital}">Volver</a></div>
+  <div th:replace="~{fragments/layout :: alerts}"></div>
+  <form class="card form finance-capital-form" th:object="${capitalMovementForm}" th:action="@{/admin/finances/capital}" method="post">
+    <div class="grid grid-3">
+      <div class="field"><label>Fecha</label><input type="date" th:field="*{movementDate}"><small class="field-error" th:errors="*{movementDate}"></small></div>
+      <div class="field"><label>Tipo</label><select th:field="*{type}"><option th:each="t:${manualTypes}" th:value="${t}" th:text="${t.label}"></option></select><small class="field-error" th:errors="*{type}"></small></div>
+      <div class="field"><label>Monto</label><input type="number" min="0.01" step="0.01" th:field="*{amount}"><small class="field-error" th:errors="*{amount}"></small></div>
+    </div>
+    <div class="field"><label>Descripción</label><input th:field="*{description}" placeholder="Ej. aportación para comprar inventario"></div>
+    <button class="btn btn-success">Guardar movimiento</button>
+  </form>
+</section></main></div>
+</body></html>

@@ -39,6 +39,7 @@ public class PurchaseController {
         model.addAttribute("purchaseForm", new PurchaseForm());
         model.addAttribute("suppliers", supplierRepository.findByActiveTrueOrderByNameAsc());
         model.addAttribute("products", productRepository.findAll(PageRequest.of(0, 500)).getContent());
+        model.addAttribute("fundingSources", PurchaseFundingSource.values());
         return "purchases/index";
     }
 
@@ -54,3 +55,4 @@ public class PurchaseController {
         return "redirect:/admin/purchases";
     }
 }
+

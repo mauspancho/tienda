@@ -52,6 +52,7 @@ public class PurchaseService {
                     .orElseThrow(() -> new DomainException("Proveedor no encontrado.")));
         }
         purchase.setExternalFolio(normalizeFolio(form.getExternalFolio()));
+        purchase.setFundingSource(form.getFundingSource());
         purchase.setNotes(form.getNotes());
         purchase.setSubtotal(subtotal);
         purchase.setTotal(subtotal);

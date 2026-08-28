@@ -17,6 +17,8 @@ public class PurchaseForm {
     @DecimalMin("0.00")
     private BigDecimal unitCost = BigDecimal.ZERO;
     private boolean updateProductCost = true;
+    @NotNull
+    private PurchaseFundingSource fundingSource = PurchaseFundingSource.BUSINESS_CASH;
     private String notes;
 
     public Long getSupplierId() { return supplierId; }
@@ -31,6 +33,9 @@ public class PurchaseForm {
     public void setUnitCost(BigDecimal unitCost) { this.unitCost = unitCost; }
     public boolean isUpdateProductCost() { return updateProductCost; }
     public void setUpdateProductCost(boolean updateProductCost) { this.updateProductCost = updateProductCost; }
+    public PurchaseFundingSource getFundingSource() { return fundingSource; }
+    public void setFundingSource(PurchaseFundingSource fundingSource) { this.fundingSource = fundingSource; }
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
 }
+

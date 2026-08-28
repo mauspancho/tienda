@@ -75,6 +75,14 @@
               </ul>
             </li>
             <li>
+              <span class="mega-section-title">Finanzas</span>
+              <ul>
+                <li><a th:href="@{/admin/finances}">Resumen financiero</a></li>
+                <li><a th:href="@{/admin/finances/daily}">Histórico diario</a></li>
+                <li><a th:href="@{/admin/finances/capital}">Capital</a></li>
+              </ul>
+            </li>
+            <li>
               <span class="mega-section-title">Sistema</span>
               <ul>
                 <li><a th:href="@{/admin/users}">Usuarios</a></li>
@@ -124,6 +132,9 @@
         <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/admin/suppliers}">Proveedores</a></li>
         <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/admin/expenses}">Gastos</a></li>
         <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/admin/reports}">Reportes</a></li>
+        <li class="mobile-finances-link" sec:authorize="hasRole('ADMIN')"><a th:href="@{/admin/finances}">Finanzas</a></li>
+        <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/admin/finances/daily}">Histórico diario</a></li>
+        <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/admin/finances/capital}">Capital</a></li>
         <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/admin/users}">Usuarios</a></li>
         <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/admin/settings}">Configuración</a></li>
         <li class="mobile-menu-logout">

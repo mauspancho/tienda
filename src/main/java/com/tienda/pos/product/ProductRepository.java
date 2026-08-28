@@ -62,6 +62,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("select coalesce(sum(p.currentStock * p.purchaseCost), 0) from Product p where p.active = true")
     java.math.BigDecimal inventoryValue();
 
+    @Query("select coalesce(sum(p.currentStock * p.salePrice), 0) from Product p where p.active = true")
+    java.math.BigDecimal inventorySaleValue();
+
     @EntityGraph(attributePaths = "category")
     @Query("""
             select p from Product p
@@ -96,3 +99,4 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("select coalesce(max(p.promotionOrder), 0) from Product p where p.promoted = true")
     Integer maxPromotionOrder();
 }
+

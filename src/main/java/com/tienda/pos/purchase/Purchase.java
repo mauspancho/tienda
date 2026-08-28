@@ -36,6 +36,10 @@ public class Purchase extends BaseEntity {
     @Column(nullable = false)
     private PurchaseStatus status = PurchaseStatus.CONFIRMED;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private PurchaseFundingSource fundingSource = PurchaseFundingSource.UNKNOWN;
+
     @Column(nullable = false, precision = 14, scale = 2)
     private BigDecimal subtotal = BigDecimal.ZERO;
 
@@ -67,6 +71,8 @@ public class Purchase extends BaseEntity {
     public void setExternalFolio(String externalFolio) { this.externalFolio = externalFolio; }
     public PurchaseStatus getStatus() { return status; }
     public void setStatus(PurchaseStatus status) { this.status = status; }
+    public PurchaseFundingSource getFundingSource() { return fundingSource; }
+    public void setFundingSource(PurchaseFundingSource fundingSource) { this.fundingSource = fundingSource; }
     public BigDecimal getSubtotal() { return subtotal; }
     public void setSubtotal(BigDecimal subtotal) { this.subtotal = subtotal; }
     public BigDecimal getTax() { return tax; }
@@ -80,3 +86,4 @@ public class Purchase extends BaseEntity {
     public List<PurchaseItem> getItems() { return items; }
     public void setItems(List<PurchaseItem> items) { this.items = items; }
 }
+

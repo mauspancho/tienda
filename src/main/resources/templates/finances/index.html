@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Finanzas</title><link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-shell"><div th:replace="~{fragments/layout :: sidebar}"></div><main class="main"><div th:replace="~{fragments/layout :: header}"></div><section class="content finances-page">
+  <div class="page-title">
+    <div><h1>Finanzas</h1><p class="muted">Utilidad, capital, reinversión e inventario con costos históricos de venta.</p></div>
+    <div class="finance-actions">
+      <a class="btn btn-outline btn-sm" th:href="@{/admin/finances/daily(from=${summary.range.from},to=${summary.range.to})}">Histórico diario</a>
+      <a class="btn btn-primary btn-sm" th:href="@{/admin/finances/capital}">Capital</a>
+    </div>
+  </div>
+  <div th:replace="~{fragments/layout :: alerts}"></div>
+
+  <form class="card finance-filter" method="get" th:action="@{/admin/finances}">
+    <div class="field"><label>Periodo</label><select name="period" data-finance-period>
+      <option value="TODAY" th:selected="${summary.range.period == 'TODAY'}">Hoy</option>
+      <option value="YESTERDAY" th:selected="${summary.range.period == 'YESTERDAY'}">Ayer</option>
+      <option value="LAST_7_DAYS" th:selected="${summary.range.period == 'LAST_7_DAYS'}">Últimos 7 días</option>
+      <option value="LAST_30_DAYS" th:selected="${summary.range.period == 'LAST_30_DAYS'}">Últimos 30 días</option>
+      <option value="THIS_MONTH" th:selected="${summary.range.period == 'THIS_MONTH'}">Este mes</option>
+      <option value="PREVIOUS_MONTH" th:selected="${summary.range.period == 'PREVIOUS_MONTH'}">Mes anterior</option>
+      <option value="THIS_YEAR" th:selected="${summary.range.period == 'THIS_YEAR'}">Este año</option>
+      <option value="CUSTOM" th:selected="${summary.range.period == 'CUSTOM'}">Personalizado</option>
+    </select></div>
+    <div class="field"><label>Desde</label><input type="date" name="from" th:value="${summary.range.from}"></div>
+    <div class="field"><label>Hasta</label><input type="date" name="to" th:value="${summary.range.to}"></div>
+    <div class="field"><label>Productos</label><select name="productSort">
+      <option value="profit" th:selected="${productSort == 'profit'}">Más rentables</option>
+      <option value="quantity" th:selected="${productSort == 'quantity'}">Más vendidos</option>
+      <option value="sales" th:selected="${productSort == 'sales'}">Mayor facturación</option>
+    </select></div>
+    <button class="btn btn-success">Aplicar</button>
+  </form>
+
+  <div class="grid grid-4 finance-metrics">
+    <div class="card"><span class="muted">Ventas periodo</span><div class="metric" th:text="${@display.money(summary.period.sales)}">$0.00</div><small th:text="${summary.period.tickets + ' tickets'}">0 tickets</small></div>
+    <div class="card"><span class="muted">Costo vendido</span><div class="metric" th:text="${@display.money(summary.period.costOfGoodsSold)}">$0.00</div><small>Costos históricos por venta</small></div>
+    <div class="card"><span class="muted">Ganancia bruta</span><div class="metric" th:text="${@display.money(summary.period.grossProfit)}">$0.00</div><small th:text="${@display.number(summary.period.soldUnits) + ' unidades'}">0 unidades</small></div>
+    <div class="card"><span class="muted">Utilidad neta</span><div class="metric" th:text="${@display.money(summary.period.netProfit)}">$0.00</div><small th:text="${'Gastos: ' + @display.money(summary.period.expenses)}">Gastos</small></div>
+  </div>
+
+  <div class="grid grid-3 finance-metrics">
+    <div class="card"><h2>Capital</h2><dl class="finance-list"><dt>Inversión inicial</dt><dd th:text="${@display.money(summary.initialInvestment)}"></dd><dt>Aportaciones</dt><dd th:text="${@display.money(summary.additionalContributions)}"></dd><dt>Retiros</dt><dd th:text="${@display.money(summary.ownerWithdrawalsTotal)}"></dd><dt>Capital dentro del negocio</dt><dd th:text="${@display.money(summary.capitalInsideBusiness)}"></dd></dl></div>
+    <div class="card"><h2>Inventario</h2><dl class="finance-list"><dt>Costo actual</dt><dd th:text="${@display.money(summary.inventoryCost)}"></dd><dt>Valor a precio venta</dt><dd th:text="${@display.money(summary.inventorySaleValue)}"></dd><dt>Utilidad potencial</dt><dd th:text="${@display.money(summary.inventoryPotentialProfit)}"></dd></dl></div>
+    <div class="card"><h2>Flujo simplificado</h2><dl class="finance-list"><dt>Entradas</dt><dd th:text="${@display.money(summary.cashIn)}"></dd><dt>Salidas</dt><dd th:text="${@display.money(summary.cashOut)}"></dd><dt>Flujo</dt><dd th:text="${@display.money(summary.cashFlow)}"></dd><dt>Recuperado</dt><dd th:text="${@display.number(summary.recoveryPercent) + '%'}"></dd></dl></div>
+  </div>
+
+  <div class="grid grid-2 finance-charts">
+    <div class="card"><h2>Ganancia por día</h2><div class="finance-bars" data-finance-bars>
+      <div class="finance-bar-row" th:each="d:${summary.daily}" th:attr="data-sales=${d.sales},data-gross=${d.grossProfit},data-net=${d.netProfit}">
+        <span th:text="${#temporals.format(d.date, 'dd/MM')}">día</span><div><i class="bar-sales"></i><i class="bar-gross"></i><i class="bar-net"></i></div><strong th:text="${@display.money(d.netProfit)}">$0.00</strong>
+      </div>
+    </div><div class="finance-legend"><span>Ventas</span><span>Bruta</span><span>Neta</span></div></div>
+    <div class="card"><h2>Capital mensual</h2><div class="finance-bars" data-capital-bars>
+      <div class="finance-bar-row" th:each="p:${summary.monthlyCapital}" th:attr="data-contributed=${p.value},data-profit=${p.secondary},data-withdrawals=${p.tertiary}">
+        <span th:text="${p.label}">mes</span><div><i class="bar-sales"></i><i class="bar-gross"></i><i class="bar-danger"></i></div><strong th:text="${@display.money(p.secondary)}">$0.00</strong>
+      </div>
+    </div><div class="finance-legend"><span>Aportado</span><span>Utilidad acum.</span><span>Retiros</span></div></div>
+  </div>
+
+  <div class="grid grid-2 finance-tables">
+    <div class="card"><h2>Productos</h2><div class="table-wrap"><table><tr><th>Producto</th><th>Ventas</th><th>Cant.</th><th>Costo</th><th>Utilidad</th><th>Margen</th></tr><tr th:each="p:${summary.products}"><td th:text="${p.product}"></td><td th:text="${@display.money(p.sales)}"></td><td th:text="${@display.number(p.quantity)}"></td><td th:text="${@display.money(p.costOfGoodsSold)}"></td><td th:text="${@display.money(p.profit)}"></td><td th:text="${@display.number(p.marginPercent) + '%'}"></td></tr></table></div></div>
+    <div class="card"><h2>Resumen diario</h2><div class="table-wrap"><table><tr><th>Fecha</th><th>Ventas</th><th>Utilidad</th><th>Gastos</th><th>Compras</th></tr><tr th:each="d:${summary.daily}"><td><a th:href="@{/admin/finances/daily(from=${summary.range.from},to=${summary.range.to},detailDate=${d.date})}" th:text="${#temporals.format(d.date, 'dd/MM/yyyy')}"></a></td><td th:text="${@display.money(d.sales)}"></td><td th:text="${@display.money(d.netProfit)}"></td><td th:text="${@display.money(d.expenses)}"></td><td th:text="${@display.money(d.purchases)}"></td></tr></table></div></div>
+  </div>
+</section></main></div>
+<script>
+(() => {
+  const value = raw => Math.abs(Number(raw || 0));
+  function paint(root, selectors) {
+    const rows = [...document.querySelectorAll(root)];
+    const max = Math.max(1, ...rows.flatMap(row => selectors.map(s => value(row.dataset[s.key]))));
+    rows.forEach(row => selectors.forEach(s => {
+      const el = row.querySelector(s.selector);
+      if (el) el.style.width = `${Math.max(4, value(row.dataset[s.key]) / max * 100)}%`;
+    }));
+  }
+  paint('[data-finance-bars] .finance-bar-row', [{key:'sales', selector:'.bar-sales'}, {key:'gross', selector:'.bar-gross'}, {key:'net', selector:'.bar-net'}]);
+  paint('[data-capital-bars] .finance-bar-row', [{key:'contributed', selector:'.bar-sales'}, {key:'profit', selector:'.bar-gross'}, {key:'withdrawals', selector:'.bar-danger'}]);
+})();
+</script>
+</body></html>

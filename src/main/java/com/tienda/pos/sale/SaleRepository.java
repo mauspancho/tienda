@@ -14,10 +14,10 @@ import java.util.Optional;
 
 public interface SaleRepository extends JpaRepository<Sale, Long> {
 
-    @EntityGraph(attributePaths = {"cashier", "customer", "payment", "items", "items.product"})
+    @EntityGraph(attributePaths = {"cashier", "customer", "payment", "items"})
     Optional<Sale> findByFolio(String folio);
 
-    @EntityGraph(attributePaths = {"cashier", "customer", "payment", "items", "items.product"})
+    @EntityGraph(attributePaths = {"cashier", "customer", "payment", "items"})
     Optional<Sale> findByFolioAndCashierUsername(String folio, String username);
 
     @EntityGraph(attributePaths = {"cashier", "customer", "payment", "items", "items.product"})
@@ -85,6 +85,31 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
     List<Object[]> dailyGrossProfitBetweenByCashier(@Param("username") String username, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
     @Query("""
+            select coalesce(sum(i.subtotal), 0),
+                   coalesce(sum(i.unitCost * i.quantity), 0),
+                   coalesce(sum(i.profit), 0),
+                   count(distinct s.id),
+                   coalesce(sum(i.quantity), 0)
+            from Sale s join s.items i
+            where s.saleDate between :start and :end and s.status = 'COMPLETED'
+            """)
+    Object[] financeTotals(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    @Query("""
+            select date(s.saleDate),
+                   coalesce(sum(i.subtotal), 0),
+                   coalesce(sum(i.unitCost * i.quantity), 0),
+                   coalesce(sum(i.profit), 0),
+                   count(distinct s.id),
+                   coalesce(sum(i.quantity), 0)
+            from Sale s join s.items i
+            where s.saleDate between :start and :end and s.status = 'COMPLETED'
+            group by date(s.saleDate)
+            order by date(s.saleDate)
+            """)
+    List<Object[]> dailyFinanceTotals(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    @Query("""
             select i.productNameSnapshot, coalesce(sum(i.quantity), 0), coalesce(sum(i.subtotal), 0), coalesce(sum(i.profit), 0)
             from SaleItem i
             where i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'
@@ -101,5 +126,44 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
             order by sum(i.quantity) desc
             """)
     List<Object[]> topProductsByCashier(@Param("username") String username, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end, Pageable pageable);
+
+    @Query("""
+            select i.productNameSnapshot,
+                   coalesce(sum(i.subtotal), 0),
+                   coalesce(sum(i.quantity), 0),
+                   coalesce(sum(i.unitCost * i.quantity), 0),
+                   coalesce(sum(i.profit), 0)
+            from SaleItem i
+            where i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'
+            group by i.productNameSnapshot
+            order by sum(i.profit) desc
+            """)
+    List<Object[]> profitableProducts(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end, Pageable pageable);
+
+    @Query("""
+            select i.productNameSnapshot,
+                   coalesce(sum(i.subtotal), 0),
+                   coalesce(sum(i.quantity), 0),
+                   coalesce(sum(i.unitCost * i.quantity), 0),
+                   coalesce(sum(i.profit), 0)
+            from SaleItem i
+            where i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'
+            group by i.productNameSnapshot
+            order by sum(i.quantity) desc
+            """)
+    List<Object[]> mostSoldProducts(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end, Pageable pageable);
+
+    @Query("""
+            select i.productNameSnapshot,
+                   coalesce(sum(i.subtotal), 0),
+                   coalesce(sum(i.quantity), 0),
+                   coalesce(sum(i.unitCost * i.quantity), 0),
+                   coalesce(sum(i.profit), 0)
+            from SaleItem i
+            where i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'
+            group by i.productNameSnapshot
+            order by sum(i.subtotal) desc
+            """)
+    List<Object[]> topBillingProducts(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end, Pageable pageable);
 }
 
