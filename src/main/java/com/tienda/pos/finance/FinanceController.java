@@ -6,7 +6,6 @@ import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -26,7 +25,6 @@ import java.util.List;
 @Controller
 @NormalMode
 @RequestMapping("/admin/finances")
-@PreAuthorize("hasRole('ADMIN')")
 public class FinanceController {
 
     private static final List<String> PERIODS = List.of("TODAY", "YESTERDAY", "LAST_7_DAYS", "LAST_30_DAYS", "THIS_MONTH", "PREVIOUS_MONTH", "THIS_YEAR", "CUSTOM");

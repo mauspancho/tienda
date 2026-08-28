@@ -21,7 +21,6 @@ import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -32,7 +31,6 @@ import java.util.Map;
 public class FinanceService {
 
     private static final ZoneId BUSINESS_ZONE = ZoneId.of("America/Mexico_City");
-    private static final DateTimeFormatter DAY_LABEL = DateTimeFormatter.ofPattern("dd MMM", new Locale("es", "MX"));
     private static final DateTimeFormatter MONTH_LABEL = DateTimeFormatter.ofPattern("MMM yyyy", new Locale("es", "MX"));
 
     private final SaleRepository saleRepository;
@@ -102,14 +100,14 @@ public class FinanceService {
                 cashOut,
                 cashFlow,
                 dailySummaries(range.from(), range.to()),
-                monthlyReinvestment(range.from().minusMonths(11), range.to()),
-                monthlyCapital(range.from().minusMonths(11), range.to()),
+                monthlyReinvestment(range.from().minusMonths(11).withDayOfMonth(1), range.to()),
+                monthlyCapital(range.from().minusMonths(11).withDayOfMonth(1), range.to()),
                 productRows(range.from(), range.to(), productSort)
         );
     }
 
     public List<DailyFinanceSummary> daily(LocalDate from, LocalDate to) {
-        FinanceRange range = range("LAST_30_DAYS", from, to);
+        FinanceRange range = range("CUSTOM", from, to);
         return dailySummaries(range.from(), range.to());
     }
 
@@ -137,7 +135,7 @@ public class FinanceService {
     public FinanceRange range(String period, LocalDate from, LocalDate to) {
         LocalDate now = today();
         String normalized = period == null || period.isBlank() ? "LAST_30_DAYS" : period;
-        return switch (normalized) {
+        FinanceRange candidate = switch (normalized) {
             case "TODAY" -> new FinanceRange(now, now, "Hoy", normalized);
             case "YESTERDAY" -> new FinanceRange(now.minusDays(1), now.minusDays(1), "Ayer", normalized);
             case "LAST_7_DAYS" -> new FinanceRange(now.minusDays(6), now, "Últimos 7 días", normalized);
@@ -150,6 +148,10 @@ public class FinanceService {
             case "CUSTOM" -> new FinanceRange(from == null ? now : from, to == null ? now : to, "Personalizado", normalized);
             default -> new FinanceRange(now.minusDays(29), now, "Últimos 30 días", "LAST_30_DAYS");
         };
+        if (candidate.from().isAfter(candidate.to())) {
+            return new FinanceRange(candidate.to(), candidate.from(), candidate.label(), candidate.period());
+        }
+        return candidate;
     }
 
     private FinancePeriodSummary periodSummary(LocalDate from, LocalDate to) {
@@ -204,8 +206,9 @@ public class FinanceService {
             CapitalDay row = capital.getOrDefault(month, CapitalDay.ZERO);
             contributed = money(contributed.add(row.contributions()));
             withdrawals = money(withdrawals.add(row.withdrawals()));
-            FinancePeriodSummary monthSummary = periodSummary(month.atDay(1), month.atEndOfMonth().isAfter(to) ? to : month.atEndOfMonth());
-            points.add(new FinanceChartPoint(month.format(MONTH_LABEL).replace(".", ""), contributed, monthSummary.netProfit(), withdrawals));
+            LocalDate monthEnd = month.atEndOfMonth().isAfter(to) ? to : month.atEndOfMonth();
+            BigDecimal cumulativeProfit = money(periodSummary(LocalDate.of(1970, 1, 1), monthEnd).netProfit());
+            points.add(new FinanceChartPoint(month.format(MONTH_LABEL).replace(".", ""), contributed, cumulativeProfit, withdrawals));
         }
         return points;
     }

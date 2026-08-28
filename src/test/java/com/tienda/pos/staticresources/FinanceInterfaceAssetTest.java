@@ -17,8 +17,8 @@ class FinanceInterfaceAssetTest {
         String layout = Files.readString(ROOT.resolve("src/main/resources/templates/fragments/layout.html"));
         String controller = Files.readString(ROOT.resolve("src/main/java/com/tienda/pos/finance/FinanceController.java"));
 
-        assertThat(security).contains("/admin/finances/**").contains("hasRole(\"ADMIN\")");
-        assertThat(controller).contains("@RequestMapping(\"/admin/finances\")").contains("@PreAuthorize(\"hasRole('ADMIN')\")");
+        assertThat(security).contains("/admin/finances", "/admin/finances/**").contains("hasRole(\"ADMIN\")");
+        assertThat(controller).contains("@RequestMapping(\"/admin/finances\")").contains("@NormalMode").doesNotContain("@PreAuthorize");
         assertThat(layout)
                 .contains("Resumen financiero")
                 .contains("@{/admin/finances}")
