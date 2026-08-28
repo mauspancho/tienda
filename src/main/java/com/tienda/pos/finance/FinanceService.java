@@ -8,12 +8,15 @@ import com.tienda.pos.product.ProductRepository;
 import com.tienda.pos.purchase.PurchaseFundingSource;
 import com.tienda.pos.purchase.PurchaseRepository;
 import com.tienda.pos.sale.SaleRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
 import java.sql.Date;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -30,6 +33,7 @@ import java.util.Map;
 @NormalMode
 public class FinanceService {
 
+    private static final Logger log = LoggerFactory.getLogger(FinanceService.class);
     private static final ZoneId BUSINESS_ZONE = ZoneId.of("America/Mexico_City");
     private static final DateTimeFormatter MONTH_LABEL = DateTimeFormatter.ofPattern("MMM yyyy", new Locale("es", "MX"));
 
@@ -312,32 +316,68 @@ public class FinanceService {
     }
 
     private BigDecimal value(Object[] row, int index) {
-        if (row == null || row.length <= index || row[index] == null) {
+        return decimalValue(rowValue(row, index));
+    }
+
+    private Object rowValue(Object[] row, int index) {
+        if (row == null || row.length <= index) {
+            return null;
+        }
+        return row[index];
+    }
+
+    private BigDecimal decimalValue(Object rawValue) {
+        if (rawValue == null) {
             return BigDecimal.ZERO;
         }
-        Object value = row[index];
-        if (value instanceof BigDecimal decimal) {
+        if (rawValue instanceof BigDecimal decimal) {
             return decimal;
         }
-        if (value instanceof Number number) {
+        if (rawValue instanceof Number number) {
             return new BigDecimal(number.toString());
         }
-        return new BigDecimal(value.toString());
+        if (rawValue instanceof byte[] bytes) {
+            return decimalValue(new String(bytes, StandardCharsets.UTF_8));
+        }
+        if (rawValue instanceof char[] chars) {
+            return decimalValue(new String(chars));
+        }
+        if (rawValue instanceof Object[] nested) {
+            return nested.length == 0 ? BigDecimal.ZERO : decimalValue(nested[0]);
+        }
+        String text = rawValue.toString().trim();
+        if (text.isBlank() || "-".equals(text)) {
+            return BigDecimal.ZERO;
+        }
+        try {
+            return new BigDecimal(text.replace("$", "").replace(",", ""));
+        } catch (NumberFormatException ex) {
+            log.warn("Valor financiero no numerico recibido: {} ({})", text, rawValue.getClass().getName());
+            return BigDecimal.ZERO;
+        }
     }
 
     private Long number(Object value) {
+        if (value == null) {
+            return 0L;
+        }
         if (value instanceof Number number) {
             return number.longValue();
         }
-        return Long.valueOf(value.toString());
+        if (value instanceof byte[] bytes) {
+            return number(new String(bytes, StandardCharsets.UTF_8));
+        }
+        if (value instanceof char[] chars) {
+            return number(new String(chars));
+        }
+        if (value instanceof Object[] nested) {
+            return nested.length == 0 ? 0L : number(nested[0]);
+        }
+        return Long.valueOf(value.toString().trim());
     }
 
     private long longValue(Object[] row, int index) {
-        if (row == null || row.length <= index || row[index] == null) {
-            return 0L;
-        }
-        Object value = row[index];
-        return value instanceof Number number ? number.longValue() : Long.parseLong(value.toString());
+        return number(rowValue(row, index));
     }
 
     private LocalDate toLocalDate(Object value) {

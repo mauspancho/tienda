@@ -8,6 +8,7 @@ import com.tienda.pos.sale.SaleRepository;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -63,5 +64,37 @@ class FinanceServiceTest {
         assertThat(summary.inventoryPotentialProfit()).isEqualByComparingTo("200.00");
         assertThat(summary.products()).hasSize(1);
         assertThat(summary.products().get(0).marginPercent()).isEqualByComparingTo("30.00");
+    }
+
+    @Test
+    void summaryAcceptsDatabaseAggregateValuesReturnedAsStringsAndBytes() {
+        when(saleRepository.financeTotals(any(), any()))
+                .thenReturn(new Object[]{"100.00", "70.00".getBytes(StandardCharsets.UTF_8), "30.00".toCharArray(), "2", new Object[]{"5.00"}});
+        when(saleRepository.dailyFinanceTotals(any(), any())).thenReturn(List.<Object[]>of());
+        when(saleRepository.profitableProducts(any(), any(), any())).thenReturn(List.<Object[]>of(
+                new Object[]{"Frijol", "100.00", "5.00", "70.00".getBytes(StandardCharsets.UTF_8), "30.00".toCharArray()}
+        ));
+        when(expenseRepository.totalBetween(any(LocalDate.class), any(LocalDate.class))).thenReturn(BigDecimal.ZERO);
+        when(expenseRepository.dailyTotalsBetween(any(LocalDate.class), any(LocalDate.class))).thenReturn(List.<Object[]>of());
+        when(purchaseRepository.totalBetween(any(LocalDate.class), any(LocalDate.class))).thenReturn(BigDecimal.ZERO);
+        when(purchaseRepository.totalByFundingSourceBetween(any(), any(LocalDate.class), any(LocalDate.class))).thenReturn(BigDecimal.ZERO);
+        when(purchaseRepository.dailyTotalsBetween(any(LocalDate.class), any(LocalDate.class))).thenReturn(List.<Object[]>of());
+        when(purchaseRepository.dailyTotalsByFundingSourceBetween(any(), any(LocalDate.class), any(LocalDate.class))).thenReturn(List.<Object[]>of());
+        when(purchaseRepository.monthlyTotalsByFundingSourceBetween(any(), any(LocalDate.class), any(LocalDate.class))).thenReturn(List.<Object[]>of());
+        when(capitalMovementRepository.totalByType(any())).thenReturn(BigDecimal.ZERO);
+        when(capitalMovementRepository.totalByTypeBetween(any(), any(LocalDate.class), any(LocalDate.class))).thenReturn(BigDecimal.ZERO);
+        when(capitalMovementRepository.dailyCapitalTotals(any(LocalDate.class), any(LocalDate.class))).thenReturn(List.<Object[]>of());
+        when(capitalMovementRepository.monthlyCapitalTotals(any(LocalDate.class), any(LocalDate.class))).thenReturn(List.<Object[]>of());
+        when(productRepository.inventoryValue()).thenReturn(BigDecimal.ZERO);
+        when(productRepository.inventorySaleValue()).thenReturn(BigDecimal.ZERO);
+
+        FinanceSummary summary = service.summary("TODAY", null, null, "profit");
+
+        assertThat(summary.period().sales()).isEqualByComparingTo("100.00");
+        assertThat(summary.period().costOfGoodsSold()).isEqualByComparingTo("70.00");
+        assertThat(summary.period().grossProfit()).isEqualByComparingTo("30.00");
+        assertThat(summary.period().tickets()).isEqualTo(2L);
+        assertThat(summary.period().soldUnits()).isEqualByComparingTo("5.00");
+        assertThat(summary.products().get(0).costOfGoodsSold()).isEqualByComparingTo("70.00");
     }
 }
