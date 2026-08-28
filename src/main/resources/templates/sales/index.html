@@ -1,1 +1,63 @@
-<!doctype html><html lang="es" xmlns:th="http://www.thymeleaf.org"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Ventas</title><link rel="stylesheet" th:href="@{/css/app.css}"></head><body><div class="app-shell"><div th:replace="~{fragments/layout :: sidebar}"></div><main class="main"><div th:replace="~{fragments/layout :: header}"></div><section class="content"><h1>Ventas</h1><div class="table-wrap"><table><tr><th>Folio</th><th>Fecha</th><th>Cajero</th><th>Total</th><th>Pago</th><th>Estado</th></tr><tr th:each="s:${sales.content}"><td><a th:href="@{'/admin/sales/' + ${s.folio}}" th:text="${s.folio}"></a></td><td th:text="${#temporals.format(s.saleDate,'dd/MM/yyyy HH:mm')}"></td><td th:text="${s.cashier != null ? s.cashier.username : ''}"></td><td th:text="${@display.money(s.total)}"></td><td th:text="${s.payment != null ? s.payment.method : ''}"></td><td><span class="badge badge-green" th:text="${s.status}"></span></td></tr></table></div></section></main></div></body></html>
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ventas</title><link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-shell">
+  <div th:replace="~{fragments/layout :: sidebar}"></div>
+  <main class="main">
+    <div th:replace="~{fragments/layout :: header}"></div>
+    <section class="content">
+      <h1>Ventas</h1>
+      <div class="table-wrap sales-table-wrap">
+        <table class="sales-table">
+          <tr><th>Folio</th><th>Fecha</th><th>Cajero</th><th>Total</th><th>Pago</th><th>Estado</th><th>Detalle</th></tr>
+          <th:block th:each="s,iter:${sales.content}">
+            <tr>
+              <td><a th:href="@{'/admin/sales/' + ${s.folio}}" th:text="${s.folio}"></a></td>
+              <td th:text="${#temporals.format(s.saleDate,'dd/MM/yyyy HH:mm')}"></td>
+              <td th:text="${s.cashier != null ? s.cashier.username : ''}"></td>
+              <td th:text="${@display.money(s.total)}"></td>
+              <td th:text="${s.payment != null ? s.payment.method : ''}"></td>
+              <td><span class="badge badge-green" th:text="${s.status}"></span></td>
+              <td><button class="btn btn-muted sale-toggle" type="button" th:attr="data-sale-detail=${'sale-detail-' + iter.index}">Ver productos</button></td>
+            </tr>
+            <tr class="sale-detail-row" th:id="${'sale-detail-' + iter.index}" hidden>
+              <td colspan="7">
+                <div class="sale-detail-panel">
+                  <table>
+                    <tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Subtotal</th></tr>
+                    <tr th:each="i:${s.items}">
+                      <td>
+                        <strong th:text="${i.productNameSnapshot}"></strong>
+                        <span class="muted" th:text="${i.product != null ? i.product.code : ''}"></span>
+                      </td>
+                      <td th:text="${@display.number(i.quantity)}"></td>
+                      <td th:text="${@display.money(i.unitPrice)}"></td>
+                      <td th:text="${@display.money(i.subtotal)}"></td>
+                    </tr>
+                  </table>
+                </div>
+              </td>
+            </tr>
+          </th:block>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+<script>
+document.querySelectorAll('.sale-toggle').forEach(button => {
+  button.addEventListener('click', () => {
+    const detail = document.getElementById(button.dataset.saleDetail);
+    if (!detail) return;
+    const hidden = detail.hasAttribute('hidden');
+    detail.toggleAttribute('hidden', !hidden);
+    button.textContent = hidden ? 'Ocultar productos' : 'Ver productos';
+  });
+});
+</script>
+</body>
+</html>

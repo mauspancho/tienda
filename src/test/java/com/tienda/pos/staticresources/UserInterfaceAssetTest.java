@@ -148,5 +148,27 @@ class UserInterfaceAssetTest {
                 .contains(".inventory-row-muted")
                 .contains("resize: vertical");
     }
+    @Test
+    void salesListShowsExpandableSoldProducts() throws Exception {
+        String sales = Files.readString(ROOT.resolve("src/main/resources/templates/sales/index.html"));
+        String repository = Files.readString(ROOT.resolve("src/main/java/com/tienda/pos/sale/SaleRepository.java"));
+        String css = Files.readString(ROOT.resolve("src/main/resources/static/css/input.css"));
+
+        assertThat(sales)
+                .contains("sale-toggle")
+                .contains("sale-detail-row")
+                .contains("sale-detail-panel")
+                .contains("Ver productos")
+                .contains("Ocultar productos")
+                .contains("th:each=\"i:${s.items}\"")
+                .contains("i.productNameSnapshot")
+                .contains("i.subtotal");
+        assertThat(repository)
+                .contains("\"cashier\", \"customer\", \"payment\", \"items\"");
+        assertThat(css)
+                .contains(".sales-table-wrap")
+                .contains(".sale-detail-panel")
+                .contains(".sale-toggle");
+    }
 }
 

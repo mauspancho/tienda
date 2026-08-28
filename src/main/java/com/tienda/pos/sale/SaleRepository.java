@@ -14,16 +14,16 @@ import java.util.Optional;
 
 public interface SaleRepository extends JpaRepository<Sale, Long> {
 
-    @EntityGraph(attributePaths = {"cashier", "customer", "payment", "items"})
+    @EntityGraph(attributePaths = {"cashier", "customer", "payment", "items", "items.product"})
     Optional<Sale> findByFolio(String folio);
 
-    @EntityGraph(attributePaths = {"cashier", "customer", "payment", "items"})
+    @EntityGraph(attributePaths = {"cashier", "customer", "payment", "items", "items.product"})
     Optional<Sale> findByFolioAndCashierUsername(String folio, String username);
 
-    @EntityGraph(attributePaths = {"cashier", "customer", "payment"})
+    @EntityGraph(attributePaths = {"cashier", "customer", "payment", "items", "items.product"})
     Page<Sale> findAllByOrderBySaleDateDesc(Pageable pageable);
 
-    @EntityGraph(attributePaths = {"cashier", "customer", "payment"})
+    @EntityGraph(attributePaths = {"cashier", "customer", "payment", "items", "items.product"})
     Page<Sale> findByCashierUsernameOrderBySaleDateDesc(String username, Pageable pageable);
 
     long countBySaleDateBetweenAndStatus(LocalDateTime start, LocalDateTime end, SaleStatus status);
@@ -102,3 +102,4 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
             """)
     List<Object[]> topProductsByCashier(@Param("username") String username, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end, Pageable pageable);
 }
+

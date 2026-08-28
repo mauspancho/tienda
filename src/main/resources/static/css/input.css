@@ -2081,7 +2081,54 @@ html[data-theme="sunset"] .product-image-preview {
 }
 
 
-/* Dashboard profit filters */
+/* Sales expandable rows */
+.sales-table-wrap {
+  max-height: calc(100vh - 10rem);
+  overflow: auto;
+}
+.sales-table {
+  min-width: 980px;
+}
+.sales-table > tbody > tr:first-child th,
+.sales-table > tr:first-child th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.sale-toggle {
+  min-height: 2.2rem;
+  padding: .45rem .75rem;
+  white-space: nowrap;
+}
+.sale-detail-row > td {
+  padding: 0;
+  background: color-mix(in srgb, hsl(var(--b2)) 78%, transparent);
+}
+.sale-detail-panel {
+  padding: .75rem 1rem 1rem;
+}
+.sale-detail-panel table {
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, hsl(var(--bc)) 28%, transparent);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.sale-detail-panel strong,
+.sale-detail-panel .muted {
+  display: block;
+}
+.sale-detail-panel .muted {
+  margin-top: .15rem;
+  font-size: .82rem;
+}
+@media (max-width: 720px) {
+  .sales-table-wrap {
+    max-height: none;
+  }
+  .sale-detail-panel {
+    padding: .65rem;
+  }
+}
 
 .inventory-layout {
   display: grid;
@@ -2128,6 +2175,8 @@ html[data-theme="sunset"] .product-image-preview {
     max-height: 34rem;
   }
 }
+
+/* Dashboard profit filters */
 .dashboard-profit-title {
   align-items: flex-start;
   gap: 1rem;
