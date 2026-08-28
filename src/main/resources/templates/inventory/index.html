@@ -26,8 +26,8 @@
         </form>
         <div class="table-wrap inventory-movements">
           <table>
-            <tr><th>Fecha</th><th>Producto</th><th>Tipo</th><th>Cantidad</th><th>Nuevo</th><th>Costo aplicado</th><th>Costo nuevo</th><th>Ajuste costo</th></tr>
-            <tr th:each="m:${movements.content}">
+            <tr><th>Fecha</th><th>Producto</th><th>Tipo</th><th>Cantidad</th><th>Nuevo</th><th>Costo aplicado</th><th>Costo nuevo</th><th>Ajuste costo</th><th>Estado</th><th>Acción</th></tr>
+            <tr th:each="m:${movements.content}" th:classappend="${m.reversed || m.reversalMovement ? 'inventory-row-muted' : ''}">
               <td th:text="${#temporals.format(m.createdAt,'dd/MM HH:mm')}"></td>
               <td th:text="${m.product.name}"></td>
               <td th:text="${m.movementType}"></td>
@@ -36,6 +36,17 @@
               <td th:text="${m.unitCost != null ? @display.money(m.unitCost) : '-'}"></td>
               <td th:text="${m.newPurchaseCost != null ? @display.money(m.newPurchaseCost) : '-'}"></td>
               <td th:text="${m.costAdjustment != null ? @display.money(m.costAdjustment) : '-'}"></td>
+              <td>
+                <span th:if="${m.reversed}" class="badge badge-red">Retirado</span>
+                <span th:if="${!m.reversed && m.reversalMovement}" class="badge badge-yellow">Reversa</span>
+                <span th:if="${!m.reversed && !m.reversalMovement}" class="badge badge-green">Activo</span>
+              </td>
+              <td>
+                <form th:if="${m.reversible}" class="inventory-reverse-form" th:action="@{/admin/inventory/movements/{id}/reverse(id=${m.id})}" method="post" onsubmit="return confirm('Se retirará este movimiento y se ajustará stock/costo. ¿Continuar?')">
+                  <button class="btn btn-danger" type="submit">Retirar</button>
+                </form>
+                <span th:if="${!m.reversible}" class="muted">-</span>
+              </td>
             </tr>
           </table>
         </div>
@@ -45,4 +56,3 @@
 </div>
 </body>
 </html>
-

@@ -2102,12 +2102,23 @@ html[data-theme="sunset"] .product-image-preview {
   resize: vertical;
 }
 .inventory-movements table {
-  min-width: 980px;
+  min-width: 1220px;
 }
 .inventory-movements th {
   position: sticky;
   top: 0;
   z-index: 1;
+}
+.inventory-row-muted {
+  opacity: .68;
+}
+.inventory-reverse-form {
+  margin: 0;
+}
+.inventory-reverse-form .btn {
+  min-height: 2.15rem;
+  padding: .45rem .7rem;
+  white-space: nowrap;
 }
 @media (max-width: 1180px) {
   .inventory-layout {

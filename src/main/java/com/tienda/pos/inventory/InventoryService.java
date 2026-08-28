@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.EnumSet;
 
 @Service
@@ -71,17 +72,62 @@ public class InventoryService {
     }
 
     @Transactional
-    public void createMovement(Product product, InventoryMovementType type, BigDecimal signedQuantity,
-                               BigDecimal previous, BigDecimal next, String referenceType, Long referenceId, String notes) {
-        createMovement(product, type, signedQuantity, previous, next, referenceType, referenceId, notes,
+    public void reverseMovement(Long movementId) {
+        InventoryMovement original = movementRepository.findDetailedById(movementId)
+                .orElseThrow(() -> new DomainException("Movimiento no encontrado."));
+        if (!original.isReversible()) {
+            throw new DomainException("Este movimiento no se puede retirar desde inventario.");
+        }
+        Product product = productRepository.findByIdForUpdate(original.getProduct().getId())
+                .orElseThrow(() -> new DomainException("Producto no encontrado."));
+        if (changesCost(original) && movementRepository.existsNewerCostChangeForProduct(product.getId(), original.getCreatedAt())) {
+            throw new DomainException("Retira primero los movimientos posteriores que cambiaron el costo de este producto.");
+        }
+
+        BigDecimal previous = product.getCurrentStock();
+        BigDecimal reverseQuantity = original.getQuantity().negate();
+        BigDecimal next = previous.add(reverseQuantity);
+        if (next.compareTo(BigDecimal.ZERO) < 0) {
+            throw new DomainException("No hay suficiente inventario para retirar este movimiento.");
+        }
+
+        BigDecimal previousPurchaseCost = null;
+        BigDecimal newPurchaseCost = null;
+        BigDecimal costAdjustment = null;
+        if (changesCost(original)) {
+            previousPurchaseCost = MoneyUtils.money(product.getPurchaseCost());
+            newPurchaseCost = MoneyUtils.money(original.getPreviousPurchaseCost());
+            costAdjustment = original.getCostAdjustment() == null ? BigDecimal.ZERO : MoneyUtils.money(original.getCostAdjustment().negate());
+            product.setPurchaseCost(newPurchaseCost);
+        }
+
+        product.setCurrentStock(next);
+        product.setUpdatedBy(CurrentUser.username());
+        productRepository.save(product);
+
+        InventoryMovement reversal = createMovement(product, reverseType(original.getMovementType()), reverseQuantity, previous, next,
+                "REVERSAL", original.getId(), "Retiro del movimiento #" + original.getId(),
+                original.getUnitCost(), previousPurchaseCost, newPurchaseCost, costAdjustment);
+        original.setReversed(true);
+        original.setReversedAt(LocalDateTime.now());
+        original.setReversedBy(CurrentUser.username());
+        original.setReversalMovementId(reversal.getId());
+        original.setUpdatedBy(CurrentUser.username());
+        movementRepository.save(original);
+    }
+
+    @Transactional
+    public InventoryMovement createMovement(Product product, InventoryMovementType type, BigDecimal signedQuantity,
+                                            BigDecimal previous, BigDecimal next, String referenceType, Long referenceId, String notes) {
+        return createMovement(product, type, signedQuantity, previous, next, referenceType, referenceId, notes,
                 null, null, null, null);
     }
 
     @Transactional
-    public void createMovement(Product product, InventoryMovementType type, BigDecimal signedQuantity,
-                               BigDecimal previous, BigDecimal next, String referenceType, Long referenceId, String notes,
-                               BigDecimal unitCost, BigDecimal previousPurchaseCost, BigDecimal newPurchaseCost,
-                               BigDecimal costAdjustment) {
+    public InventoryMovement createMovement(Product product, InventoryMovementType type, BigDecimal signedQuantity,
+                                            BigDecimal previous, BigDecimal next, String referenceType, Long referenceId, String notes,
+                                            BigDecimal unitCost, BigDecimal previousPurchaseCost, BigDecimal newPurchaseCost,
+                                            BigDecimal costAdjustment) {
         InventoryMovement movement = new InventoryMovement();
         movement.setProduct(product);
         movement.setMovementType(type);
@@ -96,7 +142,7 @@ public class InventoryService {
         movement.setNewPurchaseCost(newPurchaseCost == null ? null : MoneyUtils.money(newPurchaseCost));
         movement.setCostAdjustment(costAdjustment == null ? null : MoneyUtils.money(costAdjustment));
         movement.setCreatedBy(CurrentUser.username());
-        movementRepository.save(movement);
+        return movementRepository.save(movement);
     }
 
     public BigDecimal signedQuantity(InventoryMovementType type, BigDecimal quantity) {
@@ -120,5 +166,18 @@ public class InventoryService {
     private boolean updatesCost(InventoryMovementType type, BigDecimal delta) {
         return COST_UPDATE_TYPES.contains(type) && delta.compareTo(BigDecimal.ZERO) > 0;
     }
-}
 
+    private boolean changesCost(InventoryMovement movement) {
+        return movement.getPreviousPurchaseCost() != null && movement.getNewPurchaseCost() != null;
+    }
+
+    private InventoryMovementType reverseType(InventoryMovementType type) {
+        return switch (type) {
+            case PURCHASE -> InventoryMovementType.PURCHASE_RETURN;
+            case PURCHASE_RETURN -> InventoryMovementType.PURCHASE;
+            case ADJUSTMENT_IN, INITIAL_STOCK -> InventoryMovementType.ADJUSTMENT_OUT;
+            case ADJUSTMENT_OUT -> InventoryMovementType.ADJUSTMENT_IN;
+            case SALE, SALE_RETURN -> throw new DomainException("Este movimiento no se puede retirar desde inventario.");
+        };
+    }
+}

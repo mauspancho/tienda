@@ -128,6 +128,11 @@ class UserInterfaceAssetTest {
                 .contains("inventory-layout")
                 .contains("inventory-adjust-card")
                 .contains("inventory-movements")
+                .contains("/admin/inventory/movements/{id}/reverse")
+                .contains("Retirar")
+                .contains("Retirado")
+                .contains("Reversa")
+                .contains("m.reversible")
                 .contains("th:field=\"*{unitCost}\"")
                 .contains("Costo unitario")
                 .contains("Costo aplicado")
@@ -139,6 +144,8 @@ class UserInterfaceAssetTest {
                 .contains("grid-template-columns: minmax(320px, 520px) minmax(0, 1fr)")
                 .contains(".inventory-adjust-card")
                 .contains(".inventory-movements")
+                .contains(".inventory-reverse-form")
+                .contains(".inventory-row-muted")
                 .contains("resize: vertical");
     }
 }

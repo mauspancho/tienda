@@ -13,6 +13,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "inventory_movement")
@@ -51,9 +52,30 @@ public class InventoryMovement extends BaseEntity {
     @Column(precision = 14, scale = 2)
     private BigDecimal costAdjustment;
 
+    @Column(nullable = false)
+    private boolean reversed = false;
+
+    private LocalDateTime reversedAt;
+    private String reversedBy;
+    private Long reversalMovementId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private AppUser user;
+
+    public boolean isReversible() {
+        if (reversed || isReversalMovement()) {
+            return false;
+        }
+        return switch (movementType) {
+            case PURCHASE, PURCHASE_RETURN, ADJUSTMENT_IN, ADJUSTMENT_OUT, INITIAL_STOCK -> true;
+            case SALE, SALE_RETURN -> false;
+        };
+    }
+
+    public boolean isReversalMovement() {
+        return "REVERSAL".equals(referenceType);
+    }
 
     public Product getProduct() { return product; }
     public void setProduct(Product product) { this.product = product; }
@@ -73,6 +95,14 @@ public class InventoryMovement extends BaseEntity {
     public void setNewPurchaseCost(BigDecimal newPurchaseCost) { this.newPurchaseCost = newPurchaseCost; }
     public BigDecimal getCostAdjustment() { return costAdjustment; }
     public void setCostAdjustment(BigDecimal costAdjustment) { this.costAdjustment = costAdjustment; }
+    public boolean isReversed() { return reversed; }
+    public void setReversed(boolean reversed) { this.reversed = reversed; }
+    public LocalDateTime getReversedAt() { return reversedAt; }
+    public void setReversedAt(LocalDateTime reversedAt) { this.reversedAt = reversedAt; }
+    public String getReversedBy() { return reversedBy; }
+    public void setReversedBy(String reversedBy) { this.reversedBy = reversedBy; }
+    public Long getReversalMovementId() { return reversalMovementId; }
+    public void setReversalMovementId(Long reversalMovementId) { this.reversalMovementId = reversalMovementId; }
     public String getReferenceType() { return referenceType; }
     public void setReferenceType(String referenceType) { this.referenceType = referenceType; }
     public Long getReferenceId() { return referenceId; }
@@ -82,4 +112,3 @@ public class InventoryMovement extends BaseEntity {
     public AppUser getUser() { return user; }
     public void setUser(AppUser user) { this.user = user; }
 }
-

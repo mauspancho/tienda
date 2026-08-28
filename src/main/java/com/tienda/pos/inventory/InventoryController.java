@@ -1,6 +1,7 @@
 package com.tienda.pos.inventory;
 
 import com.tienda.pos.common.NormalMode;
+import com.tienda.pos.exception.DomainException;
 import com.tienda.pos.product.ProductRepository;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.PageRequest;
@@ -10,6 +11,7 @@ import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -51,6 +53,17 @@ public class InventoryController {
         }
         inventoryService.adjust(form);
         redirectAttributes.addFlashAttribute("success", "Inventario actualizado.");
+        return "redirect:/admin/inventory";
+    }
+
+    @PostMapping("/inventory/movements/{id}/reverse")
+    public String reverseMovement(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        try {
+            inventoryService.reverseMovement(id);
+            redirectAttributes.addFlashAttribute("success", "Movimiento retirado y stock ajustado.");
+        } catch (DomainException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        }
         return "redirect:/admin/inventory";
     }
 }
