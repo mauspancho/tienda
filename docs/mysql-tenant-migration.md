@@ -79,6 +79,10 @@ Docker on Ubuntu, starts the resulting JAR in an empty directory and retains log
 Surefire reports and the tested JAR as artifacts. A machine without Docker cannot
 pass the mandatory container tests; it is not treated as a successful verification.
 
+The existing finance/favicon MVC tests explicitly select normal mode after the
+setup environment processor. They no longer rely on a developer's installation
+config being present. CI uses bash with pipefail so tee cannot hide a Maven failure.
+
 References:
 - https://dev.mysql.com/doc/refman/8.0/en/create-table-foreign-keys.html
 - https://dev.mysql.com/doc/refman/8.0/en/atomic-ddl.html

@@ -1,6 +1,7 @@
 package com.tienda.pos.finance;
 
 import com.tienda.pos.common.DisplayFormat;
+import com.tienda.pos.common.NormalModeWebTestInitializer;
 import com.tienda.pos.tenant.CurrentTenant;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,6 +9,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
@@ -22,6 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(FinanceController.class)
+@ContextConfiguration(initializers = NormalModeWebTestInitializer.class)
 @AutoConfigureMockMvc(addFilters = false)
 @Import(DisplayFormat.class)
 class FinanceControllerRenderTest {

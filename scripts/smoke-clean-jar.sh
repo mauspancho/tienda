@@ -2,6 +2,7 @@
 set -euo pipefail
 
 jar=$(realpath "${1:?JAR path required}")
+test -f "$jar"
 directory=${2:-$(mktemp -d)}
 mkdir -p "$directory"
 directory=$(realpath "$directory")
