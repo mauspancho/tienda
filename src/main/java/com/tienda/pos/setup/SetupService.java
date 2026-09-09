@@ -7,7 +7,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -55,6 +54,7 @@ public class SetupService {
                     ps.executeUpdate();
                 }
                 upsertBusinessSettings(connection, form);
+                upsertCommercialStructure(connection, form);
                 connection.commit();
                 writeExternalConfig(form);
             } catch (Exception ex) {
@@ -127,6 +127,116 @@ public class SetupService {
             ps.setString(5, form.getCurrency());
             ps.setString(6, form.getCurrencySymbol());
             ps.setString(7, form.getTimezone());
+            ps.executeUpdate();
+        }
+    }
+
+    private void upsertCommercialStructure(Connection connection, SetupForm form) throws SQLException {
+        Long businessId = findFirstId(connection, "business");
+        if (businessId == null) {
+            businessId = insertBusiness(connection, form);
+        } else {
+            updateBusiness(connection, businessId, form);
+        }
+
+        Long branchId = findFirstId(connection, "branch");
+        if (branchId == null) {
+            branchId = insertBranch(connection, businessId, form);
+        } else {
+            updateBranch(connection, branchId, businessId, form);
+        }
+
+        if (findFirstId(connection, "warehouse") == null) {
+            insertWarehouse(connection, branchId);
+        }
+        if (findFirstId(connection, "cash_register") == null) {
+            insertCashRegister(connection, branchId);
+        }
+    }
+
+    private Long findFirstId(Connection connection, String tableName) throws SQLException {
+        try (Statement st = connection.createStatement();
+             ResultSet rs = st.executeQuery("select id from " + tableName + " order by id limit 1")) {
+            return rs.next() ? rs.getLong(1) : null;
+        }
+    }
+
+    private long insertBusiness(Connection connection, SetupForm form) throws SQLException {
+        try (PreparedStatement ps = connection.prepareStatement("""
+                insert into business(version, created_at, updated_at, name, tax_id, active)
+                values (0, current_timestamp, current_timestamp, ?, ?, true)
+                """, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, form.getStoreName());
+            ps.setString(2, blankToNull(form.getTaxId()));
+            ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) {
+                    return keys.getLong(1);
+                }
+            }
+        }
+        throw new SQLException("No fue posible crear el negocio principal.");
+    }
+
+    private void updateBusiness(Connection connection, long businessId, SetupForm form) throws SQLException {
+        try (PreparedStatement ps = connection.prepareStatement("""
+                update business
+                set name = ?, tax_id = ?, active = true, updated_at = current_timestamp
+                where id = ?
+                """)) {
+            ps.setString(1, form.getStoreName());
+            ps.setString(2, blankToNull(form.getTaxId()));
+            ps.setLong(3, businessId);
+            ps.executeUpdate();
+        }
+    }
+
+    private long insertBranch(Connection connection, long businessId, SetupForm form) throws SQLException {
+        try (PreparedStatement ps = connection.prepareStatement("""
+                insert into branch(version, created_at, updated_at, business_id, name, address, active)
+                values (0, current_timestamp, current_timestamp, ?, 'Sucursal principal', ?, true)
+                """, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setLong(1, businessId);
+            ps.setString(2, blankToNull(form.getStoreAddress()));
+            ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) {
+                    return keys.getLong(1);
+                }
+            }
+        }
+        throw new SQLException("No fue posible crear la sucursal principal.");
+    }
+
+    private void updateBranch(Connection connection, long branchId, long businessId, SetupForm form) throws SQLException {
+        try (PreparedStatement ps = connection.prepareStatement("""
+                update branch
+                set business_id = ?, name = 'Sucursal principal', address = ?, active = true, updated_at = current_timestamp
+                where id = ?
+                """)) {
+            ps.setLong(1, businessId);
+            ps.setString(2, blankToNull(form.getStoreAddress()));
+            ps.setLong(3, branchId);
+            ps.executeUpdate();
+        }
+    }
+
+    private void insertWarehouse(Connection connection, long branchId) throws SQLException {
+        try (PreparedStatement ps = connection.prepareStatement("""
+                insert into warehouse(version, created_at, updated_at, branch_id, name, main_warehouse, active)
+                values (0, current_timestamp, current_timestamp, ?, 'Almacén principal', true, true)
+                """)) {
+            ps.setLong(1, branchId);
+            ps.executeUpdate();
+        }
+    }
+
+    private void insertCashRegister(Connection connection, long branchId) throws SQLException {
+        try (PreparedStatement ps = connection.prepareStatement("""
+                insert into cash_register(version, created_at, updated_at, branch_id, name, active)
+                values (0, current_timestamp, current_timestamp, ?, 'Caja principal', true)
+                """)) {
+            ps.setLong(1, branchId);
             ps.executeUpdate();
         }
     }

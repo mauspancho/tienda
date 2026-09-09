@@ -56,13 +56,18 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             """)
     List<Product> quickSearch(@Param("q") String query, Pageable pageable);
 
-    @Query("select p from Product p where p.currentStock <= p.minimumStock and p.active = true order by p.currentStock asc")
+    @Query("""
+            select p from InventoryStock s
+            join s.product p
+            where s.quantity <= s.minimumStock and p.active = true
+            order by s.quantity asc
+            """)
     List<Product> findLowStock(Pageable pageable);
 
-    @Query("select coalesce(sum(p.currentStock * p.purchaseCost), 0) from Product p where p.active = true")
+    @Query("select coalesce(sum(s.quantity * p.purchaseCost), 0) from InventoryStock s join s.product p where p.active = true")
     java.math.BigDecimal inventoryValue();
 
-    @Query("select coalesce(sum(p.currentStock * p.salePrice), 0) from Product p where p.active = true")
+    @Query("select coalesce(sum(s.quantity * p.salePrice), 0) from InventoryStock s join s.product p where p.active = true")
     java.math.BigDecimal inventorySaleValue();
 
     @EntityGraph(attributePaths = "category")

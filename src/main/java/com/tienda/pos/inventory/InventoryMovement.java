@@ -1,8 +1,10 @@
 package com.tienda.pos.inventory;
 
+import com.tienda.pos.branch.Branch;
 import com.tienda.pos.common.BaseEntity;
 import com.tienda.pos.product.Product;
 import com.tienda.pos.user.AppUser;
+import com.tienda.pos.warehouse.Warehouse;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -22,6 +24,14 @@ public class InventoryMovement extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "product_id")
     private Product product;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "branch_id")
+    private Branch branch;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "warehouse_id")
+    private Warehouse warehouse;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -79,6 +89,10 @@ public class InventoryMovement extends BaseEntity {
 
     public Product getProduct() { return product; }
     public void setProduct(Product product) { this.product = product; }
+    public Branch getBranch() { return branch; }
+    public void setBranch(Branch branch) { this.branch = branch; }
+    public Warehouse getWarehouse() { return warehouse; }
+    public void setWarehouse(Warehouse warehouse) { this.warehouse = warehouse; }
     public InventoryMovementType getMovementType() { return movementType; }
     public void setMovementType(InventoryMovementType movementType) { this.movementType = movementType; }
     public BigDecimal getQuantity() { return quantity; }

@@ -1,5 +1,6 @@
 package com.tienda.pos.cash;
 
+import com.tienda.pos.branch.Branch;
 import com.tienda.pos.common.BaseEntity;
 import com.tienda.pos.user.AppUser;
 import jakarta.persistence.Column;
@@ -19,6 +20,14 @@ public class CashRegisterSession extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cashier_id")
     private AppUser cashier;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "branch_id")
+    private Branch branch;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cash_register_id")
+    private CashRegister cashRegister;
 
     @Column(nullable = false)
     private LocalDateTime openedAt = LocalDateTime.now();
@@ -41,6 +50,10 @@ public class CashRegisterSession extends BaseEntity {
 
     public AppUser getCashier() { return cashier; }
     public void setCashier(AppUser cashier) { this.cashier = cashier; }
+    public Branch getBranch() { return branch; }
+    public void setBranch(Branch branch) { this.branch = branch; }
+    public CashRegister getCashRegister() { return cashRegister; }
+    public void setCashRegister(CashRegister cashRegister) { this.cashRegister = cashRegister; }
     public LocalDateTime getOpenedAt() { return openedAt; }
     public void setOpenedAt(LocalDateTime openedAt) { this.openedAt = openedAt; }
     public LocalDateTime getClosedAt() { return closedAt; }

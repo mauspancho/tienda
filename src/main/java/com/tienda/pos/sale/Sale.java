@@ -1,5 +1,7 @@
 package com.tienda.pos.sale;
 
+import com.tienda.pos.branch.Branch;
+import com.tienda.pos.cash.CashRegister;
 import com.tienda.pos.common.BaseEntity;
 import com.tienda.pos.customer.Customer;
 import com.tienda.pos.payment.Payment;
@@ -34,6 +36,14 @@ public class Sale extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cashier_id")
     private AppUser cashier;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "branch_id")
+    private Branch branch;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cash_register_id")
+    private CashRegister cashRegister;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id")
@@ -72,6 +82,10 @@ public class Sale extends BaseEntity {
     public void setSaleDate(LocalDateTime saleDate) { this.saleDate = saleDate; }
     public AppUser getCashier() { return cashier; }
     public void setCashier(AppUser cashier) { this.cashier = cashier; }
+    public Branch getBranch() { return branch; }
+    public void setBranch(Branch branch) { this.branch = branch; }
+    public CashRegister getCashRegister() { return cashRegister; }
+    public void setCashRegister(CashRegister cashRegister) { this.cashRegister = cashRegister; }
     public Customer getCustomer() { return customer; }
     public void setCustomer(Customer customer) { this.customer = customer; }
     public BigDecimal getSubtotal() { return subtotal; }

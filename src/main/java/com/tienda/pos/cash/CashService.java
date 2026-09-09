@@ -1,5 +1,6 @@
 package com.tienda.pos.cash;
 
+import com.tienda.pos.commercial.StoreContextService;
 import com.tienda.pos.common.MoneyUtils;
 import com.tienda.pos.common.NormalMode;
 import com.tienda.pos.exception.DomainException;
@@ -19,12 +20,14 @@ public class CashService {
     private final CashRegisterSessionRepository sessionRepository;
     private final CashMovementRepository movementRepository;
     private final AppUserRepository userRepository;
+    private final StoreContextService storeContextService;
 
     public CashService(CashRegisterSessionRepository sessionRepository, CashMovementRepository movementRepository,
-                       AppUserRepository userRepository) {
+                       AppUserRepository userRepository, StoreContextService storeContextService) {
         this.sessionRepository = sessionRepository;
         this.movementRepository = movementRepository;
         this.userRepository = userRepository;
+        this.storeContextService = storeContextService;
     }
 
     @Transactional
@@ -33,8 +36,11 @@ public class CashService {
         if (sessionRepository.findByCashierAndOpenTrue(cashier).isPresent()) {
             throw new DomainException("Este cajero ya tiene una caja abierta.");
         }
+        CashRegister cashRegister = storeContextService.defaultCashRegister();
         CashRegisterSession session = new CashRegisterSession();
         session.setCashier(cashier);
+        session.setBranch(cashRegister.getBranch());
+        session.setCashRegister(cashRegister);
         session.setOpeningAmount(MoneyUtils.money(openingAmount));
         sessionRepository.save(session);
         CashMovement movement = new CashMovement();

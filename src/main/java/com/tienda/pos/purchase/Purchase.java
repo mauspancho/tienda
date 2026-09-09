@@ -1,8 +1,10 @@
 package com.tienda.pos.purchase;
 
+import com.tienda.pos.branch.Branch;
 import com.tienda.pos.common.BaseEntity;
 import com.tienda.pos.supplier.Supplier;
 import com.tienda.pos.user.AppUser;
+import com.tienda.pos.warehouse.Warehouse;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -26,6 +28,14 @@ public class Purchase extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "supplier_id")
     private Supplier supplier;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "branch_id")
+    private Branch branch;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "warehouse_id")
+    private Warehouse warehouse;
 
     @Column(nullable = false)
     private LocalDate purchaseDate = LocalDate.now();
@@ -65,6 +75,10 @@ public class Purchase extends BaseEntity {
 
     public Supplier getSupplier() { return supplier; }
     public void setSupplier(Supplier supplier) { this.supplier = supplier; }
+    public Branch getBranch() { return branch; }
+    public void setBranch(Branch branch) { this.branch = branch; }
+    public Warehouse getWarehouse() { return warehouse; }
+    public void setWarehouse(Warehouse warehouse) { this.warehouse = warehouse; }
     public LocalDate getPurchaseDate() { return purchaseDate; }
     public void setPurchaseDate(LocalDate purchaseDate) { this.purchaseDate = purchaseDate; }
     public String getExternalFolio() { return externalFolio; }
@@ -86,4 +100,3 @@ public class Purchase extends BaseEntity {
     public List<PurchaseItem> getItems() { return items; }
     public void setItems(List<PurchaseItem> items) { this.items = items; }
 }
-

@@ -1,7 +1,9 @@
 package com.tienda.pos.product;
 
 import com.tienda.pos.category.Category;
+import com.tienda.pos.branch.Branch;
 import com.tienda.pos.category.CategoryRepository;
+import com.tienda.pos.commercial.StoreContextService;
 import com.tienda.pos.exception.DomainException;
 import com.tienda.pos.externalproduct.ExternalProductDto;
 import com.tienda.pos.externalproduct.ExternalProductLookupException;
@@ -9,7 +11,10 @@ import com.tienda.pos.externalproduct.ExternalProductService;
 import com.tienda.pos.inventory.InventoryMovement;
 import com.tienda.pos.inventory.InventoryMovementRepository;
 import com.tienda.pos.inventory.InventoryMovementType;
+import com.tienda.pos.inventory.InventoryStock;
+import com.tienda.pos.inventory.InventoryStockRepository;
 import com.tienda.pos.supplier.SupplierRepository;
+import com.tienda.pos.warehouse.Warehouse;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -32,10 +37,12 @@ class ProductServiceTest {
     private final CategoryRepository categoryRepository = mock(CategoryRepository.class);
     private final SupplierRepository supplierRepository = mock(SupplierRepository.class);
     private final InventoryMovementRepository movementRepository = mock(InventoryMovementRepository.class);
+    private final InventoryStockRepository stockRepository = mock(InventoryStockRepository.class);
+    private final StoreContextService storeContextService = mock(StoreContextService.class);
     private final ExternalProductService externalProductService = mock(ExternalProductService.class);
     private final ProductImageService productImageService = mock(ProductImageService.class);
     private final ProductService service = new ProductService(productRepository, categoryRepository,
-            supplierRepository, movementRepository, externalProductService, productImageService);
+            supplierRepository, movementRepository, stockRepository, storeContextService, externalProductService, productImageService);
 
     @Test
     void calculatesEan13CheckDigit() {
@@ -113,10 +120,16 @@ class ProductServiceTest {
         form.setActive(true);
         when(productRepository.findByCode("PRD-12345678")).thenReturn(Optional.empty());
         when(productRepository.findByBarcode("7501055300006")).thenReturn(Optional.empty());
+        Branch branch = new Branch();
+        Warehouse warehouse = new Warehouse();
+        warehouse.setBranch(branch);
+        when(storeContextService.defaultWarehouse()).thenReturn(warehouse);
+        when(stockRepository.findByProductAndWarehouse(any(Product.class), any(Warehouse.class))).thenReturn(Optional.empty());
+        when(stockRepository.save(any(InventoryStock.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(productRepository.save(any(Product.class))).thenAnswer(invocation -> {
-            Product saved = invocation.getArgument(0);
-            saved.setId(42L);
-            return saved;
+            Product savedProduct = invocation.getArgument(0);
+            savedProduct.setId(42L);
+            return savedProduct;
         });
 
         Product saved = service.save(form);
@@ -126,10 +139,18 @@ class ProductServiceTest {
         verify(movementRepository).save(movementCaptor.capture());
         InventoryMovement movement = movementCaptor.getValue();
         assertThat(movement.getProduct()).isSameAs(saved);
+        assertThat(movement.getWarehouse()).isSameAs(warehouse);
+        assertThat(movement.getBranch()).isSameAs(branch);
         assertThat(movement.getMovementType()).isEqualTo(InventoryMovementType.INITIAL_STOCK);
         assertThat(movement.getPreviousStock()).isEqualByComparingTo(BigDecimal.ZERO);
         assertThat(movement.getQuantity()).isEqualByComparingTo(new BigDecimal("24.000"));
         assertThat(movement.getNewStock()).isEqualByComparingTo(new BigDecimal("24.000"));
+        ArgumentCaptor<InventoryStock> stockCaptor = ArgumentCaptor.forClass(InventoryStock.class);
+        verify(stockRepository).save(stockCaptor.capture());
+        assertThat(stockCaptor.getValue().getProduct()).isSameAs(saved);
+        assertThat(stockCaptor.getValue().getWarehouse()).isSameAs(warehouse);
+        assertThat(stockCaptor.getValue().getQuantity()).isEqualByComparingTo(new BigDecimal("24.000"));
+        assertThat(stockCaptor.getValue().getMinimumStock()).isEqualByComparingTo(BigDecimal.ZERO);
     }
 
     @Test

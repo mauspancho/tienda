@@ -2,6 +2,7 @@ package com.tienda.pos.product;
 
 import com.tienda.pos.category.Category;
 import com.tienda.pos.category.CategoryRepository;
+import com.tienda.pos.commercial.StoreContextService;
 import com.tienda.pos.common.CurrentUser;
 import com.tienda.pos.common.MoneyUtils;
 import com.tienda.pos.common.NormalMode;
@@ -12,7 +13,10 @@ import com.tienda.pos.externalproduct.ExternalProductService;
 import com.tienda.pos.inventory.InventoryMovement;
 import com.tienda.pos.inventory.InventoryMovementRepository;
 import com.tienda.pos.inventory.InventoryMovementType;
+import com.tienda.pos.inventory.InventoryStock;
+import com.tienda.pos.inventory.InventoryStockRepository;
 import com.tienda.pos.supplier.SupplierRepository;
+import com.tienda.pos.warehouse.Warehouse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -37,16 +41,21 @@ public class ProductService {
     private final CategoryRepository categoryRepository;
     private final SupplierRepository supplierRepository;
     private final InventoryMovementRepository movementRepository;
+    private final InventoryStockRepository stockRepository;
+    private final StoreContextService storeContextService;
     private final ExternalProductService externalProductService;
     private final ProductImageService productImageService;
 
     public ProductService(ProductRepository productRepository, CategoryRepository categoryRepository,
                           SupplierRepository supplierRepository, InventoryMovementRepository movementRepository,
+                          InventoryStockRepository stockRepository, StoreContextService storeContextService,
                           ExternalProductService externalProductService, ProductImageService productImageService) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.supplierRepository = supplierRepository;
         this.movementRepository = movementRepository;
+        this.stockRepository = stockRepository;
+        this.storeContextService = storeContextService;
         this.externalProductService = externalProductService;
         this.productImageService = productImageService;
     }
@@ -91,10 +100,14 @@ public class ProductService {
             product.setActive(form.isActive());
             product.setUpdatedBy(CurrentUser.username());
             Product saved = productRepository.save(product);
+            Warehouse warehouse = storeContextService.defaultWarehouse();
+            syncDefaultStock(saved, warehouse, form.getCurrentStock(), form.getMinimumStock());
             if (form.getId() == null && form.getCurrentStock().compareTo(BigDecimal.ZERO) > 0
                     || form.getId() != null && previousStock.compareTo(form.getCurrentStock()) != 0) {
                 InventoryMovement movement = new InventoryMovement();
                 movement.setProduct(saved);
+                movement.setBranch(warehouse.getBranch());
+                movement.setWarehouse(warehouse);
                 movement.setMovementType(InventoryMovementType.INITIAL_STOCK);
                 movement.setPreviousStock(previousStock);
                 movement.setQuantity(form.getCurrentStock().subtract(previousStock));
@@ -172,6 +185,18 @@ public class ProductService {
         return normalized;
     }
 
+    private void syncDefaultStock(Product product, Warehouse warehouse, BigDecimal currentStock, BigDecimal minimumStock) {
+        InventoryStock stock = stockRepository.findByProductAndWarehouse(product, warehouse)
+                .orElseGet(() -> {
+                    InventoryStock created = new InventoryStock();
+                    created.setProduct(product);
+                    created.setWarehouse(warehouse);
+                    return created;
+                });
+        stock.setQuantity(currentStock == null ? BigDecimal.ZERO : currentStock);
+        stock.setMinimumStock(minimumStock == null ? BigDecimal.ZERO : minimumStock);
+        stockRepository.save(stock);
+    }
     private void scheduleImageCleanup(String previousImageUrl, String newLocalImageUrl, String finalImageUrl) {
         boolean replacedPreviousLocal = productImageService.isLocalImage(previousImageUrl)
                 && !Objects.equals(previousImageUrl, finalImageUrl);

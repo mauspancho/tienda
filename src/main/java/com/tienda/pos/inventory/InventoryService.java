@@ -1,11 +1,13 @@
 package com.tienda.pos.inventory;
 
+import com.tienda.pos.commercial.StoreContextService;
 import com.tienda.pos.common.CurrentUser;
 import com.tienda.pos.common.MoneyUtils;
 import com.tienda.pos.common.NormalMode;
 import com.tienda.pos.exception.DomainException;
 import com.tienda.pos.product.Product;
 import com.tienda.pos.product.ProductRepository;
+import com.tienda.pos.warehouse.Warehouse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,18 +34,25 @@ public class InventoryService {
 
     private final ProductRepository productRepository;
     private final InventoryMovementRepository movementRepository;
+    private final InventoryStockRepository stockRepository;
+    private final StoreContextService storeContextService;
 
-    public InventoryService(ProductRepository productRepository, InventoryMovementRepository movementRepository) {
+    public InventoryService(ProductRepository productRepository, InventoryMovementRepository movementRepository,
+                            InventoryStockRepository stockRepository, StoreContextService storeContextService) {
         this.productRepository = productRepository;
         this.movementRepository = movementRepository;
+        this.stockRepository = stockRepository;
+        this.storeContextService = storeContextService;
     }
 
     @Transactional
     public void adjust(InventoryAdjustmentForm form) {
         Product product = productRepository.findByIdForUpdate(form.getProductId())
                 .orElseThrow(() -> new DomainException("Producto no encontrado."));
+        Warehouse warehouse = storeContextService.defaultWarehouse();
+        InventoryStock stock = stockForUpdate(product, warehouse);
         BigDecimal delta = signedQuantity(form.getMovementType(), form.getQuantity());
-        BigDecimal previous = product.getCurrentStock();
+        BigDecimal previous = stockValue(stock.getQuantity());
         BigDecimal next = previous.add(delta);
         if (next.compareTo(BigDecimal.ZERO) < 0) {
             throw new DomainException("No hay suficiente inventario.");
@@ -64,11 +73,12 @@ public class InventoryService {
             product.setPurchaseCost(newPurchaseCost);
         }
 
-        product.setCurrentStock(next);
+        applyStock(product, stock, next);
         product.setUpdatedBy(CurrentUser.username());
         productRepository.save(product);
-        createMovement(product, form.getMovementType(), delta, previous, next, "ADJUSTMENT", null, form.getNotes(),
-                unitCost, previousPurchaseCost, newPurchaseCost, costAdjustment);
+        stockRepository.save(stock);
+        createMovement(product, form.getMovementType(), delta, previous, next, warehouse,
+                "ADJUSTMENT", null, form.getNotes(), unitCost, previousPurchaseCost, newPurchaseCost, costAdjustment);
     }
 
     @Transactional
@@ -84,7 +94,9 @@ public class InventoryService {
             throw new DomainException("Retira primero los movimientos posteriores que cambiaron el costo de este producto.");
         }
 
-        BigDecimal previous = product.getCurrentStock();
+        Warehouse warehouse = original.getWarehouse() == null ? storeContextService.defaultWarehouse() : original.getWarehouse();
+        InventoryStock stock = stockForUpdate(product, warehouse);
+        BigDecimal previous = stockValue(stock.getQuantity());
         BigDecimal reverseQuantity = original.getQuantity().negate();
         BigDecimal next = previous.add(reverseQuantity);
         if (next.compareTo(BigDecimal.ZERO) < 0) {
@@ -101,12 +113,13 @@ public class InventoryService {
             product.setPurchaseCost(newPurchaseCost);
         }
 
-        product.setCurrentStock(next);
+        applyStock(product, stock, next);
         product.setUpdatedBy(CurrentUser.username());
         productRepository.save(product);
+        stockRepository.save(stock);
 
         InventoryMovement reversal = createMovement(product, reverseType(original.getMovementType()), reverseQuantity, previous, next,
-                "REVERSAL", original.getId(), "Retiro del movimiento #" + original.getId(),
+                warehouse, "REVERSAL", original.getId(), "Retiro del movimiento #" + original.getId(),
                 original.getUnitCost(), previousPurchaseCost, newPurchaseCost, costAdjustment);
         original.setReversed(true);
         original.setReversedAt(LocalDateTime.now());
@@ -114,6 +127,16 @@ public class InventoryService {
         original.setReversalMovementId(reversal.getId());
         original.setUpdatedBy(CurrentUser.username());
         movementRepository.save(original);
+    }
+
+    @Transactional
+    public InventoryStock defaultStockForUpdate(Product product) {
+        return stockForUpdate(product, storeContextService.defaultWarehouse());
+    }
+
+    @Transactional
+    public InventoryStock saveStock(InventoryStock stock) {
+        return stockRepository.save(stock);
     }
 
     @Transactional
@@ -128,8 +151,20 @@ public class InventoryService {
                                             BigDecimal previous, BigDecimal next, String referenceType, Long referenceId, String notes,
                                             BigDecimal unitCost, BigDecimal previousPurchaseCost, BigDecimal newPurchaseCost,
                                             BigDecimal costAdjustment) {
+        return createMovement(product, type, signedQuantity, previous, next, storeContextService.defaultWarehouse(),
+                referenceType, referenceId, notes, unitCost, previousPurchaseCost, newPurchaseCost, costAdjustment);
+    }
+
+    @Transactional
+    public InventoryMovement createMovement(Product product, InventoryMovementType type, BigDecimal signedQuantity,
+                                            BigDecimal previous, BigDecimal next, Warehouse warehouse, String referenceType,
+                                            Long referenceId, String notes, BigDecimal unitCost,
+                                            BigDecimal previousPurchaseCost, BigDecimal newPurchaseCost,
+                                            BigDecimal costAdjustment) {
         InventoryMovement movement = new InventoryMovement();
         movement.setProduct(product);
+        movement.setWarehouse(warehouse);
+        movement.setBranch(warehouse == null ? null : warehouse.getBranch());
         movement.setMovementType(type);
         movement.setQuantity(signedQuantity);
         movement.setPreviousStock(previous);
@@ -161,6 +196,30 @@ public class InventoryService {
         }
         BigDecimal totalValue = cost.multiply(stock).add(unitCost.multiply(quantity));
         return MoneyUtils.money(totalValue.divide(totalQuantity, 6, RoundingMode.HALF_UP));
+    }
+
+    private InventoryStock stockForUpdate(Product product, Warehouse warehouse) {
+        return stockRepository.findByProductAndWarehouseForUpdate(product, warehouse)
+                .orElseGet(() -> createDefaultStock(product, warehouse));
+    }
+
+    private InventoryStock createDefaultStock(Product product, Warehouse warehouse) {
+        InventoryStock stock = new InventoryStock();
+        stock.setProduct(product);
+        stock.setWarehouse(warehouse);
+        stock.setQuantity(stockValue(product.getCurrentStock()));
+        stock.setMinimumStock(stockValue(product.getMinimumStock()));
+        return stockRepository.save(stock);
+    }
+
+    private void applyStock(Product product, InventoryStock stock, BigDecimal quantity) {
+        stock.setQuantity(quantity);
+        stock.setMinimumStock(stockValue(product.getMinimumStock()));
+        product.setCurrentStock(quantity);
+    }
+
+    private BigDecimal stockValue(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
     }
 
     private boolean updatesCost(InventoryMovementType type, BigDecimal delta) {

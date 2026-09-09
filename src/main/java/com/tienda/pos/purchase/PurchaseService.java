@@ -1,15 +1,18 @@
 package com.tienda.pos.purchase;
 
+import com.tienda.pos.commercial.StoreContextService;
 import com.tienda.pos.common.CurrentUser;
 import com.tienda.pos.common.MoneyUtils;
 import com.tienda.pos.common.NormalMode;
 import com.tienda.pos.exception.DomainException;
 import com.tienda.pos.inventory.InventoryMovementType;
 import com.tienda.pos.inventory.InventoryService;
+import com.tienda.pos.inventory.InventoryStock;
 import com.tienda.pos.product.Product;
 import com.tienda.pos.product.ProductRepository;
 import com.tienda.pos.supplier.SupplierRepository;
 import com.tienda.pos.user.AppUserRepository;
+import com.tienda.pos.warehouse.Warehouse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,24 +32,30 @@ public class PurchaseService {
     private final ProductRepository productRepository;
     private final AppUserRepository userRepository;
     private final InventoryService inventoryService;
+    private final StoreContextService storeContextService;
 
     public PurchaseService(PurchaseRepository purchaseRepository, SupplierRepository supplierRepository,
                            ProductRepository productRepository, AppUserRepository userRepository,
-                           InventoryService inventoryService) {
+                           InventoryService inventoryService, StoreContextService storeContextService) {
         this.purchaseRepository = purchaseRepository;
         this.supplierRepository = supplierRepository;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
         this.inventoryService = inventoryService;
+        this.storeContextService = storeContextService;
     }
 
     @Transactional
     public Purchase register(PurchaseForm form) {
         Product product = productRepository.findByIdForUpdate(form.getProductId())
                 .orElseThrow(() -> new DomainException("Producto no encontrado."));
+        Warehouse warehouse = storeContextService.defaultWarehouse();
+        InventoryStock stock = inventoryService.defaultStockForUpdate(product);
         BigDecimal unitCost = MoneyUtils.money(form.getUnitCost());
         BigDecimal subtotal = MoneyUtils.money(unitCost.multiply(form.getQuantity()));
         Purchase purchase = new Purchase();
+        purchase.setBranch(warehouse.getBranch());
+        purchase.setWarehouse(warehouse);
         if (form.getSupplierId() != null) {
             purchase.setSupplier(supplierRepository.findById(form.getSupplierId())
                     .orElseThrow(() -> new DomainException("Proveedor no encontrado.")));
@@ -66,11 +75,13 @@ public class PurchaseService {
         purchase.addItem(item);
         Purchase saved = purchaseRepository.save(purchase);
 
-        BigDecimal previous = product.getCurrentStock();
+        BigDecimal previous = stock.getQuantity();
         BigDecimal next = previous.add(form.getQuantity());
         BigDecimal previousPurchaseCost = MoneyUtils.money(product.getPurchaseCost());
         BigDecimal newPurchaseCost = previousPurchaseCost;
         BigDecimal costAdjustment = BigDecimal.ZERO;
+        stock.setQuantity(next);
+        stock.setMinimumStock(product.getMinimumStock());
         product.setCurrentStock(next);
         if (form.isUpdateProductCost()) {
             newPurchaseCost = inventoryService.weightedAverageCost(previous, previousPurchaseCost, form.getQuantity(), unitCost);
@@ -78,8 +89,9 @@ public class PurchaseService {
             product.setPurchaseCost(newPurchaseCost);
         }
         productRepository.save(product);
+        inventoryService.saveStock(stock);
         inventoryService.createMovement(product, InventoryMovementType.PURCHASE, form.getQuantity(), previous, next,
-                "PURCHASE", saved.getId(), "Compra confirmada " + saved.getExternalFolio(),
+                warehouse, "PURCHASE", saved.getId(), "Compra confirmada " + saved.getExternalFolio(),
                 unitCost, previousPurchaseCost, newPurchaseCost, costAdjustment);
         return saved;
     }
@@ -91,4 +103,3 @@ public class PurchaseService {
         return "COMP-" + LocalDate.now().format(FOLIO_DATE) + "-" + ThreadLocalRandom.current().nextInt(1000, 10000);
     }
 }
-

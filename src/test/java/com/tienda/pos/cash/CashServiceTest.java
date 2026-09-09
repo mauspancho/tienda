@@ -20,7 +20,7 @@ class CashServiceTest {
 
     @Test
     void calculatesCashDifference() {
-        CashService service = new CashService(null, null, null);
+        CashService service = new CashService(null, null, null, null);
 
         assertThat(service.difference(new BigDecimal("3300"), new BigDecimal("3280")))
                 .isEqualByComparingTo(new BigDecimal("-20.00"));
@@ -31,7 +31,7 @@ class CashServiceTest {
         CashRegisterSessionRepository sessionRepository = mock(CashRegisterSessionRepository.class);
         CashMovementRepository movementRepository = mock(CashMovementRepository.class);
         AppUserRepository userRepository = mock(AppUserRepository.class);
-        CashService service = new CashService(sessionRepository, movementRepository, userRepository);
+        CashService service = new CashService(sessionRepository, movementRepository, userRepository, null);
         AppUser closer = user(1L, "cajero", "ROLE_CAJERO");
         CashRegisterSession session = cashSession(2L, user(2L, "admin", "ROLE_ADMIN"));
 
@@ -50,7 +50,7 @@ class CashServiceTest {
         CashRegisterSessionRepository sessionRepository = mock(CashRegisterSessionRepository.class);
         CashMovementRepository movementRepository = mock(CashMovementRepository.class);
         AppUserRepository userRepository = mock(AppUserRepository.class);
-        CashService service = new CashService(sessionRepository, movementRepository, userRepository);
+        CashService service = new CashService(sessionRepository, movementRepository, userRepository, null);
         AppUser admin = user(1L, "admin", "ROLE_ADMIN");
         CashRegisterSession session = cashSession(2L, user(2L, "cajero", "ROLE_CAJERO"));
 
@@ -72,7 +72,7 @@ class CashServiceTest {
         CashRegisterSessionRepository sessionRepository = mock(CashRegisterSessionRepository.class);
         CashMovementRepository movementRepository = mock(CashMovementRepository.class);
         AppUserRepository userRepository = mock(AppUserRepository.class);
-        CashService service = new CashService(sessionRepository, movementRepository, userRepository);
+        CashService service = new CashService(sessionRepository, movementRepository, userRepository, null);
         AppUser cashier = user(1L, "cajero", "ROLE_CAJERO");
         CashRegisterSession session = cashSession(2L, cashier);
 

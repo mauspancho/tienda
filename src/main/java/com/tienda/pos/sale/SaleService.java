@@ -1,10 +1,13 @@
 package com.tienda.pos.sale;
 
+import com.tienda.pos.branch.Branch;
 import com.tienda.pos.cash.CashMovement;
 import com.tienda.pos.cash.CashMovementRepository;
 import com.tienda.pos.cash.CashMovementType;
+import com.tienda.pos.cash.CashRegister;
 import com.tienda.pos.cash.CashRegisterSession;
 import com.tienda.pos.cash.CashRegisterSessionRepository;
+import com.tienda.pos.commercial.StoreContextService;
 import com.tienda.pos.common.CurrentUser;
 import com.tienda.pos.common.MoneyUtils;
 import com.tienda.pos.common.NormalMode;
@@ -12,6 +15,7 @@ import com.tienda.pos.customer.CustomerRepository;
 import com.tienda.pos.exception.DomainException;
 import com.tienda.pos.inventory.InventoryMovementType;
 import com.tienda.pos.inventory.InventoryService;
+import com.tienda.pos.inventory.InventoryStock;
 import com.tienda.pos.payment.Payment;
 import com.tienda.pos.payment.PaymentMethod;
 import com.tienda.pos.product.Product;
@@ -39,11 +43,12 @@ public class SaleService {
     private final InventoryService inventoryService;
     private final CashRegisterSessionRepository cashRegisterSessionRepository;
     private final CashMovementRepository cashMovementRepository;
+    private final StoreContextService storeContextService;
 
     public SaleService(SaleRepository saleRepository, ProductRepository productRepository,
                        CustomerRepository customerRepository, AppUserRepository userRepository,
                        InventoryService inventoryService, CashRegisterSessionRepository cashRegisterSessionRepository,
-                       CashMovementRepository cashMovementRepository) {
+                       CashMovementRepository cashMovementRepository, StoreContextService storeContextService) {
         this.saleRepository = saleRepository;
         this.productRepository = productRepository;
         this.customerRepository = customerRepository;
@@ -51,6 +56,7 @@ public class SaleService {
         this.inventoryService = inventoryService;
         this.cashRegisterSessionRepository = cashRegisterSessionRepository;
         this.cashMovementRepository = cashMovementRepository;
+        this.storeContextService = storeContextService;
     }
 
     @Transactional
@@ -59,10 +65,16 @@ public class SaleService {
                 .orElseThrow(() -> new DomainException("No se encontró el cajero actual."));
         CashRegisterSession cashSession = cashRegisterSessionRepository.findByCashierAndOpenTrue(cashier)
                 .orElseThrow(() -> new DomainException("Abre la caja antes de realizar una venta."));
+        CashRegister cashRegister = cashSession.getCashRegister() == null
+                ? storeContextService.defaultCashRegister()
+                : cashSession.getCashRegister();
+        Branch branch = cashSession.getBranch() == null ? cashRegister.getBranch() : cashSession.getBranch();
 
         Sale sale = new Sale();
         sale.setFolio("V" + LocalDateTime.now().format(FOLIO_FORMAT));
         sale.setCashier(cashier);
+        sale.setBranch(branch);
+        sale.setCashRegister(cashRegister);
         if (request.getCustomerId() != null) {
             sale.setCustomer(customerRepository.findById(request.getCustomerId()).orElse(null));
         } else {
@@ -75,6 +87,7 @@ public class SaleService {
                 .toList()) {
             Product product = productRepository.findByIdForUpdate(line.getProductId())
                     .orElseThrow(() -> new DomainException("Producto no encontrado."));
+            InventoryStock stock = inventoryService.defaultStockForUpdate(product);
             if (!product.isActive()) {
                 throw new DomainException("Producto inactivo: " + product.getName());
             }
@@ -84,7 +97,7 @@ public class SaleService {
             if (product.getSalePrice().compareTo(BigDecimal.ZERO) < 0) {
                 throw new DomainException("Precio inválido: " + product.getName());
             }
-            if (product.getCurrentStock().compareTo(line.getQuantity()) < 0) {
+            if (stock.getQuantity().compareTo(line.getQuantity()) < 0) {
                 throw new DomainException("No hay suficiente inventario de " + product.getName());
             }
             BigDecimal itemSubtotal = MoneyUtils.money(product.getSalePrice().multiply(line.getQuantity()));
@@ -100,10 +113,13 @@ public class SaleService {
             sale.addItem(item);
             subtotal = subtotal.add(itemSubtotal);
 
-            BigDecimal previous = product.getCurrentStock();
+            BigDecimal previous = stock.getQuantity();
             BigDecimal next = previous.subtract(line.getQuantity());
+            stock.setQuantity(next);
+            stock.setMinimumStock(product.getMinimumStock());
             product.setCurrentStock(next);
             productRepository.save(product);
+            inventoryService.saveStock(stock);
             inventoryService.createMovement(product, InventoryMovementType.SALE, line.getQuantity().negate(),
                     previous, next, "SALE", null, "Venta " + sale.getFolio());
         }
