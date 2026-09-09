@@ -1,6 +1,7 @@
 package com.tienda.pos.catalog;
 
 import com.tienda.pos.category.CategoryRepository;
+import com.tienda.pos.common.NormalMode;
 import com.tienda.pos.product.Product;
 import com.tienda.pos.product.ProductRepository;
 import com.tienda.pos.settings.BusinessSettings;
@@ -16,6 +17,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 @Service
+@NormalMode
 public class CatalogService {
 
     private static final int PAGE_SIZE = 24;

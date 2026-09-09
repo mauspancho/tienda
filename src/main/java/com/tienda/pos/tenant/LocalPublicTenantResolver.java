@@ -1,5 +1,6 @@
 package com.tienda.pos.tenant;
 
+import com.tienda.pos.common.NormalMode;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -9,6 +10,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 
 @Component
+@NormalMode
 public class LocalPublicTenantResolver implements PublicTenantResolver {
 
     private final TenantRepository tenantRepository;

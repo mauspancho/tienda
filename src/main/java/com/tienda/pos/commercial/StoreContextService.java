@@ -6,6 +6,7 @@ import com.tienda.pos.business.Business;
 import com.tienda.pos.business.BusinessRepository;
 import com.tienda.pos.cash.CashRegister;
 import com.tienda.pos.cash.CashRegisterRepository;
+import com.tienda.pos.common.NormalMode;
 import com.tienda.pos.exception.DomainException;
 import com.tienda.pos.settings.BusinessSettings;
 import com.tienda.pos.settings.BusinessSettingsRepository;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@NormalMode
 public class StoreContextService {
 
     private final BusinessRepository businessRepository;

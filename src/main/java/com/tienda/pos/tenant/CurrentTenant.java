@@ -1,6 +1,7 @@
 package com.tienda.pos.tenant;
 
 import com.tienda.pos.common.CurrentUser;
+import com.tienda.pos.common.NormalMode;
 import com.tienda.pos.exception.DomainException;
 import com.tienda.pos.user.AppUser;
 import com.tienda.pos.user.AppUserRepository;
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
+@NormalMode
 public class CurrentTenant {
 
     private final AppUserRepository userRepository;
