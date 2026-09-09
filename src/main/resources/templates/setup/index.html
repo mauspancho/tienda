@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html lang="es" xmlns:th="http://www.thymeleaf.org" data-theme="sunset">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Configuración inicial</title>
   <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
-<body class="setup-page">
+<body class="setup-page" data-theme="sunset">
 <main class="setup-card">
   <h1>Configurar Tienda</h1>
   <p class="muted">Paso 1 de 3: conexión a base de datos. Después se crearán el administrador y la configuración del negocio.</p>
@@ -46,7 +46,7 @@
       <div class="field"><label>RFC opcional</label><input th:field="*{taxId}"></div>
     </div>
     <div class="field"><label>Dirección</label><input th:field="*{storeAddress}"></div>
-    <div style="display:flex;gap:10px;justify-content:flex-end">
+    <div class="setup-actions">
       <button class="btn btn-muted" formaction="/setup/test" type="submit">Probar conexión</button>
       <button class="btn btn-success" formaction="/setup/install" type="submit">Completar instalación</button>
     </div>
