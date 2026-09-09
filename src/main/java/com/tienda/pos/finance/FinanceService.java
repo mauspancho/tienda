@@ -8,6 +8,7 @@ import com.tienda.pos.product.ProductRepository;
 import com.tienda.pos.purchase.PurchaseFundingSource;
 import com.tienda.pos.purchase.PurchaseRepository;
 import com.tienda.pos.sale.SaleRepository;
+import com.tienda.pos.tenant.CurrentTenant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
@@ -42,38 +43,41 @@ public class FinanceService {
     private final PurchaseRepository purchaseRepository;
     private final ProductRepository productRepository;
     private final CapitalMovementRepository capitalMovementRepository;
+    private final CurrentTenant currentTenant;
 
     public FinanceService(SaleRepository saleRepository, ExpenseRepository expenseRepository,
                           PurchaseRepository purchaseRepository, ProductRepository productRepository,
-                          CapitalMovementRepository capitalMovementRepository) {
+                          CapitalMovementRepository capitalMovementRepository, CurrentTenant currentTenant) {
         this.saleRepository = saleRepository;
         this.expenseRepository = expenseRepository;
         this.purchaseRepository = purchaseRepository;
         this.productRepository = productRepository;
         this.capitalMovementRepository = capitalMovementRepository;
+        this.currentTenant = currentTenant;
     }
 
     public FinanceSummary summary(String period, LocalDate from, LocalDate to, String productSort) {
+        Long tenantId = currentTenant.id();
         FinanceRange range = range(period, from, to);
         LocalDate today = today();
         FinancePeriodSummary todaySummary = periodSummary(today, today);
         FinancePeriodSummary selected = periodSummary(range.from(), range.to());
         FinancePeriodSummary accumulated = periodSummary(LocalDate.of(1970, 1, 1), today);
 
-        BigDecimal initialInvestment = money(capitalMovementRepository.totalByType(CapitalMovementType.INITIAL_INVESTMENT));
-        BigDecimal manualContributions = money(capitalMovementRepository.totalByType(CapitalMovementType.OWNER_CONTRIBUTION));
+        BigDecimal initialInvestment = money(capitalMovementRepository.totalByType(tenantId, CapitalMovementType.INITIAL_INVESTMENT));
+        BigDecimal manualContributions = money(capitalMovementRepository.totalByType(tenantId, CapitalMovementType.OWNER_CONTRIBUTION));
         BigDecimal ownerCapitalPurchases = money(purchaseRepository.totalByFundingSourceBetween(
-                PurchaseFundingSource.OWNER_CAPITAL, LocalDate.of(1970, 1, 1), today));
+                tenantId, PurchaseFundingSource.OWNER_CAPITAL, LocalDate.of(1970, 1, 1), today));
         BigDecimal additionalContributions = money(manualContributions.add(ownerCapitalPurchases));
         BigDecimal capitalContributedTotal = money(initialInvestment.add(additionalContributions));
-        BigDecimal ownerWithdrawalsTotal = money(capitalMovementRepository.totalByType(CapitalMovementType.OWNER_WITHDRAWAL));
-        BigDecimal capitalAdjustments = money(capitalMovementRepository.totalByType(CapitalMovementType.CAPITAL_ADJUSTMENT));
+        BigDecimal ownerWithdrawalsTotal = money(capitalMovementRepository.totalByType(tenantId, CapitalMovementType.OWNER_WITHDRAWAL));
+        BigDecimal capitalAdjustments = money(capitalMovementRepository.totalByType(tenantId, CapitalMovementType.CAPITAL_ADJUSTMENT));
         BigDecimal netProfitAccumulated = accumulated.netProfit();
         BigDecimal retainedProfit = money(netProfitAccumulated.subtract(ownerWithdrawalsTotal));
         BigDecimal capitalInsideBusiness = money(capitalContributedTotal.add(netProfitAccumulated).add(capitalAdjustments).subtract(ownerWithdrawalsTotal));
 
-        BigDecimal inventoryCost = money(productRepository.inventoryValue());
-        BigDecimal inventorySaleValue = money(productRepository.inventorySaleValue());
+        BigDecimal inventoryCost = money(productRepository.inventoryValue(tenantId));
+        BigDecimal inventorySaleValue = money(productRepository.inventorySaleValue(tenantId));
         BigDecimal inventoryPotentialProfit = money(inventorySaleValue.subtract(inventoryCost));
         BigDecimal recoveryPercent = recoveryPercent(netProfitAccumulated, initialInvestment);
         BigDecimal recoveryRemaining = initialInvestment.compareTo(BigDecimal.ZERO) > 0
@@ -125,10 +129,11 @@ public class FinanceService {
             throw new DomainException("Este tipo de movimiento no se registra manualmente.");
         }
         if (form.getType() == CapitalMovementType.INITIAL_INVESTMENT
-                && capitalMovementRepository.existsByType(CapitalMovementType.INITIAL_INVESTMENT)) {
+                && capitalMovementRepository.existsByTenantIdAndType(currentTenant.id(), CapitalMovementType.INITIAL_INVESTMENT)) {
             throw new DomainException("Ya existe una inversión inicial. Usa un ajuste de capital si necesitas corregirla.");
         }
         CapitalMovement movement = new CapitalMovement();
+        movement.setTenant(currentTenant.get());
         movement.setMovementDate(form.getMovementDate() == null ? today() : form.getMovementDate());
         movement.setType(form.getType());
         movement.setAmount(money(form.getAmount()));
@@ -159,25 +164,25 @@ public class FinanceService {
     }
 
     private FinancePeriodSummary periodSummary(LocalDate from, LocalDate to) {
-        Object[] sales = saleRepository.financeTotals(start(from), end(to));
+        Object[] sales = saleRepository.financeTotals(currentTenant.id(), start(from), end(to));
         BigDecimal grossProfit = money(value(sales, 2));
-        BigDecimal expenses = money(expenseRepository.totalBetween(from, to));
+        BigDecimal expenses = money(expenseRepository.totalBetween(currentTenant.id(), from, to));
         BigDecimal netProfit = money(grossProfit.subtract(expenses));
-        BigDecimal purchases = money(purchaseRepository.totalBetween(from, to));
-        BigDecimal reinvestment = money(purchaseRepository.totalByFundingSourceBetween(PurchaseFundingSource.BUSINESS_CASH, from, to));
-        BigDecimal ownerCapitalPurchases = money(purchaseRepository.totalByFundingSourceBetween(PurchaseFundingSource.OWNER_CAPITAL, from, to));
-        BigDecimal ownerContributions = money(capitalMovementRepository.totalByTypeBetween(CapitalMovementType.OWNER_CONTRIBUTION, from, to).add(ownerCapitalPurchases));
-        BigDecimal ownerWithdrawals = money(capitalMovementRepository.totalByTypeBetween(CapitalMovementType.OWNER_WITHDRAWAL, from, to));
+        BigDecimal purchases = money(purchaseRepository.totalBetween(currentTenant.id(), from, to));
+        BigDecimal reinvestment = money(purchaseRepository.totalByFundingSourceBetween(currentTenant.id(), PurchaseFundingSource.BUSINESS_CASH, from, to));
+        BigDecimal ownerCapitalPurchases = money(purchaseRepository.totalByFundingSourceBetween(currentTenant.id(), PurchaseFundingSource.OWNER_CAPITAL, from, to));
+        BigDecimal ownerContributions = money(capitalMovementRepository.totalByTypeBetween(currentTenant.id(), CapitalMovementType.OWNER_CONTRIBUTION, from, to).add(ownerCapitalPurchases));
+        BigDecimal ownerWithdrawals = money(capitalMovementRepository.totalByTypeBetween(currentTenant.id(), CapitalMovementType.OWNER_WITHDRAWAL, from, to));
         return new FinancePeriodSummary(from, to, money(value(sales, 0)), money(value(sales, 1)), grossProfit, expenses,
                 netProfit, purchases, reinvestment, ownerContributions, ownerWithdrawals, longValue(sales, 3), money(value(sales, 4)));
     }
 
     private List<DailyFinanceSummary> dailySummaries(LocalDate from, LocalDate to) {
-        Map<LocalDate, Object[]> sales = byDate(saleRepository.dailyFinanceTotals(start(from), end(to)));
-        Map<LocalDate, BigDecimal> expenses = amountByDate(expenseRepository.dailyTotalsBetween(from, to));
-        Map<LocalDate, BigDecimal> purchases = amountByDate(purchaseRepository.dailyTotalsBetween(from, to));
-        Map<LocalDate, BigDecimal> reinvestment = amountByDate(purchaseRepository.dailyTotalsByFundingSourceBetween(PurchaseFundingSource.BUSINESS_CASH, from, to));
-        Map<LocalDate, BigDecimal> ownerCapitalPurchases = amountByDate(purchaseRepository.dailyTotalsByFundingSourceBetween(PurchaseFundingSource.OWNER_CAPITAL, from, to));
+        Map<LocalDate, Object[]> sales = byDate(saleRepository.dailyFinanceTotals(currentTenant.id(), start(from), end(to)));
+        Map<LocalDate, BigDecimal> expenses = amountByDate(expenseRepository.dailyTotalsBetween(currentTenant.id(), from, to));
+        Map<LocalDate, BigDecimal> purchases = amountByDate(purchaseRepository.dailyTotalsBetween(currentTenant.id(), from, to));
+        Map<LocalDate, BigDecimal> reinvestment = amountByDate(purchaseRepository.dailyTotalsByFundingSourceBetween(currentTenant.id(), PurchaseFundingSource.BUSINESS_CASH, from, to));
+        Map<LocalDate, BigDecimal> ownerCapitalPurchases = amountByDate(purchaseRepository.dailyTotalsByFundingSourceBetween(currentTenant.id(), PurchaseFundingSource.OWNER_CAPITAL, from, to));
         Map<LocalDate, CapitalDay> capital = capitalByDate(from, to);
         List<DailyFinanceSummary> days = new ArrayList<>();
         for (LocalDate current = from; !current.isAfter(to); current = current.plusDays(1)) {
@@ -195,7 +200,7 @@ public class FinanceService {
     }
 
     private List<FinanceChartPoint> monthlyReinvestment(LocalDate from, LocalDate to) {
-        Map<YearMonth, BigDecimal> monthly = monthAmounts(purchaseRepository.monthlyTotalsByFundingSourceBetween(PurchaseFundingSource.BUSINESS_CASH, from, to));
+        Map<YearMonth, BigDecimal> monthly = monthAmounts(purchaseRepository.monthlyTotalsByFundingSourceBetween(currentTenant.id(), PurchaseFundingSource.BUSINESS_CASH, from, to));
         return monthSeries(from, to).stream()
                 .map(month -> new FinanceChartPoint(month.format(MONTH_LABEL).replace(".", ""), money(monthly.getOrDefault(month, BigDecimal.ZERO)), BigDecimal.ZERO, BigDecimal.ZERO))
                 .toList();
@@ -220,9 +225,9 @@ public class FinanceService {
     private List<ProductProfitRow> productRows(LocalDate from, LocalDate to, String sort) {
         String normalized = sort == null ? "profit" : sort;
         List<Object[]> rows = switch (normalized) {
-            case "quantity" -> saleRepository.mostSoldProducts(start(from), end(to), PageRequest.of(0, 12));
-            case "sales" -> saleRepository.topBillingProducts(start(from), end(to), PageRequest.of(0, 12));
-            default -> saleRepository.profitableProducts(start(from), end(to), PageRequest.of(0, 12));
+            case "quantity" -> saleRepository.mostSoldProducts(currentTenant.id(), start(from), end(to), PageRequest.of(0, 12));
+            case "sales" -> saleRepository.topBillingProducts(currentTenant.id(), start(from), end(to), PageRequest.of(0, 12));
+            default -> saleRepository.profitableProducts(currentTenant.id(), start(from), end(to), PageRequest.of(0, 12));
         };
         return rows.stream()
                 .map(row -> {
@@ -237,7 +242,7 @@ public class FinanceService {
 
     private Map<LocalDate, CapitalDay> capitalByDate(LocalDate from, LocalDate to) {
         Map<LocalDate, CapitalDay> result = new LinkedHashMap<>();
-        for (Object[] row : capitalMovementRepository.dailyCapitalTotals(from, to)) {
+        for (Object[] row : capitalMovementRepository.dailyCapitalTotals(currentTenant.id(), from, to)) {
             LocalDate date = toLocalDate(row[0]);
             CapitalMovementType type = (CapitalMovementType) row[1];
             BigDecimal amount = money(value(row, 2));
@@ -248,7 +253,7 @@ public class FinanceService {
 
     private Map<YearMonth, CapitalDay> capitalByMonth(LocalDate from, LocalDate to) {
         Map<YearMonth, CapitalDay> result = new LinkedHashMap<>();
-        for (Object[] row : capitalMovementRepository.monthlyCapitalTotals(from, to)) {
+        for (Object[] row : capitalMovementRepository.monthlyCapitalTotals(currentTenant.id(), from, to)) {
             YearMonth month = YearMonth.of(number(row[0]).intValue(), number(row[1]).intValue());
             CapitalMovementType type = (CapitalMovementType) row[2];
             BigDecimal amount = money(value(row, 3));

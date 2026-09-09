@@ -6,6 +6,7 @@ import com.tienda.pos.inventory.InventoryMovementRepository;
 import com.tienda.pos.product.ProductRepository;
 import com.tienda.pos.sale.SaleRepository;
 import com.tienda.pos.sale.SaleStatus;
+import com.tienda.pos.tenant.CurrentTenant;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
@@ -33,13 +34,16 @@ public class DashboardService {
     private final ProductRepository productRepository;
     private final ExpenseRepository expenseRepository;
     private final InventoryMovementRepository movementRepository;
+    private final CurrentTenant currentTenant;
 
     public DashboardService(SaleRepository saleRepository, ProductRepository productRepository,
-                            ExpenseRepository expenseRepository, InventoryMovementRepository movementRepository) {
+                            ExpenseRepository expenseRepository, InventoryMovementRepository movementRepository,
+                            CurrentTenant currentTenant) {
         this.saleRepository = saleRepository;
         this.productRepository = productRepository;
         this.expenseRepository = expenseRepository;
         this.movementRepository = movementRepository;
+        this.currentTenant = currentTenant;
     }
 
     public DashboardSummary today() {
@@ -47,22 +51,23 @@ public class DashboardService {
     }
 
     public DashboardSummary today(String username, boolean admin) {
+        Long tenantId = currentTenant.id();
         LocalDate today = LocalDate.now();
         var start = today.atStartOfDay();
         var end = today.plusDays(1).atStartOfDay().minusNanos(1);
         return new DashboardSummary(
-                admin ? saleRepository.totalSales(start, end) : saleRepository.totalSalesByCashier(username, start, end),
-                admin ? saleRepository.grossProfit(start, end) : saleRepository.grossProfitByCashier(username, start, end),
-                admin ? saleRepository.soldUnits(start, end) : saleRepository.soldUnitsByCashier(username, start, end),
-                admin ? saleRepository.countBySaleDateBetweenAndStatus(start, end, SaleStatus.COMPLETED)
-                        : saleRepository.countByCashierUsernameAndSaleDateBetweenAndStatus(username, start, end, SaleStatus.COMPLETED),
-                productRepository.findLowStock(PageRequest.of(0, 100)).size(),
-                expenseRepository.totalBetween(today, today),
-                productRepository.inventoryValue(),
-                admin ? saleRepository.dailySalesSince(today.minusDays(6).atStartOfDay())
-                        : saleRepository.dailySalesSinceByCashier(username, today.minusDays(6).atStartOfDay()),
-                admin ? saleRepository.topProducts(start, end, PageRequest.of(0, 5))
-                        : saleRepository.topProductsByCashier(username, start, end, PageRequest.of(0, 5))
+                admin ? saleRepository.totalSales(tenantId, start, end) : saleRepository.totalSalesByCashier(tenantId, username, start, end),
+                admin ? saleRepository.grossProfit(tenantId, start, end) : saleRepository.grossProfitByCashier(tenantId, username, start, end),
+                admin ? saleRepository.soldUnits(tenantId, start, end) : saleRepository.soldUnitsByCashier(tenantId, username, start, end),
+                admin ? saleRepository.countByTenantIdAndSaleDateBetweenAndStatus(tenantId, start, end, SaleStatus.COMPLETED)
+                        : saleRepository.countByTenantIdAndCashierUsernameAndSaleDateBetweenAndStatus(tenantId, username, start, end, SaleStatus.COMPLETED),
+                productRepository.findLowStock(tenantId, PageRequest.of(0, 100)).size(),
+                expenseRepository.totalBetween(tenantId, today, today),
+                productRepository.inventoryValue(tenantId),
+                admin ? saleRepository.dailySalesSince(tenantId, today.minusDays(6).atStartOfDay())
+                        : saleRepository.dailySalesSinceByCashier(tenantId, username, today.minusDays(6).atStartOfDay()),
+                admin ? saleRepository.topProducts(tenantId, start, end, PageRequest.of(0, 5))
+                        : saleRepository.topProductsByCashier(tenantId, username, start, end, PageRequest.of(0, 5))
         );
     }
 
@@ -98,15 +103,15 @@ public class DashboardService {
     private BigDecimal costAdjustmentBetween(LocalDate start, LocalDate end) {
         LocalDateTime startAt = start.atStartOfDay();
         LocalDateTime endAt = end.plusDays(1).atStartOfDay().minusNanos(1);
-        return movementRepository.costAdjustmentBetween(startAt, endAt);
+        return movementRepository.costAdjustmentBetween(currentTenant.id(), startAt, endAt);
     }
 
     private Map<LocalDate, BigDecimal> dailyProfitMap(LocalDate start, LocalDate end, String username, boolean admin) {
         LocalDateTime startAt = start.atStartOfDay();
         LocalDateTime endAt = end.plusDays(1).atStartOfDay().minusNanos(1);
         List<Object[]> rows = admin
-                ? saleRepository.dailyGrossProfitBetween(startAt, endAt)
-                : saleRepository.dailyGrossProfitBetweenByCashier(username, startAt, endAt);
+                ? saleRepository.dailyGrossProfitBetween(currentTenant.id(), startAt, endAt)
+                : saleRepository.dailyGrossProfitBetweenByCashier(currentTenant.id(), username, startAt, endAt);
         Map<LocalDate, BigDecimal> result = new LinkedHashMap<>();
         for (Object[] row : rows) {
             result.put(toLocalDate(row[0]), (BigDecimal) row[1]);

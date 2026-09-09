@@ -5,6 +5,8 @@ import com.tienda.pos.commercial.StoreContextService;
 import com.tienda.pos.common.BaseEntity;
 import com.tienda.pos.product.Product;
 import com.tienda.pos.product.ProductRepository;
+import com.tienda.pos.tenant.CurrentTenant;
+import com.tienda.pos.tenant.Tenant;
 import com.tienda.pos.warehouse.Warehouse;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -28,7 +30,7 @@ class InventoryServiceTest {
 
     @Test
     void signsInventoryQuantities() {
-        InventoryService service = new InventoryService(null, null, null, null);
+        InventoryService service = new InventoryService(null, null, null, null, null);
 
         assertThat(service.signedQuantity(InventoryMovementType.ADJUSTMENT_IN, new BigDecimal("3")))
                 .isEqualByComparingTo(new BigDecimal("3"));
@@ -40,7 +42,7 @@ class InventoryServiceTest {
 
     @Test
     void calculatesWeightedAverageCostForIncomingStock() {
-        InventoryService service = new InventoryService(null, null, null, null);
+        InventoryService service = new InventoryService(null, null, null, null, null);
 
         BigDecimal average = service.weightedAverageCost(
                 new BigDecimal("10.000"),
@@ -54,26 +56,28 @@ class InventoryServiceTest {
 
     @Test
     void reversesInventoryMovementAndRestoresPreviousCost() throws Exception {
+        Tenant tenant = tenant();
         ProductRepository productRepository = mock(ProductRepository.class);
         InventoryMovementRepository movementRepository = mock(InventoryMovementRepository.class);
         InventoryStockRepository stockRepository = mock(InventoryStockRepository.class);
         StoreContextService storeContextService = mock(StoreContextService.class);
-        InventoryService service = new InventoryService(productRepository, movementRepository, stockRepository, storeContextService);
-        Product product = new Product();
-        product.setId(5L);
-        product.setCurrentStock(new BigDecimal("15.000"));
-        product.setMinimumStock(BigDecimal.ZERO);
-        product.setPurchaseCost(new BigDecimal("16.00"));
+        CurrentTenant currentTenant = currentTenant(tenant);
+        InventoryService service = new InventoryService(productRepository, movementRepository, stockRepository, storeContextService, currentTenant);
+        Product product = product(tenant);
         Branch branch = new Branch();
+        branch.setTenant(tenant);
         Warehouse warehouse = new Warehouse();
+        warehouse.setTenant(tenant);
         warehouse.setBranch(branch);
         InventoryStock stock = new InventoryStock();
+        stock.setTenant(tenant);
         stock.setProduct(product);
         stock.setWarehouse(warehouse);
         stock.setQuantity(new BigDecimal("15.000"));
         stock.setMinimumStock(BigDecimal.ZERO);
         InventoryMovement original = new InventoryMovement();
         original.setId(10L);
+        original.setTenant(tenant);
         original.setProduct(product);
         original.setWarehouse(warehouse);
         original.setBranch(branch);
@@ -87,10 +91,10 @@ class InventoryServiceTest {
         original.setCostAdjustment(new BigDecimal("-10.00"));
         stampCreatedAt(original, LocalDateTime.now().minusMinutes(5));
 
-        when(movementRepository.findDetailedById(10L)).thenReturn(Optional.of(original));
-        when(productRepository.findByIdForUpdate(5L)).thenReturn(Optional.of(product));
-        when(stockRepository.findByProductAndWarehouseForUpdate(product, warehouse)).thenReturn(Optional.of(stock));
-        when(movementRepository.existsNewerCostChangeForProduct(eq(5L), any(LocalDateTime.class))).thenReturn(false);
+        when(movementRepository.findDetailedByIdAndTenantId(10L, 1L)).thenReturn(Optional.of(original));
+        when(productRepository.findByIdAndTenantIdForUpdate(5L, 1L)).thenReturn(Optional.of(product));
+        when(stockRepository.findByProductAndWarehouseAndTenantIdForUpdate(product, warehouse, 1L)).thenReturn(Optional.of(stock));
+        when(movementRepository.existsNewerCostChangeForProduct(eq(1L), eq(5L), any(LocalDateTime.class))).thenReturn(false);
         when(movementRepository.save(any(InventoryMovement.class))).thenAnswer(invocation -> {
             InventoryMovement movement = invocation.getArgument(0);
             if (movement.getId() == null) {
@@ -110,6 +114,7 @@ class InventoryServiceTest {
         ArgumentCaptor<InventoryMovement> movementCaptor = ArgumentCaptor.forClass(InventoryMovement.class);
         verify(movementRepository, times(2)).save(movementCaptor.capture());
         InventoryMovement reversal = movementCaptor.getAllValues().get(0);
+        assertThat(reversal.getTenant()).isSameAs(tenant);
         assertThat(reversal.getWarehouse()).isSameAs(warehouse);
         assertThat(reversal.getBranch()).isSameAs(branch);
         assertThat(reversal.getMovementType()).isEqualTo(InventoryMovementType.ADJUSTMENT_OUT);
@@ -121,18 +126,47 @@ class InventoryServiceTest {
 
     @Test
     void doesNotReverseSaleMovementsFromInventory() {
+        Tenant tenant = tenant();
         ProductRepository productRepository = mock(ProductRepository.class);
         InventoryMovementRepository movementRepository = mock(InventoryMovementRepository.class);
-        InventoryService service = new InventoryService(productRepository, movementRepository, null, null);
+        CurrentTenant currentTenant = currentTenant(tenant);
+        InventoryService service = new InventoryService(productRepository, movementRepository, null, null, currentTenant);
         InventoryMovement saleMovement = new InventoryMovement();
         saleMovement.setId(20L);
+        saleMovement.setTenant(tenant);
         saleMovement.setMovementType(InventoryMovementType.SALE);
 
-        when(movementRepository.findDetailedById(20L)).thenReturn(Optional.of(saleMovement));
+        when(movementRepository.findDetailedByIdAndTenantId(20L, 1L)).thenReturn(Optional.of(saleMovement));
 
         assertThatThrownBy(() -> service.reverseMovement(20L))
                 .hasMessage("Este movimiento no se puede retirar desde inventario.");
         verifyNoInteractions(productRepository);
+    }
+
+    private CurrentTenant currentTenant(Tenant tenant) {
+        CurrentTenant currentTenant = mock(CurrentTenant.class);
+        when(currentTenant.get()).thenReturn(tenant);
+        when(currentTenant.id()).thenReturn(tenant.getId());
+        return currentTenant;
+    }
+
+    private Product product(Tenant tenant) {
+        Product product = new Product();
+        product.setId(5L);
+        product.setTenant(tenant);
+        product.setCurrentStock(new BigDecimal("15.000"));
+        product.setMinimumStock(BigDecimal.ZERO);
+        product.setPurchaseCost(new BigDecimal("16.00"));
+        return product;
+    }
+
+    private Tenant tenant() {
+        Tenant tenant = new Tenant();
+        tenant.setId(1L);
+        tenant.setCode("default");
+        tenant.setName("Tienda");
+        tenant.setActive(true);
+        return tenant;
     }
 
     private void stampCreatedAt(BaseEntity entity, LocalDateTime createdAt) throws Exception {

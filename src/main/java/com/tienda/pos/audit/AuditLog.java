@@ -1,6 +1,7 @@
 package com.tienda.pos.audit;
 
 import com.tienda.pos.common.BaseEntity;
+import com.tienda.pos.tenant.Tenant;
 import com.tienda.pos.user.AppUser;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -13,6 +14,10 @@ import jakarta.persistence.Table;
 public class AuditLog extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tenant_id")
+    private Tenant tenant;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private AppUser user;
 
@@ -22,6 +27,8 @@ public class AuditLog extends BaseEntity {
     private String details;
     private String ipAddress;
 
+    public Tenant getTenant() { return tenant; }
+    public void setTenant(Tenant tenant) { this.tenant = tenant; }
     public AppUser getUser() { return user; }
     public void setUser(AppUser user) { this.user = user; }
     public String getAction() { return action; }

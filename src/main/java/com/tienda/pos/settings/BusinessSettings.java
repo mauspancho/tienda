@@ -1,8 +1,13 @@
 package com.tienda.pos.settings;
 
+import com.tienda.pos.business.Business;
 import com.tienda.pos.common.BaseEntity;
+import com.tienda.pos.tenant.Tenant;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
@@ -10,6 +15,14 @@ import java.math.BigDecimal;
 @Entity
 @Table(name = "business_settings")
 public class BusinessSettings extends BaseEntity {
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "tenant_id", nullable = false)
+    private Tenant tenant;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "business_id")
+    private Business business;
 
     @Column(nullable = false)
     private String storeName = "Mi tienda";
@@ -29,6 +42,10 @@ public class BusinessSettings extends BaseEntity {
     private String promotionTitle = "Productos destacados";
     private boolean negativeStockAllowed = false;
 
+    public Tenant getTenant() { return tenant; }
+    public void setTenant(Tenant tenant) { this.tenant = tenant; }
+    public Business getBusiness() { return business; }
+    public void setBusiness(Business business) { this.business = business; }
     public String getStoreName() { return storeName; }
     public void setStoreName(String storeName) { this.storeName = storeName; }
     public String getAddress() { return address; }

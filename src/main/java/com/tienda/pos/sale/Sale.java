@@ -5,6 +5,7 @@ import com.tienda.pos.cash.CashRegister;
 import com.tienda.pos.common.BaseEntity;
 import com.tienda.pos.customer.Customer;
 import com.tienda.pos.payment.Payment;
+import com.tienda.pos.tenant.Tenant;
 import com.tienda.pos.user.AppUser;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -26,6 +27,10 @@ import java.util.List;
 @Entity
 @Table(name = "sale")
 public class Sale extends BaseEntity {
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "tenant_id", nullable = false)
+    private Tenant tenant;
 
     @Column(nullable = false, unique = true, length = 40)
     private String folio;
@@ -76,6 +81,8 @@ public class Sale extends BaseEntity {
         item.setSale(this);
     }
 
+    public Tenant getTenant() { return tenant; }
+    public void setTenant(Tenant tenant) { this.tenant = tenant; }
     public String getFolio() { return folio; }
     public void setFolio(String folio) { this.folio = folio; }
     public LocalDateTime getSaleDate() { return saleDate; }

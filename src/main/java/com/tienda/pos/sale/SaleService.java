@@ -20,6 +20,8 @@ import com.tienda.pos.payment.Payment;
 import com.tienda.pos.payment.PaymentMethod;
 import com.tienda.pos.product.Product;
 import com.tienda.pos.product.ProductRepository;
+import com.tienda.pos.tenant.CurrentTenant;
+import com.tienda.pos.tenant.Tenant;
 import com.tienda.pos.user.AppUser;
 import com.tienda.pos.user.AppUserRepository;
 import org.springframework.stereotype.Service;
@@ -44,11 +46,13 @@ public class SaleService {
     private final CashRegisterSessionRepository cashRegisterSessionRepository;
     private final CashMovementRepository cashMovementRepository;
     private final StoreContextService storeContextService;
+    private final CurrentTenant currentTenant;
 
     public SaleService(SaleRepository saleRepository, ProductRepository productRepository,
                        CustomerRepository customerRepository, AppUserRepository userRepository,
                        InventoryService inventoryService, CashRegisterSessionRepository cashRegisterSessionRepository,
-                       CashMovementRepository cashMovementRepository, StoreContextService storeContextService) {
+                       CashMovementRepository cashMovementRepository, StoreContextService storeContextService,
+                       CurrentTenant currentTenant) {
         this.saleRepository = saleRepository;
         this.productRepository = productRepository;
         this.customerRepository = customerRepository;
@@ -57,13 +61,17 @@ public class SaleService {
         this.cashRegisterSessionRepository = cashRegisterSessionRepository;
         this.cashMovementRepository = cashMovementRepository;
         this.storeContextService = storeContextService;
+        this.currentTenant = currentTenant;
     }
 
     @Transactional
     public SaleResult checkout(SaleRequest request) {
-        AppUser cashier = userRepository.findByUsername(CurrentUser.username())
+        Tenant tenant = currentTenant.get();
+        Long tenantId = tenant.getId();
+        AppUser cashier = userRepository.findByUsernameWithTenant(CurrentUser.username())
+                .filter(user -> user.getTenant() != null && user.getTenant().getId().equals(tenantId))
                 .orElseThrow(() -> new DomainException("No se encontró el cajero actual."));
-        CashRegisterSession cashSession = cashRegisterSessionRepository.findByCashierAndOpenTrue(cashier)
+        CashRegisterSession cashSession = cashRegisterSessionRepository.findByTenantIdAndCashierAndOpenTrue(tenantId, cashier)
                 .orElseThrow(() -> new DomainException("Abre la caja antes de realizar una venta."));
         CashRegister cashRegister = cashSession.getCashRegister() == null
                 ? storeContextService.defaultCashRegister()
@@ -71,21 +79,22 @@ public class SaleService {
         Branch branch = cashSession.getBranch() == null ? cashRegister.getBranch() : cashSession.getBranch();
 
         Sale sale = new Sale();
+        sale.setTenant(tenant);
         sale.setFolio("V" + LocalDateTime.now().format(FOLIO_FORMAT));
         sale.setCashier(cashier);
         sale.setBranch(branch);
         sale.setCashRegister(cashRegister);
         if (request.getCustomerId() != null) {
-            sale.setCustomer(customerRepository.findById(request.getCustomerId()).orElse(null));
+            sale.setCustomer(customerRepository.findByIdAndTenantId(request.getCustomerId(), tenantId).orElse(null));
         } else {
-            customerRepository.findFirstByName("Público General").ifPresent(sale::setCustomer);
+            customerRepository.findFirstByTenantIdAndName(tenantId, "Público General").ifPresent(sale::setCustomer);
         }
 
         BigDecimal subtotal = BigDecimal.ZERO;
         for (SaleRequest.SaleLineRequest line : request.getItems().stream()
                 .sorted(Comparator.comparing(SaleRequest.SaleLineRequest::getProductId))
                 .toList()) {
-            Product product = productRepository.findByIdForUpdate(line.getProductId())
+            Product product = productRepository.findByIdAndTenantIdForUpdate(line.getProductId(), tenantId)
                     .orElseThrow(() -> new DomainException("Producto no encontrado."));
             InventoryStock stock = inventoryService.defaultStockForUpdate(product);
             if (!product.isActive()) {
@@ -129,12 +138,7 @@ public class SaleService {
         if (total.compareTo(BigDecimal.ZERO) < 0) {
             throw new DomainException("El descuento no puede ser mayor al subtotal.");
         }
-        BigDecimal received = request.getPaymentMethod() == PaymentMethod.CASH
-                ? MoneyUtils.money(request.getReceivedAmount())
-                : total;
-        if (request.getPaymentMethod() == PaymentMethod.CASH && received.compareTo(total) < 0) {
-            throw new DomainException("El efectivo recibido debe cubrir el total.");
-        }
+        BigDecimal received = total;
 
         sale.setSubtotal(MoneyUtils.money(subtotal));
         sale.setDiscount(discount);
@@ -144,12 +148,13 @@ public class SaleService {
         payment.setMethod(request.getPaymentMethod());
         payment.setAmount(total);
         payment.setReceivedAmount(received);
-        payment.setChangeAmount(received.subtract(total));
+        payment.setChangeAmount(BigDecimal.ZERO);
         sale.setPayment(payment);
         Sale saved = saleRepository.save(sale);
 
         if (request.getPaymentMethod() == PaymentMethod.CASH) {
             CashMovement movement = new CashMovement();
+            movement.setTenant(tenant);
             movement.setCashRegisterSession(cashSession);
             movement.setType(CashMovementType.SALE);
             movement.setAmount(total);
@@ -158,7 +163,7 @@ public class SaleService {
             movement.setUser(cashier);
             cashMovementRepository.save(movement);
         }
-        return new SaleResult(saved.getFolio(), total, received, received.subtract(total));
+        return new SaleResult(saved.getFolio(), total, received, BigDecimal.ZERO);
     }
 
     public BigDecimal calculateChange(BigDecimal total, BigDecimal received) {

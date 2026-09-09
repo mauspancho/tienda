@@ -2,6 +2,7 @@ package com.tienda.pos.expense;
 
 import com.tienda.pos.cash.CashRegisterSession;
 import com.tienda.pos.common.BaseEntity;
+import com.tienda.pos.tenant.Tenant;
 import com.tienda.pos.user.AppUser;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -16,6 +17,10 @@ import java.time.LocalDate;
 @Entity
 @Table(name = "expense")
 public class Expense extends BaseEntity {
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "tenant_id", nullable = false)
+    private Tenant tenant;
 
     @Column(nullable = false)
     private String concept;
@@ -40,6 +45,8 @@ public class Expense extends BaseEntity {
     @JoinColumn(name = "user_id")
     private AppUser user;
 
+    public Tenant getTenant() { return tenant; }
+    public void setTenant(Tenant tenant) { this.tenant = tenant; }
     public String getConcept() { return concept; }
     public void setConcept(String concept) { this.concept = concept; }
     public ExpenseCategory getCategory() { return category; }

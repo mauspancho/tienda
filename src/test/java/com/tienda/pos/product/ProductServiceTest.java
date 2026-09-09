@@ -1,7 +1,7 @@
 package com.tienda.pos.product;
 
-import com.tienda.pos.category.Category;
 import com.tienda.pos.branch.Branch;
+import com.tienda.pos.category.Category;
 import com.tienda.pos.category.CategoryRepository;
 import com.tienda.pos.commercial.StoreContextService;
 import com.tienda.pos.exception.DomainException;
@@ -14,7 +14,10 @@ import com.tienda.pos.inventory.InventoryMovementType;
 import com.tienda.pos.inventory.InventoryStock;
 import com.tienda.pos.inventory.InventoryStockRepository;
 import com.tienda.pos.supplier.SupplierRepository;
+import com.tienda.pos.tenant.CurrentTenant;
+import com.tienda.pos.tenant.Tenant;
 import com.tienda.pos.warehouse.Warehouse;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -41,8 +44,16 @@ class ProductServiceTest {
     private final StoreContextService storeContextService = mock(StoreContextService.class);
     private final ExternalProductService externalProductService = mock(ExternalProductService.class);
     private final ProductImageService productImageService = mock(ProductImageService.class);
+    private final CurrentTenant currentTenant = mock(CurrentTenant.class);
+    private final Tenant tenant = tenant();
     private final ProductService service = new ProductService(productRepository, categoryRepository,
-            supplierRepository, movementRepository, stockRepository, storeContextService, externalProductService, productImageService);
+            supplierRepository, movementRepository, stockRepository, storeContextService, externalProductService, productImageService, currentTenant);
+
+    @BeforeEach
+    void tenantContext() {
+        when(currentTenant.get()).thenReturn(tenant);
+        when(currentTenant.id()).thenReturn(1L);
+    }
 
     @Test
     void calculatesEan13CheckDigit() {
@@ -52,7 +63,7 @@ class ProductServiceTest {
     @Test
     void existingLocalBarcodeDoesNotCallExternalProvider() {
         Product product = product("7501055300006");
-        when(productRepository.findByBarcode("7501055300006")).thenReturn(Optional.of(product));
+        when(productRepository.findByTenantIdAndBarcode(1L, "7501055300006")).thenReturn(Optional.of(product));
 
         ProductBarcodeLookupResult result = service.lookupByBarcode("7501055300006");
 
@@ -66,11 +77,12 @@ class ProductServiceTest {
     void mapsExternalProductWhenBarcodeIsNotLocal() {
         Category category = new Category();
         category.setId(3L);
+        category.setTenant(tenant);
         category.setName("Bebidas");
-        when(productRepository.findByBarcode("7501055300006")).thenReturn(Optional.empty());
+        when(productRepository.findByTenantIdAndBarcode(1L, "7501055300006")).thenReturn(Optional.empty());
         when(externalProductService.findByBarcode("7501055300006")).thenReturn(Optional.of(new ExternalProductDto(
                 "7501055300006", "Coca-Cola Original", "Coca-Cola", "600 ml", "Bebidas", "https://img.test/coke.jpg")));
-        when(categoryRepository.findByActiveTrueOrderByNameAsc()).thenReturn(List.of(category));
+        when(categoryRepository.findByTenantIdAndActiveTrueOrderByNameAsc(1L)).thenReturn(List.of(category));
 
         ProductBarcodeLookupResult result = service.lookupByBarcode("7501055300006");
 
@@ -85,7 +97,7 @@ class ProductServiceTest {
 
     @Test
     void returnsNotFoundWhenExternalProviderHasNoProduct() {
-        when(productRepository.findByBarcode("9999999999999")).thenReturn(Optional.empty());
+        when(productRepository.findByTenantIdAndBarcode(1L, "9999999999999")).thenReturn(Optional.empty());
         when(externalProductService.findByBarcode("9999999999999")).thenReturn(Optional.empty());
 
         ProductBarcodeLookupResult result = service.lookupByBarcode("9999999999999");
@@ -96,7 +108,7 @@ class ProductServiceTest {
 
     @Test
     void returnsExternalErrorWhenProviderFails() {
-        when(productRepository.findByBarcode("7501055300006")).thenReturn(Optional.empty());
+        when(productRepository.findByTenantIdAndBarcode(1L, "7501055300006")).thenReturn(Optional.empty());
         when(externalProductService.findByBarcode("7501055300006"))
                 .thenThrow(new ExternalProductLookupException("timeout"));
 
@@ -118,13 +130,15 @@ class ProductServiceTest {
         form.setMinimumStock(BigDecimal.ZERO);
         form.setUnit(UnitType.PIEZA);
         form.setActive(true);
-        when(productRepository.findByCode("PRD-12345678")).thenReturn(Optional.empty());
-        when(productRepository.findByBarcode("7501055300006")).thenReturn(Optional.empty());
+        when(productRepository.findByTenantIdAndCode(1L, "PRD-12345678")).thenReturn(Optional.empty());
+        when(productRepository.findByTenantIdAndBarcode(1L, "7501055300006")).thenReturn(Optional.empty());
         Branch branch = new Branch();
+        branch.setTenant(tenant);
         Warehouse warehouse = new Warehouse();
+        warehouse.setTenant(tenant);
         warehouse.setBranch(branch);
         when(storeContextService.defaultWarehouse()).thenReturn(warehouse);
-        when(stockRepository.findByProductAndWarehouse(any(Product.class), any(Warehouse.class))).thenReturn(Optional.empty());
+        when(stockRepository.findByProductAndWarehouseAndTenantId(any(Product.class), any(Warehouse.class), any(Long.class))).thenReturn(Optional.empty());
         when(stockRepository.save(any(InventoryStock.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(productRepository.save(any(Product.class))).thenAnswer(invocation -> {
             Product savedProduct = invocation.getArgument(0);
@@ -134,10 +148,12 @@ class ProductServiceTest {
 
         Product saved = service.save(form);
 
+        assertThat(saved.getTenant()).isSameAs(tenant);
         assertThat(saved.getCurrentStock()).isEqualByComparingTo(new BigDecimal("24.000"));
         ArgumentCaptor<InventoryMovement> movementCaptor = ArgumentCaptor.forClass(InventoryMovement.class);
         verify(movementRepository).save(movementCaptor.capture());
         InventoryMovement movement = movementCaptor.getValue();
+        assertThat(movement.getTenant()).isSameAs(tenant);
         assertThat(movement.getProduct()).isSameAs(saved);
         assertThat(movement.getWarehouse()).isSameAs(warehouse);
         assertThat(movement.getBranch()).isSameAs(branch);
@@ -147,6 +163,7 @@ class ProductServiceTest {
         assertThat(movement.getNewStock()).isEqualByComparingTo(new BigDecimal("24.000"));
         ArgumentCaptor<InventoryStock> stockCaptor = ArgumentCaptor.forClass(InventoryStock.class);
         verify(stockRepository).save(stockCaptor.capture());
+        assertThat(stockCaptor.getValue().getTenant()).isSameAs(tenant);
         assertThat(stockCaptor.getValue().getProduct()).isSameAs(saved);
         assertThat(stockCaptor.getValue().getWarehouse()).isSameAs(warehouse);
         assertThat(stockCaptor.getValue().getQuantity()).isEqualByComparingTo(new BigDecimal("24.000"));
@@ -154,7 +171,7 @@ class ProductServiceTest {
     }
 
     @Test
-    void rejectsDuplicatedBarcode() {
+    void rejectsDuplicatedBarcodeWithinCurrentTenant() {
         Product existing = product("7501055300006");
         ProductForm form = new ProductForm();
         form.setCode("PRD-87654321");
@@ -165,8 +182,8 @@ class ProductServiceTest {
         form.setCurrentStock(BigDecimal.ZERO);
         form.setMinimumStock(BigDecimal.ZERO);
         form.setUnit(UnitType.PIEZA);
-        when(productRepository.findByCode("PRD-87654321")).thenReturn(Optional.empty());
-        when(productRepository.findByBarcode("7501055300006")).thenReturn(Optional.of(existing));
+        when(productRepository.findByTenantIdAndCode(1L, "PRD-87654321")).thenReturn(Optional.empty());
+        when(productRepository.findByTenantIdAndBarcode(1L, "7501055300006")).thenReturn(Optional.of(existing));
 
         assertThatThrownBy(() -> service.save(form))
                 .isInstanceOf(DomainException.class)
@@ -177,6 +194,7 @@ class ProductServiceTest {
     private Product product(String barcode) {
         Product product = new Product();
         product.setId(10L);
+        product.setTenant(tenant);
         product.setCode("PRD-00000010");
         product.setBarcode(barcode);
         product.setName("Coca-Cola 600 ml");
@@ -186,5 +204,14 @@ class ProductServiceTest {
         product.setMinimumStock(BigDecimal.ZERO);
         product.setUnit(UnitType.PIEZA);
         return product;
+    }
+
+    private Tenant tenant() {
+        Tenant tenant = new Tenant();
+        tenant.setId(1L);
+        tenant.setCode("default");
+        tenant.setName("Tienda");
+        tenant.setActive(true);
+        return tenant;
     }
 }

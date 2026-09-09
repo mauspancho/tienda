@@ -1,6 +1,7 @@
 package com.tienda.pos.supplier;
 
 import com.tienda.pos.common.NormalMode;
+import com.tienda.pos.tenant.CurrentTenant;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,16 +21,19 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class SupplierController {
 
     private final SupplierRepository supplierRepository;
+    private final CurrentTenant currentTenant;
 
-    public SupplierController(SupplierRepository supplierRepository) {
+    public SupplierController(SupplierRepository supplierRepository, CurrentTenant currentTenant) {
         this.supplierRepository = supplierRepository;
+        this.currentTenant = currentTenant;
     }
 
     @GetMapping("/suppliers")
     public String list(@RequestParam(defaultValue = "") String q, Model model) {
+        Long tenantId = currentTenant.id();
         model.addAttribute("suppliers", q.isBlank()
-                ? supplierRepository.findAll(PageRequest.of(0, 50))
-                : supplierRepository.findByNameContainingIgnoreCaseOrCompanyNameContainingIgnoreCase(q, q, PageRequest.of(0, 50)));
+                ? supplierRepository.findByTenantIdOrderByNameAsc(tenantId, PageRequest.of(0, 50))
+                : supplierRepository.findByTenantIdAndNameContainingIgnoreCaseOrTenantIdAndCompanyNameContainingIgnoreCase(tenantId, q, tenantId, q, PageRequest.of(0, 50)));
         model.addAttribute("supplier", new Supplier());
         model.addAttribute("q", q);
         return "suppliers/index";
@@ -42,6 +46,7 @@ public class SupplierController {
             redirectAttributes.addFlashAttribute("error", "Revisa los datos del proveedor.");
             return "redirect:/admin/suppliers";
         }
+        supplier.setTenant(currentTenant.get());
         supplierRepository.save(supplier);
         redirectAttributes.addFlashAttribute("success", "Proveedor guardado correctamente.");
         return "redirect:/admin/suppliers";

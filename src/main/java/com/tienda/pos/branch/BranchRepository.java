@@ -6,6 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 
 public interface BranchRepository extends JpaRepository<Branch, Long> {
-    @EntityGraph(attributePaths = "business")
-    Optional<Branch> findFirstByActiveTrueOrderByIdAsc();
+    @EntityGraph(attributePaths = {"business", "tenant"})
+    Optional<Branch> findFirstByTenantIdAndActiveTrueOrderByIdAsc(Long tenantId);
 }

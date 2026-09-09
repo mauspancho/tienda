@@ -4,6 +4,8 @@ import com.tienda.pos.common.CurrentUser;
 import com.tienda.pos.common.NormalMode;
 import com.tienda.pos.exception.DomainException;
 import com.tienda.pos.role.RoleRepository;
+import com.tienda.pos.tenant.CurrentTenant;
+import com.tienda.pos.tenant.Tenant;
 import jakarta.persistence.EntityManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -17,17 +19,21 @@ public class UserService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final EntityManager entityManager;
+    private final CurrentTenant currentTenant;
 
     public UserService(AppUserRepository userRepository, RoleRepository roleRepository,
-                       PasswordEncoder passwordEncoder, EntityManager entityManager) {
+                       PasswordEncoder passwordEncoder, EntityManager entityManager,
+                       CurrentTenant currentTenant) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.entityManager = entityManager;
+        this.currentTenant = currentTenant;
     }
 
     @Transactional
     public void create(UserForm form) {
+        Tenant tenant = currentTenant.get();
         if (userRepository.existsByUsername(form.getUsername())) {
             throw new DomainException("El usuario ya existe.");
         }
@@ -35,6 +41,7 @@ public class UserService {
             throw new DomainException("La contraseña debe tener al menos 8 caracteres.");
         }
         AppUser user = new AppUser();
+        user.setTenant(tenant);
         applyEditableFields(user, form);
         user.setPasswordHash(passwordEncoder.encode(form.getPassword()));
         userRepository.save(user);
@@ -42,7 +49,8 @@ public class UserService {
 
     @Transactional
     public void update(Long id, UserForm form) {
-        AppUser user = userRepository.findById(id).orElseThrow(() -> new DomainException("Usuario no encontrado."));
+        Long tenantId = currentTenant.id();
+        AppUser user = userRepository.findByIdAndTenantId(id, tenantId).orElseThrow(() -> new DomainException("Usuario no encontrado."));
         String requestedUsername = form.getUsername().trim();
         userRepository.findByUsername(requestedUsername)
                 .filter(existing -> !existing.getId().equals(id))
@@ -59,7 +67,7 @@ public class UserService {
 
     @Transactional
     public void toggleActive(Long id) {
-        AppUser user = userRepository.findById(id).orElseThrow(() -> new DomainException("Usuario no encontrado."));
+        AppUser user = userRepository.findByIdAndTenantId(id, currentTenant.id()).orElseThrow(() -> new DomainException("Usuario no encontrado."));
         if (user.getUsername().equals(CurrentUser.username()) && user.isActive()) {
             throw new DomainException("No puedes desactivar tu propio usuario activo.");
         }
@@ -69,7 +77,7 @@ public class UserService {
 
     @Transactional
     public void deleteOrDeactivate(Long id) {
-        AppUser user = userRepository.findById(id).orElseThrow(() -> new DomainException("Usuario no encontrado."));
+        AppUser user = userRepository.findByIdAndTenantId(id, currentTenant.id()).orElseThrow(() -> new DomainException("Usuario no encontrado."));
         if (user.getUsername().equals(CurrentUser.username())) {
             throw new DomainException("No puedes eliminar tu propio usuario.");
         }
@@ -101,17 +109,19 @@ public class UserService {
     }
 
     private boolean hasHistory(Long userId) {
-        return count("select count(s) from Sale s where s.cashier.id = :userId", userId) > 0
-                || count("select count(p) from Purchase p where p.user.id = :userId", userId) > 0
-                || count("select count(m) from InventoryMovement m where m.user.id = :userId", userId) > 0
-                || count("select count(c) from CashRegisterSession c where c.cashier.id = :userId", userId) > 0
-                || count("select count(m) from CashMovement m where m.user.id = :userId", userId) > 0
-                || count("select count(e) from Expense e where e.user.id = :userId", userId) > 0
-                || count("select count(a) from AuditLog a where a.user.id = :userId", userId) > 0;
+        Long tenantId = currentTenant.id();
+        return count("select count(s) from Sale s where s.tenant.id = :tenantId and s.cashier.id = :userId", tenantId, userId) > 0
+                || count("select count(p) from Purchase p where p.tenant.id = :tenantId and p.user.id = :userId", tenantId, userId) > 0
+                || count("select count(m) from InventoryMovement m where m.tenant.id = :tenantId and m.user.id = :userId", tenantId, userId) > 0
+                || count("select count(c) from CashRegisterSession c where c.tenant.id = :tenantId and c.cashier.id = :userId", tenantId, userId) > 0
+                || count("select count(m) from CashMovement m where m.tenant.id = :tenantId and m.user.id = :userId", tenantId, userId) > 0
+                || count("select count(e) from Expense e where e.tenant.id = :tenantId and e.user.id = :userId", tenantId, userId) > 0
+                || count("select count(a) from AuditLog a where a.tenant.id = :tenantId and a.user.id = :userId", tenantId, userId) > 0;
     }
 
-    private long count(String jpql, Long userId) {
+    private long count(String jpql, Long tenantId, Long userId) {
         return entityManager.createQuery(jpql, Long.class)
+                .setParameter("tenantId", tenantId)
                 .setParameter("userId", userId)
                 .getSingleResult();
     }

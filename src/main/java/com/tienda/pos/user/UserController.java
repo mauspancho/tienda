@@ -2,6 +2,7 @@ package com.tienda.pos.user;
 
 import com.tienda.pos.common.NormalMode;
 import com.tienda.pos.exception.DomainException;
+import com.tienda.pos.tenant.CurrentTenant;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,15 +23,17 @@ public class UserController {
 
     private final AppUserRepository userRepository;
     private final UserService userService;
+    private final CurrentTenant currentTenant;
 
-    public UserController(AppUserRepository userRepository, UserService userService) {
+    public UserController(AppUserRepository userRepository, UserService userService, CurrentTenant currentTenant) {
         this.userRepository = userRepository;
         this.userService = userService;
+        this.currentTenant = currentTenant;
     }
 
     @GetMapping("/users")
     public String list(Model model) {
-        model.addAttribute("users", userRepository.findAll(PageRequest.of(0, 100)));
+        model.addAttribute("users", userRepository.findByTenantIdOrderByUsernameAsc(currentTenant.id(), PageRequest.of(0, 100)));
         model.addAttribute("userForm", new UserForm());
         model.addAttribute("mode", "create");
         return "users/index";
@@ -38,8 +41,8 @@ public class UserController {
 
     @GetMapping("/users/{id}/edit")
     public String edit(@PathVariable Long id, Model model) {
-        AppUser user = userRepository.findById(id).orElseThrow(() -> new DomainException("Usuario no encontrado."));
-        model.addAttribute("users", userRepository.findAll(PageRequest.of(0, 100)));
+        AppUser user = userRepository.findByIdAndTenantId(id, currentTenant.id()).orElseThrow(() -> new DomainException("Usuario no encontrado."));
+        model.addAttribute("users", userRepository.findByTenantIdOrderByUsernameAsc(currentTenant.id(), PageRequest.of(0, 100)));
         model.addAttribute("userForm", UserForm.from(user));
         model.addAttribute("mode", "edit");
         return "users/index";

@@ -7,6 +7,8 @@ import com.tienda.pos.common.NormalMode;
 import com.tienda.pos.exception.DomainException;
 import com.tienda.pos.product.Product;
 import com.tienda.pos.product.ProductRepository;
+import com.tienda.pos.tenant.CurrentTenant;
+import com.tienda.pos.tenant.Tenant;
 import com.tienda.pos.warehouse.Warehouse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,18 +38,22 @@ public class InventoryService {
     private final InventoryMovementRepository movementRepository;
     private final InventoryStockRepository stockRepository;
     private final StoreContextService storeContextService;
+    private final CurrentTenant currentTenant;
 
     public InventoryService(ProductRepository productRepository, InventoryMovementRepository movementRepository,
-                            InventoryStockRepository stockRepository, StoreContextService storeContextService) {
+                            InventoryStockRepository stockRepository, StoreContextService storeContextService,
+                            CurrentTenant currentTenant) {
         this.productRepository = productRepository;
         this.movementRepository = movementRepository;
         this.stockRepository = stockRepository;
         this.storeContextService = storeContextService;
+        this.currentTenant = currentTenant;
     }
 
     @Transactional
     public void adjust(InventoryAdjustmentForm form) {
-        Product product = productRepository.findByIdForUpdate(form.getProductId())
+        Long tenantId = currentTenant.id();
+        Product product = productRepository.findByIdAndTenantIdForUpdate(form.getProductId(), tenantId)
                 .orElseThrow(() -> new DomainException("Producto no encontrado."));
         Warehouse warehouse = storeContextService.defaultWarehouse();
         InventoryStock stock = stockForUpdate(product, warehouse);
@@ -83,14 +89,15 @@ public class InventoryService {
 
     @Transactional
     public void reverseMovement(Long movementId) {
-        InventoryMovement original = movementRepository.findDetailedById(movementId)
+        Long tenantId = currentTenant.id();
+        InventoryMovement original = movementRepository.findDetailedByIdAndTenantId(movementId, tenantId)
                 .orElseThrow(() -> new DomainException("Movimiento no encontrado."));
         if (!original.isReversible()) {
             throw new DomainException("Este movimiento no se puede retirar desde inventario.");
         }
-        Product product = productRepository.findByIdForUpdate(original.getProduct().getId())
+        Product product = productRepository.findByIdAndTenantIdForUpdate(original.getProduct().getId(), tenantId)
                 .orElseThrow(() -> new DomainException("Producto no encontrado."));
-        if (changesCost(original) && movementRepository.existsNewerCostChangeForProduct(product.getId(), original.getCreatedAt())) {
+        if (changesCost(original) && movementRepository.existsNewerCostChangeForProduct(tenantId, product.getId(), original.getCreatedAt())) {
             throw new DomainException("Retira primero los movimientos posteriores que cambiaron el costo de este producto.");
         }
 
@@ -136,6 +143,9 @@ public class InventoryService {
 
     @Transactional
     public InventoryStock saveStock(InventoryStock stock) {
+        if (stock.getTenant() == null) {
+            stock.setTenant(currentTenant.get());
+        }
         return stockRepository.save(stock);
     }
 
@@ -161,7 +171,12 @@ public class InventoryService {
                                             Long referenceId, String notes, BigDecimal unitCost,
                                             BigDecimal previousPurchaseCost, BigDecimal newPurchaseCost,
                                             BigDecimal costAdjustment) {
+        Tenant tenant = currentTenant.get();
+        if (product.getTenant() == null || !product.getTenant().getId().equals(tenant.getId())) {
+            throw new DomainException("Producto no encontrado.");
+        }
         InventoryMovement movement = new InventoryMovement();
+        movement.setTenant(tenant);
         movement.setProduct(product);
         movement.setWarehouse(warehouse);
         movement.setBranch(warehouse == null ? null : warehouse.getBranch());
@@ -199,12 +214,13 @@ public class InventoryService {
     }
 
     private InventoryStock stockForUpdate(Product product, Warehouse warehouse) {
-        return stockRepository.findByProductAndWarehouseForUpdate(product, warehouse)
+        return stockRepository.findByProductAndWarehouseAndTenantIdForUpdate(product, warehouse, currentTenant.id())
                 .orElseGet(() -> createDefaultStock(product, warehouse));
     }
 
     private InventoryStock createDefaultStock(Product product, Warehouse warehouse) {
         InventoryStock stock = new InventoryStock();
+        stock.setTenant(currentTenant.get());
         stock.setProduct(product);
         stock.setWarehouse(warehouse);
         stock.setQuantity(stockValue(product.getCurrentStock()));

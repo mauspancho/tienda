@@ -5,6 +5,7 @@ import com.tienda.pos.product.Product;
 import com.tienda.pos.product.ProductBarcodeLookupResult;
 import com.tienda.pos.product.ProductRepository;
 import com.tienda.pos.product.ProductService;
+import com.tienda.pos.tenant.CurrentTenant;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,10 +26,12 @@ public class ProductApiController {
 
     private final ProductRepository productRepository;
     private final ProductService productService;
+    private final CurrentTenant currentTenant;
 
-    public ProductApiController(ProductRepository productRepository, ProductService productService) {
+    public ProductApiController(ProductRepository productRepository, ProductService productService, CurrentTenant currentTenant) {
         this.productRepository = productRepository;
         this.productService = productService;
+        this.currentTenant = currentTenant;
     }
 
     @GetMapping("/barcode/{barcode}/lookup")
@@ -39,7 +42,7 @@ public class ProductApiController {
 
     @GetMapping("/barcode/{barcode}")
     public ResponseEntity<ProductDto> byBarcode(@PathVariable String barcode) {
-        return productRepository.findByBarcodeAndActiveTrue(barcode)
+        return productRepository.findByTenantIdAndBarcodeAndActiveTrue(currentTenant.id(), barcode)
                 .map(ProductDto::from)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
@@ -47,7 +50,7 @@ public class ProductApiController {
 
     @GetMapping("/search")
     public List<ProductDto> search(@RequestParam String q) {
-        return productRepository.quickSearch(q, PageRequest.of(0, 12)).stream().map(ProductDto::from).toList();
+        return productRepository.quickSearch(currentTenant.id(), q, PageRequest.of(0, 12)).stream().map(ProductDto::from).toList();
     }
 
     public record ProductDto(Long id, String code, String barcode, String name, BigDecimal price,

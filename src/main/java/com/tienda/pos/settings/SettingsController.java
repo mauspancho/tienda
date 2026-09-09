@@ -1,8 +1,10 @@
 package com.tienda.pos.settings;
 
 import com.tienda.pos.catalog.CatalogImageService;
+import com.tienda.pos.commercial.StoreContextService;
 import com.tienda.pos.common.NormalMode;
 import com.tienda.pos.exception.DomainException;
+import com.tienda.pos.tenant.CurrentTenant;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
@@ -23,15 +25,20 @@ public class SettingsController {
 
     private final BusinessSettingsRepository settingsRepository;
     private final CatalogImageService catalogImageService;
+    private final CurrentTenant currentTenant;
+    private final StoreContextService storeContextService;
 
-    public SettingsController(BusinessSettingsRepository settingsRepository, CatalogImageService catalogImageService) {
+    public SettingsController(BusinessSettingsRepository settingsRepository, CatalogImageService catalogImageService,
+                              CurrentTenant currentTenant, StoreContextService storeContextService) {
         this.settingsRepository = settingsRepository;
         this.catalogImageService = catalogImageService;
+        this.currentTenant = currentTenant;
+        this.storeContextService = storeContextService;
     }
 
     @GetMapping("/settings")
     public String settings(Model model) {
-        model.addAttribute("settings", settingsRepository.findById(1L).orElseGet(BusinessSettings::new));
+        model.addAttribute("settings", settingsRepository.findFirstByTenantIdOrderByIdAsc(currentTenant.id()).orElseGet(BusinessSettings::new));
         return "settings/index";
     }
 
@@ -44,11 +51,12 @@ public class SettingsController {
             redirectAttributes.addFlashAttribute("error", "Revisa la configuración.");
             return "redirect:/admin/settings";
         }
-        BusinessSettings current = settingsRepository.findById(1L).orElseGet(BusinessSettings::new);
+        BusinessSettings current = settingsRepository.findFirstByTenantIdOrderByIdAsc(currentTenant.id()).orElseGet(BusinessSettings::new);
         String previousLogo = current.getLogoPath();
         String newLogo = null;
         try {
-            current.setId(1L);
+            current.setTenant(currentTenant.get());
+            current.setBusiness(storeContextService.defaultBusiness());
             current.setStoreName(settings.getStoreName());
             current.setAddress(settings.getAddress());
             current.setPhone(settings.getPhone());

@@ -9,6 +9,8 @@ import com.tienda.pos.product.Product;
 import com.tienda.pos.product.ProductRepository;
 import com.tienda.pos.product.UnitType;
 import com.tienda.pos.supplier.SupplierRepository;
+import com.tienda.pos.tenant.CurrentTenant;
+import com.tienda.pos.tenant.Tenant;
 import com.tienda.pos.user.AppUserRepository;
 import com.tienda.pos.warehouse.Warehouse;
 import org.junit.jupiter.api.Test;
@@ -32,24 +34,23 @@ class PurchaseServiceTest {
     private final AppUserRepository userRepository = mock(AppUserRepository.class);
     private final InventoryService inventoryService = mock(InventoryService.class);
     private final StoreContextService storeContextService = mock(StoreContextService.class);
+    private final CurrentTenant currentTenant = mock(CurrentTenant.class);
     private final PurchaseService service = new PurchaseService(purchaseRepository, supplierRepository,
-            productRepository, userRepository, inventoryService, storeContextService);
+            productRepository, userRepository, inventoryService, storeContextService, currentTenant);
 
     @Test
     void registersPurchaseWithoutSupplierAndAutoAssignsFolio() {
-        Product product = new Product();
-        product.setId(5L);
-        product.setCode("PRD-00000005");
-        product.setName("Coca cola");
-        product.setCurrentStock(new BigDecimal("24.000"));
-        product.setPurchaseCost(new BigDecimal("16.87"));
-        product.setSalePrice(new BigDecimal("20.00"));
-        product.setMinimumStock(BigDecimal.ZERO);
-        product.setUnit(UnitType.PIEZA);
+        Tenant tenant = tenant();
+        when(currentTenant.get()).thenReturn(tenant);
+        when(currentTenant.id()).thenReturn(1L);
+        Product product = product(tenant);
         Branch branch = new Branch();
+        branch.setTenant(tenant);
         Warehouse warehouse = new Warehouse();
+        warehouse.setTenant(tenant);
         warehouse.setBranch(branch);
         InventoryStock stock = new InventoryStock();
+        stock.setTenant(tenant);
         stock.setProduct(product);
         stock.setWarehouse(warehouse);
         stock.setQuantity(new BigDecimal("24.000"));
@@ -62,7 +63,7 @@ class PurchaseServiceTest {
         form.setExternalFolio(" ");
         form.setUpdateProductCost(true);
 
-        when(productRepository.findByIdForUpdate(5L)).thenReturn(Optional.of(product));
+        when(productRepository.findByIdAndTenantIdForUpdate(5L, 1L)).thenReturn(Optional.of(product));
         when(storeContextService.defaultWarehouse()).thenReturn(warehouse);
         when(inventoryService.defaultStockForUpdate(product)).thenReturn(stock);
         when(inventoryService.weightedAverageCost(new BigDecimal("24.000"), new BigDecimal("16.87"),
@@ -75,6 +76,7 @@ class PurchaseServiceTest {
 
         Purchase saved = service.register(form);
 
+        assertThat(saved.getTenant()).isSameAs(tenant);
         assertThat(saved.getSupplier()).isNull();
         assertThat(saved.getBranch()).isSameAs(branch);
         assertThat(saved.getWarehouse()).isSameAs(warehouse);
@@ -92,5 +94,28 @@ class PurchaseServiceTest {
                 any(String.class), any(Long.class), any(String.class), any(BigDecimal.class), any(BigDecimal.class),
                 any(BigDecimal.class), any(BigDecimal.class));
         assertThat(quantityCaptor.getValue()).isEqualByComparingTo(new BigDecimal("12.000"));
+    }
+
+    private Product product(Tenant tenant) {
+        Product product = new Product();
+        product.setId(5L);
+        product.setTenant(tenant);
+        product.setCode("PRD-00000005");
+        product.setName("Coca cola");
+        product.setCurrentStock(new BigDecimal("24.000"));
+        product.setPurchaseCost(new BigDecimal("16.87"));
+        product.setSalePrice(new BigDecimal("20.00"));
+        product.setMinimumStock(BigDecimal.ZERO);
+        product.setUnit(UnitType.PIEZA);
+        return product;
+    }
+
+    private Tenant tenant() {
+        Tenant tenant = new Tenant();
+        tenant.setId(1L);
+        tenant.setCode("default");
+        tenant.setName("Tienda");
+        tenant.setActive(true);
+        return tenant;
     }
 }

@@ -2,6 +2,7 @@ package com.tienda.pos.cash;
 
 import com.tienda.pos.branch.Branch;
 import com.tienda.pos.common.BaseEntity;
+import com.tienda.pos.tenant.Tenant;
 import com.tienda.pos.user.AppUser;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -16,6 +17,10 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "cash_register_session")
 public class CashRegisterSession extends BaseEntity {
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "tenant_id", nullable = false)
+    private Tenant tenant;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cashier_id")
@@ -48,6 +53,8 @@ public class CashRegisterSession extends BaseEntity {
 
     private boolean open = true;
 
+    public Tenant getTenant() { return tenant; }
+    public void setTenant(Tenant tenant) { this.tenant = tenant; }
     public AppUser getCashier() { return cashier; }
     public void setCashier(AppUser cashier) { this.cashier = cashier; }
     public Branch getBranch() { return branch; }

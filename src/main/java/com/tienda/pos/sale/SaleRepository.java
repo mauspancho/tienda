@@ -14,75 +14,75 @@ import java.util.Optional;
 
 public interface SaleRepository extends JpaRepository<Sale, Long> {
 
-    @EntityGraph(attributePaths = {"cashier", "customer", "payment", "items"})
-    Optional<Sale> findByFolio(String folio);
-
-    @EntityGraph(attributePaths = {"cashier", "customer", "payment", "items"})
-    Optional<Sale> findByFolioAndCashierUsername(String folio, String username);
+    @EntityGraph(attributePaths = {"cashier", "customer", "payment", "items", "items.product"})
+    Optional<Sale> findByTenantIdAndFolio(Long tenantId, String folio);
 
     @EntityGraph(attributePaths = {"cashier", "customer", "payment", "items", "items.product"})
-    Page<Sale> findAllByOrderBySaleDateDesc(Pageable pageable);
+    Optional<Sale> findByTenantIdAndFolioAndCashierUsername(Long tenantId, String folio, String username);
 
     @EntityGraph(attributePaths = {"cashier", "customer", "payment", "items", "items.product"})
-    Page<Sale> findByCashierUsernameOrderBySaleDateDesc(String username, Pageable pageable);
+    Page<Sale> findByTenantIdOrderBySaleDateDesc(Long tenantId, Pageable pageable);
 
-    long countBySaleDateBetweenAndStatus(LocalDateTime start, LocalDateTime end, SaleStatus status);
+    @EntityGraph(attributePaths = {"cashier", "customer", "payment", "items", "items.product"})
+    Page<Sale> findByTenantIdAndCashierUsernameOrderBySaleDateDesc(Long tenantId, String username, Pageable pageable);
 
-    long countByCashierUsernameAndSaleDateBetweenAndStatus(String username, LocalDateTime start, LocalDateTime end, SaleStatus status);
+    long countByTenantIdAndSaleDateBetweenAndStatus(Long tenantId, LocalDateTime start, LocalDateTime end, SaleStatus status);
 
-    @Query("select coalesce(sum(s.total), 0) from Sale s where s.saleDate between :start and :end and s.status = 'COMPLETED'")
-    BigDecimal totalSales(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+    long countByTenantIdAndCashierUsernameAndSaleDateBetweenAndStatus(Long tenantId, String username, LocalDateTime start, LocalDateTime end, SaleStatus status);
 
-    @Query("select coalesce(sum(s.total), 0) from Sale s where s.cashier.username = :username and s.saleDate between :start and :end and s.status = 'COMPLETED'")
-    BigDecimal totalSalesByCashier(@Param("username") String username, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+    @Query("select coalesce(sum(s.total), 0) from Sale s where s.tenant.id = :tenantId and s.saleDate between :start and :end and s.status = 'COMPLETED'")
+    BigDecimal totalSales(@Param("tenantId") Long tenantId, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
-    @Query("select coalesce(sum(i.profit), 0) from SaleItem i where i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'")
-    BigDecimal grossProfit(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+    @Query("select coalesce(sum(s.total), 0) from Sale s where s.tenant.id = :tenantId and s.cashier.username = :username and s.saleDate between :start and :end and s.status = 'COMPLETED'")
+    BigDecimal totalSalesByCashier(@Param("tenantId") Long tenantId, @Param("username") String username, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
-    @Query("select coalesce(sum(i.profit), 0) from SaleItem i where i.sale.cashier.username = :username and i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'")
-    BigDecimal grossProfitByCashier(@Param("username") String username, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+    @Query("select coalesce(sum(i.profit), 0) from SaleItem i where i.sale.tenant.id = :tenantId and i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'")
+    BigDecimal grossProfit(@Param("tenantId") Long tenantId, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
-    @Query("select coalesce(sum(i.quantity), 0) from SaleItem i where i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'")
-    BigDecimal soldUnits(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+    @Query("select coalesce(sum(i.profit), 0) from SaleItem i where i.sale.tenant.id = :tenantId and i.sale.cashier.username = :username and i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'")
+    BigDecimal grossProfitByCashier(@Param("tenantId") Long tenantId, @Param("username") String username, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
-    @Query("select coalesce(sum(i.quantity), 0) from SaleItem i where i.sale.cashier.username = :username and i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'")
-    BigDecimal soldUnitsByCashier(@Param("username") String username, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+    @Query("select coalesce(sum(i.quantity), 0) from SaleItem i where i.sale.tenant.id = :tenantId and i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'")
+    BigDecimal soldUnits(@Param("tenantId") Long tenantId, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    @Query("select coalesce(sum(i.quantity), 0) from SaleItem i where i.sale.tenant.id = :tenantId and i.sale.cashier.username = :username and i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'")
+    BigDecimal soldUnitsByCashier(@Param("tenantId") Long tenantId, @Param("username") String username, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
     @Query("""
             select date(s.saleDate), coalesce(sum(s.total), 0)
             from Sale s
-            where s.saleDate >= :start and s.status = 'COMPLETED'
+            where s.tenant.id = :tenantId and s.saleDate >= :start and s.status = 'COMPLETED'
             group by date(s.saleDate)
             order by date(s.saleDate)
             """)
-    List<Object[]> dailySalesSince(@Param("start") LocalDateTime start);
+    List<Object[]> dailySalesSince(@Param("tenantId") Long tenantId, @Param("start") LocalDateTime start);
 
     @Query("""
             select date(s.saleDate), coalesce(sum(s.total), 0)
             from Sale s
-            where s.cashier.username = :username and s.saleDate >= :start and s.status = 'COMPLETED'
+            where s.tenant.id = :tenantId and s.cashier.username = :username and s.saleDate >= :start and s.status = 'COMPLETED'
             group by date(s.saleDate)
             order by date(s.saleDate)
             """)
-    List<Object[]> dailySalesSinceByCashier(@Param("username") String username, @Param("start") LocalDateTime start);
+    List<Object[]> dailySalesSinceByCashier(@Param("tenantId") Long tenantId, @Param("username") String username, @Param("start") LocalDateTime start);
 
     @Query("""
             select date(i.sale.saleDate), coalesce(sum(i.profit), 0)
             from SaleItem i
-            where i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'
+            where i.sale.tenant.id = :tenantId and i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'
             group by date(i.sale.saleDate)
             order by date(i.sale.saleDate)
             """)
-    List<Object[]> dailyGrossProfitBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+    List<Object[]> dailyGrossProfitBetween(@Param("tenantId") Long tenantId, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
     @Query("""
             select date(i.sale.saleDate), coalesce(sum(i.profit), 0)
             from SaleItem i
-            where i.sale.cashier.username = :username and i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'
+            where i.sale.tenant.id = :tenantId and i.sale.cashier.username = :username and i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'
             group by date(i.sale.saleDate)
             order by date(i.sale.saleDate)
             """)
-    List<Object[]> dailyGrossProfitBetweenByCashier(@Param("username") String username, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+    List<Object[]> dailyGrossProfitBetweenByCashier(@Param("tenantId") Long tenantId, @Param("username") String username, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
     @Query("""
             select coalesce(sum(i.subtotal), 0),
@@ -91,9 +91,9 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
                    count(distinct s.id),
                    coalesce(sum(i.quantity), 0)
             from Sale s join s.items i
-            where s.saleDate between :start and :end and s.status = 'COMPLETED'
+            where s.tenant.id = :tenantId and s.saleDate between :start and :end and s.status = 'COMPLETED'
             """)
-    Object[] financeTotals(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+    Object[] financeTotals(@Param("tenantId") Long tenantId, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
     @Query("""
             select date(s.saleDate),
@@ -103,29 +103,29 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
                    count(distinct s.id),
                    coalesce(sum(i.quantity), 0)
             from Sale s join s.items i
-            where s.saleDate between :start and :end and s.status = 'COMPLETED'
+            where s.tenant.id = :tenantId and s.saleDate between :start and :end and s.status = 'COMPLETED'
             group by date(s.saleDate)
             order by date(s.saleDate)
             """)
-    List<Object[]> dailyFinanceTotals(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+    List<Object[]> dailyFinanceTotals(@Param("tenantId") Long tenantId, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
     @Query("""
             select i.productNameSnapshot, coalesce(sum(i.quantity), 0), coalesce(sum(i.subtotal), 0), coalesce(sum(i.profit), 0)
             from SaleItem i
-            where i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'
+            where i.sale.tenant.id = :tenantId and i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'
             group by i.productNameSnapshot
             order by sum(i.quantity) desc
             """)
-    List<Object[]> topProducts(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end, Pageable pageable);
+    List<Object[]> topProducts(@Param("tenantId") Long tenantId, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end, Pageable pageable);
 
     @Query("""
             select i.productNameSnapshot, coalesce(sum(i.quantity), 0), coalesce(sum(i.subtotal), 0), coalesce(sum(i.profit), 0)
             from SaleItem i
-            where i.sale.cashier.username = :username and i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'
+            where i.sale.tenant.id = :tenantId and i.sale.cashier.username = :username and i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'
             group by i.productNameSnapshot
             order by sum(i.quantity) desc
             """)
-    List<Object[]> topProductsByCashier(@Param("username") String username, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end, Pageable pageable);
+    List<Object[]> topProductsByCashier(@Param("tenantId") Long tenantId, @Param("username") String username, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end, Pageable pageable);
 
     @Query("""
             select i.productNameSnapshot,
@@ -134,11 +134,11 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
                    coalesce(sum(i.unitCost * i.quantity), 0),
                    coalesce(sum(i.profit), 0)
             from SaleItem i
-            where i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'
+            where i.sale.tenant.id = :tenantId and i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'
             group by i.productNameSnapshot
             order by sum(i.profit) desc
             """)
-    List<Object[]> profitableProducts(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end, Pageable pageable);
+    List<Object[]> profitableProducts(@Param("tenantId") Long tenantId, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end, Pageable pageable);
 
     @Query("""
             select i.productNameSnapshot,
@@ -147,11 +147,11 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
                    coalesce(sum(i.unitCost * i.quantity), 0),
                    coalesce(sum(i.profit), 0)
             from SaleItem i
-            where i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'
+            where i.sale.tenant.id = :tenantId and i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'
             group by i.productNameSnapshot
             order by sum(i.quantity) desc
             """)
-    List<Object[]> mostSoldProducts(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end, Pageable pageable);
+    List<Object[]> mostSoldProducts(@Param("tenantId") Long tenantId, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end, Pageable pageable);
 
     @Query("""
             select i.productNameSnapshot,
@@ -160,10 +160,9 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
                    coalesce(sum(i.unitCost * i.quantity), 0),
                    coalesce(sum(i.profit), 0)
             from SaleItem i
-            where i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'
+            where i.sale.tenant.id = :tenantId and i.sale.saleDate between :start and :end and i.sale.status = 'COMPLETED'
             group by i.productNameSnapshot
             order by sum(i.subtotal) desc
             """)
-    List<Object[]> topBillingProducts(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end, Pageable pageable);
+    List<Object[]> topBillingProducts(@Param("tenantId") Long tenantId, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end, Pageable pageable);
 }
-

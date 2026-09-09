@@ -11,10 +11,11 @@ import org.springframework.data.repository.query.Param;
 import java.util.Optional;
 
 public interface InventoryStockRepository extends JpaRepository<InventoryStock, Long> {
-    Optional<InventoryStock> findByProductAndWarehouse(Product product, Warehouse warehouse);
+    Optional<InventoryStock> findByProductAndWarehouseAndTenantId(Product product, Warehouse warehouse, Long tenantId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select s from InventoryStock s where s.product = :product and s.warehouse = :warehouse")
-    Optional<InventoryStock> findByProductAndWarehouseForUpdate(@Param("product") Product product,
-                                                                @Param("warehouse") Warehouse warehouse);
+    @Query("select s from InventoryStock s where s.product = :product and s.warehouse = :warehouse and s.tenant.id = :tenantId")
+    Optional<InventoryStock> findByProductAndWarehouseAndTenantIdForUpdate(@Param("product") Product product,
+                                                                           @Param("warehouse") Warehouse warehouse,
+                                                                           @Param("tenantId") Long tenantId);
 }

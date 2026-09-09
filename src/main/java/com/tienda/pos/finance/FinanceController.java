@@ -1,6 +1,7 @@
 package com.tienda.pos.finance;
 
 import com.tienda.pos.common.NormalMode;
+import com.tienda.pos.tenant.CurrentTenant;
 
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -31,10 +32,12 @@ public class FinanceController {
 
     private final FinanceService financeService;
     private final CapitalMovementRepository capitalMovementRepository;
+    private final CurrentTenant currentTenant;
 
-    public FinanceController(FinanceService financeService, CapitalMovementRepository capitalMovementRepository) {
+    public FinanceController(FinanceService financeService, CapitalMovementRepository capitalMovementRepository, CurrentTenant currentTenant) {
         this.financeService = financeService;
         this.capitalMovementRepository = capitalMovementRepository;
+        this.currentTenant = currentTenant;
     }
 
     @GetMapping
@@ -97,9 +100,10 @@ public class FinanceController {
                           Model model) {
         FinanceRange range = financeService.range("CUSTOM", from == null ? LocalDate.now().minusDays(89) : from, to == null ? LocalDate.now() : to);
         PageRequest pageable = PageRequest.of(Math.max(page, 0), 20);
+        Long tenantId = currentTenant.id();
         Page<CapitalMovement> movements = type == null
-                ? capitalMovementRepository.findByMovementDateBetweenOrderByMovementDateDesc(range.from(), range.to(), pageable)
-                : capitalMovementRepository.findByTypeAndMovementDateBetweenOrderByMovementDateDesc(type, range.from(), range.to(), pageable);
+                ? capitalMovementRepository.findByTenantIdAndMovementDateBetweenOrderByMovementDateDesc(tenantId, range.from(), range.to(), pageable)
+                : capitalMovementRepository.findByTenantIdAndTypeAndMovementDateBetweenOrderByMovementDateDesc(tenantId, type, range.from(), range.to(), pageable);
         model.addAttribute("range", range);
         model.addAttribute("movements", movements);
         model.addAttribute("types", CapitalMovementType.values());

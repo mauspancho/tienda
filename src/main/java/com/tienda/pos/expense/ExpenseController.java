@@ -1,6 +1,7 @@
 package com.tienda.pos.expense;
 
 import com.tienda.pos.common.NormalMode;
+import com.tienda.pos.tenant.CurrentTenant;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
@@ -21,16 +22,20 @@ public class ExpenseController {
 
     private final ExpenseRepository expenseRepository;
     private final ExpenseCategoryRepository categoryRepository;
+    private final CurrentTenant currentTenant;
 
-    public ExpenseController(ExpenseRepository expenseRepository, ExpenseCategoryRepository categoryRepository) {
+    public ExpenseController(ExpenseRepository expenseRepository, ExpenseCategoryRepository categoryRepository,
+                             CurrentTenant currentTenant) {
         this.expenseRepository = expenseRepository;
         this.categoryRepository = categoryRepository;
+        this.currentTenant = currentTenant;
     }
 
     @GetMapping("/expenses")
     public String list(Model model) {
-        model.addAttribute("expenses", expenseRepository.findAllByOrderByExpenseDateDesc(PageRequest.of(0, 50)));
-        model.addAttribute("categories", categoryRepository.findByActiveTrueOrderByNameAsc());
+        Long tenantId = currentTenant.id();
+        model.addAttribute("expenses", expenseRepository.findByTenantIdOrderByExpenseDateDesc(tenantId, PageRequest.of(0, 50)));
+        model.addAttribute("categories", categoryRepository.findByTenantIdAndActiveTrueOrderByNameAsc(tenantId));
         return "expenses/index";
     }
 
@@ -38,9 +43,11 @@ public class ExpenseController {
     public String save(@RequestParam String concept, @RequestParam Long categoryId, @RequestParam BigDecimal amount,
                        @RequestParam LocalDate expenseDate, @RequestParam(required = false) String notes,
                        RedirectAttributes redirectAttributes) {
+        Long tenantId = currentTenant.id();
         Expense expense = new Expense();
+        expense.setTenant(currentTenant.get());
         expense.setConcept(concept);
-        expense.setCategory(categoryRepository.findById(categoryId).orElse(null));
+        expense.setCategory(categoryRepository.findByIdAndTenantId(categoryId, tenantId).orElse(null));
         expense.setAmount(amount);
         expense.setExpenseDate(expenseDate);
         expense.setNotes(notes);

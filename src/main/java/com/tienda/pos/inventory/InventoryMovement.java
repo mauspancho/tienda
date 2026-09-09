@@ -3,6 +3,7 @@ package com.tienda.pos.inventory;
 import com.tienda.pos.branch.Branch;
 import com.tienda.pos.common.BaseEntity;
 import com.tienda.pos.product.Product;
+import com.tienda.pos.tenant.Tenant;
 import com.tienda.pos.user.AppUser;
 import com.tienda.pos.warehouse.Warehouse;
 import jakarta.persistence.Column;
@@ -20,6 +21,10 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "inventory_movement")
 public class InventoryMovement extends BaseEntity {
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "tenant_id", nullable = false)
+    private Tenant tenant;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "product_id")
@@ -87,6 +92,8 @@ public class InventoryMovement extends BaseEntity {
         return "REVERSAL".equals(referenceType);
     }
 
+    public Tenant getTenant() { return tenant; }
+    public void setTenant(Tenant tenant) { this.tenant = tenant; }
     public Product getProduct() { return product; }
     public void setProduct(Product product) { this.product = product; }
     public Branch getBranch() { return branch; }

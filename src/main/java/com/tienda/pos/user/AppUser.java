@@ -2,12 +2,14 @@ package com.tienda.pos.user;
 
 import com.tienda.pos.common.BaseEntity;
 import com.tienda.pos.role.Role;
+import com.tienda.pos.tenant.Tenant;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
@@ -17,6 +19,10 @@ import java.util.Set;
 @Entity
 @Table(name = "app_user")
 public class AppUser extends BaseEntity {
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "tenant_id", nullable = false)
+    private Tenant tenant;
 
     @Column(nullable = false, unique = true, length = 60)
     private String username;
@@ -48,6 +54,8 @@ public class AppUser extends BaseEntity {
         return roles.stream().anyMatch(r -> r.getName().equals(role));
     }
 
+    public Tenant getTenant() { return tenant; }
+    public void setTenant(Tenant tenant) { this.tenant = tenant; }
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
     public String getPasswordHash() { return passwordHash; }

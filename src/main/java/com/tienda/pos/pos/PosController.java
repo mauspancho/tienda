@@ -7,6 +7,7 @@ import com.tienda.pos.common.NormalMode;
 import com.tienda.pos.sale.SaleRequest;
 import com.tienda.pos.sale.SaleResult;
 import com.tienda.pos.sale.SaleService;
+import com.tienda.pos.tenant.CurrentTenant;
 import com.tienda.pos.user.AppUser;
 import com.tienda.pos.user.AppUserRepository;
 import jakarta.validation.Valid;
@@ -32,20 +33,22 @@ public class PosController {
     private final CashService cashService;
     private final CashRegisterSessionRepository cashRegisterSessionRepository;
     private final AppUserRepository userRepository;
+    private final CurrentTenant currentTenant;
 
     public PosController(SaleService saleService, CashService cashService,
                          CashRegisterSessionRepository cashRegisterSessionRepository,
-                         AppUserRepository userRepository) {
+                         AppUserRepository userRepository, CurrentTenant currentTenant) {
         this.saleService = saleService;
         this.cashService = cashService;
         this.cashRegisterSessionRepository = cashRegisterSessionRepository;
         this.userRepository = userRepository;
+        this.currentTenant = currentTenant;
     }
 
     @GetMapping("/pos")
     public String pos(Model model) {
-        AppUser cashier = userRepository.findByUsername(CurrentUser.username()).orElseThrow();
-        var currentCashSession = cashRegisterSessionRepository.findByCashierAndOpenTrue(cashier).orElse(null);
+        AppUser cashier = userRepository.findByUsernameWithTenant(CurrentUser.username()).orElseThrow();
+        var currentCashSession = cashRegisterSessionRepository.findByTenantIdAndCashierAndOpenTrue(currentTenant.id(), cashier).orElse(null);
         model.addAttribute("currentCashSession", currentCashSession);
         model.addAttribute("cashOpen", currentCashSession != null);
         return "pos/index";

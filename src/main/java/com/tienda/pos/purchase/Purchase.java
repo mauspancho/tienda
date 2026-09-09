@@ -3,6 +3,7 @@ package com.tienda.pos.purchase;
 import com.tienda.pos.branch.Branch;
 import com.tienda.pos.common.BaseEntity;
 import com.tienda.pos.supplier.Supplier;
+import com.tienda.pos.tenant.Tenant;
 import com.tienda.pos.user.AppUser;
 import com.tienda.pos.warehouse.Warehouse;
 import jakarta.persistence.CascadeType;
@@ -24,6 +25,10 @@ import java.util.List;
 @Entity
 @Table(name = "purchase")
 public class Purchase extends BaseEntity {
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "tenant_id", nullable = false)
+    private Tenant tenant;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "supplier_id")
@@ -73,6 +78,8 @@ public class Purchase extends BaseEntity {
         item.setPurchase(this);
     }
 
+    public Tenant getTenant() { return tenant; }
+    public void setTenant(Tenant tenant) { this.tenant = tenant; }
     public Supplier getSupplier() { return supplier; }
     public void setSupplier(Supplier supplier) { this.supplier = supplier; }
     public Branch getBranch() { return branch; }

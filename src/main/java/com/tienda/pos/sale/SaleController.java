@@ -3,6 +3,7 @@ package com.tienda.pos.sale;
 import com.tienda.pos.common.CurrentUser;
 import com.tienda.pos.common.NormalMode;
 import com.tienda.pos.exception.DomainException;
+import com.tienda.pos.tenant.CurrentTenant;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
@@ -17,17 +18,20 @@ import org.springframework.web.bind.annotation.PathVariable;
 public class SaleController {
 
     private final SaleRepository saleRepository;
+    private final CurrentTenant currentTenant;
 
-    public SaleController(SaleRepository saleRepository) {
+    public SaleController(SaleRepository saleRepository, CurrentTenant currentTenant) {
         this.saleRepository = saleRepository;
+        this.currentTenant = currentTenant;
     }
 
     @GetMapping("/sales")
     public String list(Model model) {
+        Long tenantId = currentTenant.id();
         var pageRequest = PageRequest.of(0, 100);
         var sales = CurrentUser.hasRole("ROLE_ADMIN")
-                ? saleRepository.findAllByOrderBySaleDateDesc(pageRequest)
-                : saleRepository.findByCashierUsernameOrderBySaleDateDesc(CurrentUser.username(), pageRequest);
+                ? saleRepository.findByTenantIdOrderBySaleDateDesc(tenantId, pageRequest)
+                : saleRepository.findByTenantIdAndCashierUsernameOrderBySaleDateDesc(tenantId, CurrentUser.username(), pageRequest);
         model.addAttribute("sales", sales);
         return "sales/index";
     }
@@ -45,9 +49,10 @@ public class SaleController {
     }
 
     private Sale visibleSale(String folio) {
+        Long tenantId = currentTenant.id();
         return (CurrentUser.hasRole("ROLE_ADMIN")
-                ? saleRepository.findByFolio(folio)
-                : saleRepository.findByFolioAndCashierUsername(folio, CurrentUser.username()))
+                ? saleRepository.findByTenantIdAndFolio(tenantId, folio)
+                : saleRepository.findByTenantIdAndFolioAndCashierUsername(tenantId, folio, CurrentUser.username()))
                 .orElseThrow(() -> new DomainException("Venta no disponible para este usuario."));
     }
 }

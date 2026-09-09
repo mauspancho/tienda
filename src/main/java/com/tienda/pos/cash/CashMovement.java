@@ -1,6 +1,7 @@
 package com.tienda.pos.cash;
 
 import com.tienda.pos.common.BaseEntity;
+import com.tienda.pos.tenant.Tenant;
 import com.tienda.pos.user.AppUser;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -16,6 +17,10 @@ import java.math.BigDecimal;
 @Entity
 @Table(name = "cash_movement")
 public class CashMovement extends BaseEntity {
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "tenant_id", nullable = false)
+    private Tenant tenant;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cash_register_session_id")
@@ -36,6 +41,8 @@ public class CashMovement extends BaseEntity {
     @JoinColumn(name = "user_id")
     private AppUser user;
 
+    public Tenant getTenant() { return tenant; }
+    public void setTenant(Tenant tenant) { this.tenant = tenant; }
     public CashRegisterSession getCashRegisterSession() { return cashRegisterSession; }
     public void setCashRegisterSession(CashRegisterSession cashRegisterSession) { this.cashRegisterSession = cashRegisterSession; }
     public CashMovementType getType() { return type; }

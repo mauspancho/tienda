@@ -4,6 +4,7 @@ import com.tienda.pos.category.CategoryRepository;
 import com.tienda.pos.common.NormalMode;
 import com.tienda.pos.exception.DomainException;
 import com.tienda.pos.supplier.SupplierRepository;
+import com.tienda.pos.tenant.CurrentTenant;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -32,21 +33,24 @@ public class ProductController {
     private final CategoryRepository categoryRepository;
     private final SupplierRepository supplierRepository;
     private final BarcodeLabelService barcodeLabelService;
+    private final CurrentTenant currentTenant;
 
     public ProductController(ProductRepository productRepository, ProductService productService,
                              CategoryRepository categoryRepository, SupplierRepository supplierRepository,
-                             BarcodeLabelService barcodeLabelService) {
+                             BarcodeLabelService barcodeLabelService, CurrentTenant currentTenant) {
         this.productRepository = productRepository;
         this.productService = productService;
         this.categoryRepository = categoryRepository;
         this.supplierRepository = supplierRepository;
         this.barcodeLabelService = barcodeLabelService;
+        this.currentTenant = currentTenant;
     }
 
     @GetMapping("/products")
     public String list(@RequestParam(defaultValue = "") String q, @RequestParam(defaultValue = "0") int page, Model model) {
+        Long tenantId = currentTenant.id();
         Pageable pageable = PageRequest.of(page, 20, Sort.by("name"));
-        model.addAttribute("products", q.isBlank() ? productRepository.findAll(pageable) : productRepository.search(q, pageable));
+        model.addAttribute("products", q.isBlank() ? productRepository.findByTenantIdOrderByNameAsc(tenantId, pageable) : productRepository.search(tenantId, q, pageable));
         model.addAttribute("q", q);
         return "products/index";
     }
@@ -68,7 +72,7 @@ public class ProductController {
 
     @GetMapping("/products/{id}/edit")
     public String edit(@PathVariable Long id, Model model) {
-        Product product = productRepository.findDetailedById(id).orElseThrow();
+        Product product = productRepository.findDetailedByIdAndTenantId(id, currentTenant.id()).orElseThrow();
         prepareForm(model, ProductForm.from(product));
         model.addAttribute("initialBarcode", "");
         model.addAttribute("autoLookup", false);
@@ -77,7 +81,7 @@ public class ProductController {
 
     @GetMapping("/products/{id}/barcode-label")
     public String barcodeLabel(@PathVariable Long id, @RequestParam(defaultValue = "1") int quantity, Model model) {
-        Product product = productRepository.findById(id).orElseThrow();
+        Product product = productRepository.findDetailedByIdAndTenantId(id, currentTenant.id()).orElseThrow();
         int labelCount = Math.max(1, Math.min(quantity, 500));
         String barcode = product.getBarcode();
         model.addAttribute("product", product);
@@ -120,7 +124,6 @@ public class ProductController {
         return "redirect:/admin/products";
     }
 
-
     @PostMapping("/products/{id}/promote")
     public String promote(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         try {
@@ -138,10 +141,12 @@ public class ProductController {
         redirectAttributes.addFlashAttribute("success", "Promoción retirada.");
         return "redirect:/admin/products";
     }
+
     private void prepareForm(Model model, ProductForm form) {
+        Long tenantId = currentTenant.id();
         model.addAttribute("productForm", form);
-        model.addAttribute("categories", categoryRepository.findByActiveTrueOrderByNameAsc());
-        model.addAttribute("suppliers", supplierRepository.findByActiveTrueOrderByNameAsc());
+        model.addAttribute("categories", categoryRepository.findByTenantIdAndActiveTrueOrderByNameAsc(tenantId));
+        model.addAttribute("suppliers", supplierRepository.findByTenantIdAndActiveTrueOrderByNameAsc(tenantId));
         model.addAttribute("units", UnitType.values());
     }
 

@@ -16,6 +16,8 @@ import com.tienda.pos.inventory.InventoryMovementType;
 import com.tienda.pos.inventory.InventoryStock;
 import com.tienda.pos.inventory.InventoryStockRepository;
 import com.tienda.pos.supplier.SupplierRepository;
+import com.tienda.pos.tenant.CurrentTenant;
+import com.tienda.pos.tenant.Tenant;
 import com.tienda.pos.warehouse.Warehouse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,11 +47,13 @@ public class ProductService {
     private final StoreContextService storeContextService;
     private final ExternalProductService externalProductService;
     private final ProductImageService productImageService;
+    private final CurrentTenant currentTenant;
 
     public ProductService(ProductRepository productRepository, CategoryRepository categoryRepository,
                           SupplierRepository supplierRepository, InventoryMovementRepository movementRepository,
                           InventoryStockRepository stockRepository, StoreContextService storeContextService,
-                          ExternalProductService externalProductService, ProductImageService productImageService) {
+                          ExternalProductService externalProductService, ProductImageService productImageService,
+                          CurrentTenant currentTenant) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.supplierRepository = supplierRepository;
@@ -58,6 +62,7 @@ public class ProductService {
         this.storeContextService = storeContextService;
         this.externalProductService = externalProductService;
         this.productImageService = productImageService;
+        this.currentTenant = currentTenant;
     }
 
     @Transactional
@@ -67,7 +72,9 @@ public class ProductService {
 
     @Transactional
     public Product save(ProductForm form, MultipartFile imageFile) {
-        Product product = form.getId() == null ? new Product() : productRepository.findByIdForUpdate(form.getId())
+        Tenant tenant = currentTenant.get();
+        Long tenantId = tenant.getId();
+        Product product = form.getId() == null ? new Product() : productRepository.findByIdAndTenantIdForUpdate(form.getId(), tenantId)
                 .orElseThrow(() -> new DomainException("Producto no encontrado."));
         BigDecimal previousStock = product.getCurrentStock() == null ? BigDecimal.ZERO : product.getCurrentStock();
         String previousImageUrl = product.getImageUrl();
@@ -75,13 +82,14 @@ public class ProductService {
         boolean uploadedImage = imageFile != null && !imageFile.isEmpty();
         try {
             String barcode = blankToNull(form.getBarcode());
-            validateUniqueCode(form.getCode(), form.getId());
-            validateUniqueBarcode(barcode, form.getId());
+            validateUniqueCode(tenantId, form.getCode(), form.getId());
+            validateUniqueBarcode(tenantId, barcode, form.getId());
             String imageUrl = form.isRemoveImage() ? null : productImageService.cleanImageReference(form.getImageUrl());
             if (uploadedImage) {
                 newLocalImageUrl = productImageService.store(imageFile);
                 imageUrl = newLocalImageUrl;
             }
+            product.setTenant(tenant);
             product.setCode(form.getCode().trim());
             product.setBarcode(barcode);
             product.setName(form.getName().trim());
@@ -89,8 +97,8 @@ public class ProductService {
             product.setPresentation(blankToNull(form.getPresentation()));
             product.setImageUrl(imageUrl);
             product.setDescription(form.getDescription());
-            product.setCategory(form.getCategoryId() == null ? null : categoryRepository.findById(form.getCategoryId()).orElse(null));
-            product.setSupplier(form.getSupplierId() == null ? null : supplierRepository.findById(form.getSupplierId()).orElse(null));
+            product.setCategory(form.getCategoryId() == null ? null : categoryRepository.findByIdAndTenantId(form.getCategoryId(), tenantId).orElse(null));
+            product.setSupplier(form.getSupplierId() == null ? null : supplierRepository.findByIdAndTenantId(form.getSupplierId(), tenantId).orElse(null));
             product.setPurchaseCost(MoneyUtils.money(form.getPurchaseCost()));
             product.setSalePrice(MoneyUtils.money(form.getSalePrice()));
             product.setCurrentStock(form.getCurrentStock());
@@ -101,10 +109,11 @@ public class ProductService {
             product.setUpdatedBy(CurrentUser.username());
             Product saved = productRepository.save(product);
             Warehouse warehouse = storeContextService.defaultWarehouse();
-            syncDefaultStock(saved, warehouse, form.getCurrentStock(), form.getMinimumStock());
+            syncDefaultStock(tenant, saved, warehouse, form.getCurrentStock(), form.getMinimumStock());
             if (form.getId() == null && form.getCurrentStock().compareTo(BigDecimal.ZERO) > 0
                     || form.getId() != null && previousStock.compareTo(form.getCurrentStock()) != 0) {
                 InventoryMovement movement = new InventoryMovement();
+                movement.setTenant(tenant);
                 movement.setProduct(saved);
                 movement.setBranch(warehouse.getBranch());
                 movement.setWarehouse(warehouse);
@@ -130,11 +139,12 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public ProductBarcodeLookupResult lookupByBarcode(String rawBarcode) {
+        Long tenantId = currentTenant.id();
         String barcode = normalizeBarcode(rawBarcode);
         if (barcode == null) {
             return ProductBarcodeLookupResult.notFound(rawBarcode == null ? "" : rawBarcode.trim());
         }
-        Optional<Product> local = productRepository.findByBarcode(barcode);
+        Optional<Product> local = productRepository.findByTenantIdAndBarcode(tenantId, barcode);
         if (local.isPresent()) {
             return ProductBarcodeLookupResult.localFound(local.get());
         }
@@ -144,7 +154,7 @@ public class ProductService {
                 return ProductBarcodeLookupResult.notFound(barcode);
             }
             ExternalProductDto dto = external.get();
-            CategoryMatch categoryMatch = findEquivalentCategory(dto.category());
+            CategoryMatch categoryMatch = findEquivalentCategory(tenantId, dto.category());
             return ProductBarcodeLookupResult.externalFound(
                     barcode,
                     dto.name(),
@@ -159,9 +169,10 @@ public class ProductService {
     }
 
     public String generateUniqueProductCode() {
+        Long tenantId = currentTenant.id();
         for (int i = 0; i < MAX_GENERATION_ATTEMPTS; i++) {
             String candidate = "PRD-" + randomDigits(8);
-            if (!productRepository.existsByCode(candidate)) {
+            if (!productRepository.existsByTenantIdAndCode(tenantId, candidate)) {
                 return candidate;
             }
         }
@@ -169,9 +180,10 @@ public class ProductService {
     }
 
     public String generateUniqueBarcode() {
+        Long tenantId = currentTenant.id();
         for (int i = 0; i < MAX_GENERATION_ATTEMPTS; i++) {
             String candidate = generateInternalEan13();
-            if (!productRepository.existsByBarcode(candidate)) {
+            if (!productRepository.existsByTenantIdAndBarcode(tenantId, candidate)) {
                 return candidate;
             }
         }
@@ -185,18 +197,21 @@ public class ProductService {
         return normalized;
     }
 
-    private void syncDefaultStock(Product product, Warehouse warehouse, BigDecimal currentStock, BigDecimal minimumStock) {
-        InventoryStock stock = stockRepository.findByProductAndWarehouse(product, warehouse)
+    private void syncDefaultStock(Tenant tenant, Product product, Warehouse warehouse, BigDecimal currentStock, BigDecimal minimumStock) {
+        InventoryStock stock = stockRepository.findByProductAndWarehouseAndTenantId(product, warehouse, tenant.getId())
                 .orElseGet(() -> {
                     InventoryStock created = new InventoryStock();
+                    created.setTenant(tenant);
                     created.setProduct(product);
                     created.setWarehouse(warehouse);
                     return created;
                 });
+        stock.setTenant(tenant);
         stock.setQuantity(currentStock == null ? BigDecimal.ZERO : currentStock);
         stock.setMinimumStock(minimumStock == null ? BigDecimal.ZERO : minimumStock);
         stockRepository.save(stock);
     }
+
     private void scheduleImageCleanup(String previousImageUrl, String newLocalImageUrl, String finalImageUrl) {
         boolean replacedPreviousLocal = productImageService.isLocalImage(previousImageUrl)
                 && !Objects.equals(previousImageUrl, finalImageUrl);
@@ -226,50 +241,52 @@ public class ProductService {
         });
     }
 
-
     @Transactional
     public void promote(Long productId) {
-        Product product = productRepository.findByIdForUpdate(productId)
+        Long tenantId = currentTenant.id();
+        Product product = productRepository.findByIdAndTenantIdForUpdate(productId, tenantId)
                 .orElseThrow(() -> new DomainException("Producto no encontrado."));
         if (product.isPromoted()) {
             return;
         }
-        if (productRepository.countByPromotedTrue() >= 4) {
+        if (productRepository.countByTenantIdAndPromotedTrue(tenantId) >= 4) {
             throw new DomainException("Ya tienes 4 productos promocionados. Quita uno antes de agregar otro.");
         }
         product.setPromoted(true);
-        product.setPromotionOrder(productRepository.maxPromotionOrder() + 1);
+        product.setPromotionOrder(productRepository.maxPromotionOrder(tenantId) + 1);
         productRepository.save(product);
     }
 
     @Transactional
     public void removePromotion(Long productId) {
-        Product product = productRepository.findByIdForUpdate(productId)
+        Long tenantId = currentTenant.id();
+        Product product = productRepository.findByIdAndTenantIdForUpdate(productId, tenantId)
                 .orElseThrow(() -> new DomainException("Producto no encontrado."));
         product.setPromoted(false);
         product.setPromotionOrder(null);
         productRepository.save(product);
     }
-    private void validateUniqueCode(String code, Long currentId) {
+
+    private void validateUniqueCode(Long tenantId, String code, Long currentId) {
         if (code == null || code.isBlank()) return;
-        productRepository.findByCode(code.trim())
+        productRepository.findByTenantIdAndCode(tenantId, code.trim())
                 .filter(existing -> !existing.getId().equals(currentId))
                 .ifPresent(existing -> { throw new DomainException("Ya existe un producto con ese código."); });
     }
 
-    private void validateUniqueBarcode(String barcode, Long currentId) {
+    private void validateUniqueBarcode(Long tenantId, String barcode, Long currentId) {
         if (barcode == null) return;
-        productRepository.findByBarcode(barcode)
+        productRepository.findByTenantIdAndBarcode(tenantId, barcode)
                 .filter(existing -> !existing.getId().equals(currentId))
                 .ifPresent(existing -> { throw new DomainException("Ya existe un producto con ese código de barras."); });
     }
 
-    private CategoryMatch findEquivalentCategory(String suggestion) {
+    private CategoryMatch findEquivalentCategory(Long tenantId, String suggestion) {
         if (suggestion == null || suggestion.isBlank()) {
             return new CategoryMatch(null, null);
         }
         String normalizedSuggestion = normalizeText(suggestion);
-        List<Category> categories = categoryRepository.findByActiveTrueOrderByNameAsc();
+        List<Category> categories = categoryRepository.findByTenantIdAndActiveTrueOrderByNameAsc(tenantId);
         for (Category category : categories) {
             if (normalizeText(category.getName()).equals(normalizedSuggestion)) {
                 return new CategoryMatch(suggestion, category.getId());

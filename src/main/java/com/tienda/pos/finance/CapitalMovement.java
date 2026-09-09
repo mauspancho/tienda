@@ -1,10 +1,14 @@
 package com.tienda.pos.finance;
 
 import com.tienda.pos.common.BaseEntity;
+import com.tienda.pos.tenant.Tenant;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
@@ -13,6 +17,10 @@ import java.time.LocalDate;
 @Entity
 @Table(name = "capital_movement")
 public class CapitalMovement extends BaseEntity {
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "tenant_id", nullable = false)
+    private Tenant tenant;
 
     @Column(nullable = false)
     private LocalDate movementDate = LocalDate.now();
@@ -29,6 +37,8 @@ public class CapitalMovement extends BaseEntity {
 
     private Long purchaseId;
 
+    public Tenant getTenant() { return tenant; }
+    public void setTenant(Tenant tenant) { this.tenant = tenant; }
     public LocalDate getMovementDate() { return movementDate; }
     public void setMovementDate(LocalDate movementDate) { this.movementDate = movementDate; }
     public CapitalMovementType getType() { return type; }

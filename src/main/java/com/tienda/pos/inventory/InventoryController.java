@@ -3,6 +3,7 @@ package com.tienda.pos.inventory;
 import com.tienda.pos.common.NormalMode;
 import com.tienda.pos.exception.DomainException;
 import com.tienda.pos.product.ProductRepository;
+import com.tienda.pos.tenant.CurrentTenant;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,21 +26,24 @@ public class InventoryController {
     private final InventoryMovementRepository movementRepository;
     private final ProductRepository productRepository;
     private final InventoryService inventoryService;
+    private final CurrentTenant currentTenant;
 
     public InventoryController(InventoryMovementRepository movementRepository, ProductRepository productRepository,
-                               InventoryService inventoryService) {
+                               InventoryService inventoryService, CurrentTenant currentTenant) {
         this.movementRepository = movementRepository;
         this.productRepository = productRepository;
         this.inventoryService = inventoryService;
+        this.currentTenant = currentTenant;
     }
 
     @GetMapping("/inventory")
     public String list(@RequestParam(required = false) Long productId, Model model) {
+        Long tenantId = currentTenant.id();
         model.addAttribute("movements", productId == null
-                ? movementRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(0, 50))
-                : movementRepository.findByProductIdOrderByCreatedAtDesc(productId, PageRequest.of(0, 50)));
+                ? movementRepository.findByTenantIdOrderByCreatedAtDesc(tenantId, PageRequest.of(0, 50))
+                : movementRepository.findByTenantIdAndProductIdOrderByCreatedAtDesc(tenantId, productId, PageRequest.of(0, 50)));
         model.addAttribute("adjustmentForm", new InventoryAdjustmentForm());
-        model.addAttribute("products", productRepository.findAll(PageRequest.of(0, 500)).getContent());
+        model.addAttribute("products", productRepository.findByTenantIdOrderByNameAsc(tenantId, PageRequest.of(0, 500)).getContent());
         model.addAttribute("movementTypes", InventoryMovementType.values());
         return "inventory/index";
     }

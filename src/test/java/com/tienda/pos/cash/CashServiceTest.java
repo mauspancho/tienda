@@ -2,6 +2,8 @@ package com.tienda.pos.cash;
 
 import com.tienda.pos.exception.DomainException;
 import com.tienda.pos.role.Role;
+import com.tienda.pos.tenant.CurrentTenant;
+import com.tienda.pos.tenant.Tenant;
 import com.tienda.pos.user.AppUser;
 import com.tienda.pos.user.AppUserRepository;
 import org.junit.jupiter.api.Test;
@@ -20,7 +22,7 @@ class CashServiceTest {
 
     @Test
     void calculatesCashDifference() {
-        CashService service = new CashService(null, null, null, null);
+        CashService service = new CashService(null, null, null, null, null);
 
         assertThat(service.difference(new BigDecimal("3300"), new BigDecimal("3280")))
                 .isEqualByComparingTo(new BigDecimal("-20.00"));
@@ -31,12 +33,13 @@ class CashServiceTest {
         CashRegisterSessionRepository sessionRepository = mock(CashRegisterSessionRepository.class);
         CashMovementRepository movementRepository = mock(CashMovementRepository.class);
         AppUserRepository userRepository = mock(AppUserRepository.class);
-        CashService service = new CashService(sessionRepository, movementRepository, userRepository, null);
+        CurrentTenant currentTenant = currentTenant();
+        CashService service = new CashService(sessionRepository, movementRepository, userRepository, null, currentTenant);
         AppUser closer = user(1L, "cajero", "ROLE_CAJERO");
         CashRegisterSession session = cashSession(2L, user(2L, "admin", "ROLE_ADMIN"));
 
-        when(userRepository.findByUsername("cajero")).thenReturn(Optional.of(closer));
-        when(sessionRepository.findById(2L)).thenReturn(Optional.of(session));
+        when(userRepository.findByUsernameWithTenant("cajero")).thenReturn(Optional.of(closer));
+        when(sessionRepository.findByIdAndTenantId(2L, 1L)).thenReturn(Optional.of(session));
 
         assertThatThrownBy(() -> service.close("cajero", 2L, new BigDecimal("100")))
                 .isInstanceOf(DomainException.class)
@@ -50,13 +53,14 @@ class CashServiceTest {
         CashRegisterSessionRepository sessionRepository = mock(CashRegisterSessionRepository.class);
         CashMovementRepository movementRepository = mock(CashMovementRepository.class);
         AppUserRepository userRepository = mock(AppUserRepository.class);
-        CashService service = new CashService(sessionRepository, movementRepository, userRepository, null);
+        CurrentTenant currentTenant = currentTenant();
+        CashService service = new CashService(sessionRepository, movementRepository, userRepository, null, currentTenant);
         AppUser admin = user(1L, "admin", "ROLE_ADMIN");
         CashRegisterSession session = cashSession(2L, user(2L, "cajero", "ROLE_CAJERO"));
 
-        when(userRepository.findByUsername("admin")).thenReturn(Optional.of(admin));
-        when(sessionRepository.findById(2L)).thenReturn(Optional.of(session));
-        when(movementRepository.expectedAmount(2L)).thenReturn(new BigDecimal("90"));
+        when(userRepository.findByUsernameWithTenant("admin")).thenReturn(Optional.of(admin));
+        when(sessionRepository.findByIdAndTenantId(2L, 1L)).thenReturn(Optional.of(session));
+        when(movementRepository.expectedAmount(1L, 2L)).thenReturn(new BigDecimal("90"));
 
         service.close("admin", 2L, new BigDecimal("100"));
 
@@ -72,13 +76,14 @@ class CashServiceTest {
         CashRegisterSessionRepository sessionRepository = mock(CashRegisterSessionRepository.class);
         CashMovementRepository movementRepository = mock(CashMovementRepository.class);
         AppUserRepository userRepository = mock(AppUserRepository.class);
-        CashService service = new CashService(sessionRepository, movementRepository, userRepository, null);
+        CurrentTenant currentTenant = currentTenant();
+        CashService service = new CashService(sessionRepository, movementRepository, userRepository, null, currentTenant);
         AppUser cashier = user(1L, "cajero", "ROLE_CAJERO");
         CashRegisterSession session = cashSession(2L, cashier);
 
-        when(userRepository.findByUsername("cajero")).thenReturn(Optional.of(cashier));
-        when(sessionRepository.findById(2L)).thenReturn(Optional.of(session));
-        when(movementRepository.expectedAmount(2L)).thenReturn(new BigDecimal("100"));
+        when(userRepository.findByUsernameWithTenant("cajero")).thenReturn(Optional.of(cashier));
+        when(sessionRepository.findByIdAndTenantId(2L, 1L)).thenReturn(Optional.of(session));
+        when(movementRepository.expectedAmount(1L, 2L)).thenReturn(new BigDecimal("100"));
 
         service.close("cajero", 2L, new BigDecimal("100"));
 
@@ -86,9 +91,27 @@ class CashServiceTest {
         verify(sessionRepository).save(session);
     }
 
+    private CurrentTenant currentTenant() {
+        CurrentTenant currentTenant = mock(CurrentTenant.class);
+        Tenant tenant = tenant();
+        when(currentTenant.get()).thenReturn(tenant);
+        when(currentTenant.id()).thenReturn(1L);
+        return currentTenant;
+    }
+
+    private Tenant tenant() {
+        Tenant tenant = new Tenant();
+        tenant.setId(1L);
+        tenant.setCode("default");
+        tenant.setName("Tienda");
+        tenant.setActive(true);
+        return tenant;
+    }
+
     private AppUser user(Long id, String username, String role) {
         AppUser user = new AppUser();
         user.setId(id);
+        user.setTenant(tenant());
         user.setUsername(username);
         user.getRoles().add(new Role(role));
         return user;
@@ -97,6 +120,7 @@ class CashServiceTest {
     private CashRegisterSession cashSession(Long id, AppUser cashier) {
         CashRegisterSession session = new CashRegisterSession();
         session.setId(id);
+        session.setTenant(tenant());
         session.setCashier(cashier);
         session.setOpen(true);
         return session;

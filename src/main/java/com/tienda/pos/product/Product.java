@@ -4,6 +4,7 @@ import com.tienda.pos.category.Category;
 import com.tienda.pos.common.BaseEntity;
 import com.tienda.pos.common.MoneyUtils;
 import com.tienda.pos.supplier.Supplier;
+import com.tienda.pos.tenant.Tenant;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -11,6 +12,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -19,14 +21,21 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
 @Entity
-@Table(name = "product")
+@Table(name = "product", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_product_tenant_code", columnNames = {"tenant_id", "code"}),
+        @UniqueConstraint(name = "uk_product_tenant_barcode", columnNames = {"tenant_id", "barcode"})
+})
 public class Product extends BaseEntity {
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "tenant_id", nullable = false)
+    private Tenant tenant;
+
     @NotBlank
-    @Column(nullable = false, unique = true, length = 60)
+    @Column(nullable = false, length = 60)
     private String code;
 
-    @Column(unique = true, length = 80)
+    @Column(length = 80)
     private String barcode;
 
     @NotBlank
@@ -99,6 +108,8 @@ public class Product extends BaseEntity {
         return currentStock != null && minimumStock != null && currentStock.compareTo(minimumStock) <= 0;
     }
 
+    public Tenant getTenant() { return tenant; }
+    public void setTenant(Tenant tenant) { this.tenant = tenant; }
     public String getCode() { return code; }
     public void setCode(String code) { this.code = code; }
     public String getBarcode() { return barcode; }

@@ -9,8 +9,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 
 public interface CashRegisterSessionRepository extends JpaRepository<CashRegisterSession, Long> {
-    Optional<CashRegisterSession> findByCashierAndOpenTrue(AppUser cashier);
+    Optional<CashRegisterSession> findByTenantIdAndCashierAndOpenTrue(Long tenantId, AppUser cashier);
 
     @EntityGraph(attributePaths = {"cashier"})
-    Page<CashRegisterSession> findAllByOrderByCreatedAtDesc(Pageable pageable);
+    Optional<CashRegisterSession> findByIdAndTenantId(Long id, Long tenantId);
+
+    @EntityGraph(attributePaths = {"cashier"})
+    Page<CashRegisterSession> findByTenantIdOrderByCreatedAtDesc(Long tenantId, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"cashier"})
+    Page<CashRegisterSession> findByTenantIdAndCashierUsernameOrderByCreatedAtDesc(Long tenantId, String username, Pageable pageable);
 }

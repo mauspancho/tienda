@@ -12,7 +12,7 @@ class SaleServiceTest {
 
     @Test
     void calculatesChange() {
-        SaleService service = new SaleService(null, null, null, null, null, null, null, null);
+        SaleService service = new SaleService(null, null, null, null, null, null, null, null, null);
 
         assertThat(service.calculateChange(new BigDecimal("103"), new BigDecimal("200")))
                 .isEqualByComparingTo(new BigDecimal("97.00"));

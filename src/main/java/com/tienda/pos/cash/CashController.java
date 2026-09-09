@@ -2,6 +2,7 @@ package com.tienda.pos.cash;
 
 import com.tienda.pos.common.CurrentUser;
 import com.tienda.pos.common.NormalMode;
+import com.tienda.pos.tenant.CurrentTenant;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
@@ -21,15 +22,19 @@ public class CashController {
 
     private final CashRegisterSessionRepository sessionRepository;
     private final CashService cashService;
+    private final CurrentTenant currentTenant;
 
-    public CashController(CashRegisterSessionRepository sessionRepository, CashService cashService) {
+    public CashController(CashRegisterSessionRepository sessionRepository, CashService cashService, CurrentTenant currentTenant) {
         this.sessionRepository = sessionRepository;
         this.cashService = cashService;
+        this.currentTenant = currentTenant;
     }
 
     @GetMapping("/cash")
     public String cash(Model model) {
-        model.addAttribute("sessions", sessionRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(0, 50)));
+        Long tenantId = currentTenant.id();
+        model.addAttribute("sessions", sessionRepository.findByTenantIdOrderByCreatedAtDesc(tenantId, PageRequest.of(0, 50)));
+        model.addAttribute("adminCashView", true);
         return "cash/index";
     }
 

@@ -1,6 +1,7 @@
 package com.tienda.pos.finance;
 
 import com.tienda.pos.common.DisplayFormat;
+import com.tienda.pos.tenant.CurrentTenant;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -33,6 +34,9 @@ class FinanceControllerRenderTest {
 
     @MockBean
     private CapitalMovementRepository capitalMovementRepository;
+
+    @MockBean
+    private CurrentTenant currentTenant;
 
     @Test
     void financeIndexRendersWithSummaryData() throws Exception {
