@@ -95,6 +95,24 @@ No es necesario Node.js para ejecutar el JAR.
 
 La raiz `/` muestra un catalogo publico sin login. El area operativa y administrativa vive bajo `/admin/**`; el login queda en `/admin/login`.
 
+El catalogo usa `PublicTenantResolver`, separado de `CurrentTenant`. En la instalacion
+local se selecciona el unico tenant activo. Si hay varios, configura en el servidor
+`tienda.catalog.tenant-code` con el codigo del tenant que se publicara:
+
+```yaml
+tienda:
+  catalog:
+    tenant-code: default
+```
+
+Sin una seleccion univoca, o si el tenant configurado no existe o esta inactivo,
+el catalogo responde 503. No toma el tenant de la sesion, parametros, cookies ni
+cabeceras del visitante. Los productos ajenos o inactivos responden 404.
+El contrato `PublicTenantResolver` permite sustituir la estrategia local por una
+resolucion de dominios verificados en el futuro; esa funcionalidad no esta implementada.
+Las operaciones autenticadas resuelven siempre `AppUser -> Tenant` y rechazan
+usuarios o tenants inactivos, sin elegir otro tenant como alternativa.
+
 Desde `Configuracion` puedes activar o desactivar el catalogo, cambiar titulo/subtitulo, definir el titulo de promociones y subir el logo publico. El logo se guarda fuera del JAR en:
 
 ```text

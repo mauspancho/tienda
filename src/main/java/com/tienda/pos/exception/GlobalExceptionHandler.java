@@ -10,6 +10,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.ModelAndView;
 
 @ControllerAdvice
 @NormalMode
@@ -33,6 +35,20 @@ public class GlobalExceptionHandler {
                 .orElse("Revisa los datos enviados.");
         model.addAttribute("message", message);
         return "error/400";
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ModelAndView responseStatus(ResponseStatusException ex) {
+        int status = ex.getStatusCode().value();
+        String template = switch (status) {
+            case 400, 403, 404 -> "error/" + status;
+            default -> "error/500";
+        };
+        ModelAndView view = new ModelAndView(template);
+        view.setStatus(ex.getStatusCode());
+        view.addObject("status", status);
+        view.addObject("message", ex.getReason());
+        return view;
     }
 
     @ExceptionHandler(Exception.class)

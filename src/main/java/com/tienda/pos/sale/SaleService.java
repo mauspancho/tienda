@@ -139,6 +139,14 @@ public class SaleService {
             throw new DomainException("El descuento no puede ser mayor al subtotal.");
         }
         BigDecimal received = total;
+        BigDecimal change = MoneyUtils.money(BigDecimal.ZERO);
+        if (request.getPaymentMethod() == PaymentMethod.CASH) {
+            if (request.getReceivedAmount() == null) {
+                throw new DomainException("Indica el efectivo recibido.");
+            }
+            received = MoneyUtils.money(request.getReceivedAmount());
+            change = calculateChange(total, received);
+        }
 
         sale.setSubtotal(MoneyUtils.money(subtotal));
         sale.setDiscount(discount);
@@ -148,7 +156,7 @@ public class SaleService {
         payment.setMethod(request.getPaymentMethod());
         payment.setAmount(total);
         payment.setReceivedAmount(received);
-        payment.setChangeAmount(BigDecimal.ZERO);
+        payment.setChangeAmount(change);
         sale.setPayment(payment);
         Sale saved = saleRepository.save(sale);
 
@@ -163,7 +171,7 @@ public class SaleService {
             movement.setUser(cashier);
             cashMovementRepository.save(movement);
         }
-        return new SaleResult(saved.getFolio(), total, received, BigDecimal.ZERO);
+        return new SaleResult(saved.getFolio(), total, received, change);
     }
 
     public BigDecimal calculateChange(BigDecimal total, BigDecimal received) {

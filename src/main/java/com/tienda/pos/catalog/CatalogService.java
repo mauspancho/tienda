@@ -5,7 +5,7 @@ import com.tienda.pos.product.Product;
 import com.tienda.pos.product.ProductRepository;
 import com.tienda.pos.settings.BusinessSettings;
 import com.tienda.pos.settings.BusinessSettingsRepository;
-import com.tienda.pos.tenant.CurrentTenant;
+import com.tienda.pos.tenant.PublicTenantResolver;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -23,25 +23,25 @@ public class CatalogService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final BusinessSettingsRepository settingsRepository;
-    private final CurrentTenant currentTenant;
+    private final PublicTenantResolver publicTenantResolver;
 
     public CatalogService(ProductRepository productRepository, CategoryRepository categoryRepository,
-                          BusinessSettingsRepository settingsRepository, CurrentTenant currentTenant) {
+                          BusinessSettingsRepository settingsRepository, PublicTenantResolver publicTenantResolver) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.settingsRepository = settingsRepository;
-        this.currentTenant = currentTenant;
+        this.publicTenantResolver = publicTenantResolver;
     }
 
     @Transactional(readOnly = true)
     public BusinessSettings settings() {
-        Long tenantId = currentTenant.id();
+        Long tenantId = publicTenantResolver.resolve().getId();
         return settingsRepository.findFirstByTenantIdOrderByIdAsc(tenantId).orElseGet(BusinessSettings::new);
     }
 
     @Transactional(readOnly = true)
     public Page<CatalogProductView> search(String q, Long categoryId, int page) {
-        Long tenantId = currentTenant.id();
+        Long tenantId = publicTenantResolver.resolve().getId();
         Pageable pageable = PageRequest.of(Math.max(0, page), PAGE_SIZE);
         String query = q == null ? "" : q.trim();
         return productRepository.catalogSearch(tenantId, query, categoryId, pageable).map(this::toView);
@@ -49,18 +49,18 @@ public class CatalogService {
 
     @Transactional(readOnly = true)
     public List<CatalogProductView> promotions() {
-        Long tenantId = currentTenant.id();
+        Long tenantId = publicTenantResolver.resolve().getId();
         return productRepository.findCatalogPromotions(tenantId, PageRequest.of(0, 4)).stream().map(this::toView).toList();
     }
 
     @Transactional(readOnly = true)
     public List<?> activeCategories() {
-        return categoryRepository.findByTenantIdAndActiveTrueOrderByNameAsc(currentTenant.id());
+        return categoryRepository.findByTenantIdAndActiveTrueOrderByNameAsc(publicTenantResolver.resolve().getId());
     }
 
     @Transactional(readOnly = true)
     public CatalogProductView detail(Long id) {
-        return productRepository.findByIdAndTenantIdAndActiveTrue(id, currentTenant.id()).map(this::toView).orElse(null);
+        return productRepository.findByIdAndTenantIdAndActiveTrue(id, publicTenantResolver.resolve().getId()).map(this::toView).orElse(null);
     }
 
     public String title(BusinessSettings settings) {
