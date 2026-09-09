@@ -1,0 +1,52 @@
+name: Migration compatibility
+
+on:
+  push:
+    branches: [commercial-v1]
+  pull_request:
+    branches: [commercial-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mysql-and-mariadb:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Verify Docker
+        run: docker info
+      - name: Clean test (mandatory MySQL 8 and MariaDB containers)
+        run: mvn --batch-mode --no-transfer-progress clean test | tee "$RUNNER_TEMP/mvn-clean-test.log"
+      - name: Preserve test reports before the next clean
+        if: always()
+        run: |
+          if [ -d target/surefire-reports ]; then
+            cp -r target/surefire-reports "$RUNNER_TEMP/clean-test-reports"
+          fi
+      - name: Clean package (run all tests again)
+        run: mvn --batch-mode --no-transfer-progress clean package | tee "$RUNNER_TEMP/mvn-clean-package.log"
+      - name: Start the packaged JAR from an empty directory
+        run: bash scripts/smoke-clean-jar.sh target/tienda-pos.jar "$RUNNER_TEMP/clean-jar"
+      - name: Upload verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-verification
+          path: |
+            ${{ runner.temp }}/mvn-clean-*.log
+            ${{ runner.temp }}/clean-test-reports
+            ${{ runner.temp }}/clean-jar
+            target/surefire-reports
+      - name: Upload tested JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: tienda-pos-jar
+          path: target/tienda-pos.jar

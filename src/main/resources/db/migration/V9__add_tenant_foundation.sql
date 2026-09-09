@@ -60,9 +60,28 @@ alter table audit_log add column tenant_id bigint null;
 
 update app_user set tenant_id = (select id from tenant order by id limit 1) where tenant_id is null;
 update business set tenant_id = (select id from tenant order by id limit 1), legal_name = coalesce(legal_name, name) where tenant_id is null;
-update branch set tenant_id = (select id from tenant order by id limit 1), code = coalesce(code, 'MATRIZ'), phone = coalesce(phone, (select phone from business_settings order by id limit 1)), timezone = coalesce(timezone, (select timezone from business_settings order by id limit 1), 'America/Mexico_City') where tenant_id is null;
-update warehouse set tenant_id = (select id from tenant order by id limit 1), code = coalesce(code, 'PRINCIPAL') where tenant_id is null;
-update cash_register set tenant_id = (select id from tenant order by id limit 1), code = coalesce(code, 'CAJA01') where tenant_id is null;
+-- Keep the default code for the first location; legacy siblings need distinct codes.
+-- GROUP BY materializes each derived table on MySQL (avoids target-table error 1093).
+update branch br
+join (select business_id, min(id) as first_id from branch group by business_id) first_branch
+    on first_branch.business_id = br.business_id
+set br.tenant_id = (select id from tenant order by id limit 1),
+    br.code = coalesce(br.code, case when br.id = first_branch.first_id then 'MATRIZ' else concat('SUC-', br.id) end),
+    br.phone = coalesce(br.phone, (select phone from business_settings order by id limit 1)),
+    br.timezone = coalesce(br.timezone, (select timezone from business_settings order by id limit 1), 'America/Mexico_City')
+where br.tenant_id is null;
+update warehouse w
+join (select branch_id, min(id) as first_id from warehouse group by branch_id) first_warehouse
+    on first_warehouse.branch_id = w.branch_id
+set w.tenant_id = (select id from tenant order by id limit 1),
+    w.code = coalesce(w.code, case when w.id = first_warehouse.first_id then 'PRINCIPAL' else concat('ALM-', w.id) end)
+where w.tenant_id is null;
+update cash_register cr
+join (select branch_id, min(id) as first_id from cash_register group by branch_id) first_register
+    on first_register.branch_id = cr.branch_id
+set cr.tenant_id = (select id from tenant order by id limit 1),
+    cr.code = coalesce(cr.code, case when cr.id = first_register.first_id then 'CAJA01' else concat('CAJA-', cr.id) end)
+where cr.tenant_id is null;
 update category set tenant_id = (select id from tenant order by id limit 1) where tenant_id is null;
 update supplier set tenant_id = (select id from tenant order by id limit 1) where tenant_id is null;
 update customer set tenant_id = (select id from tenant order by id limit 1) where tenant_id is null;
@@ -99,13 +118,10 @@ alter table business_settings modify tenant_id bigint not null;
 alter table capital_movement modify tenant_id bigint not null;
 alter table inventory_stock modify tenant_id bigint not null;
 
-alter table product drop index uk_product_code;
-alter table product drop index uk_product_barcode;
-alter table category drop index uk_category_name;
-alter table expense_category drop index uk_expense_category_name;
-alter table inventory_stock drop index uk_inventory_stock_product_warehouse;
-
+-- Replace each unique index in the same ALTER: MySQL DDL commits per statement.
 alter table product
+    drop index uk_product_code,
+    drop index uk_product_barcode,
     add unique key uk_product_tenant_code (tenant_id, code),
     add unique key uk_product_tenant_barcode (tenant_id, barcode),
     add key idx_product_tenant_name (tenant_id, name),
@@ -113,11 +129,13 @@ alter table product
     add constraint fk_product_tenant foreign key (tenant_id) references tenant(id);
 
 alter table category
+    drop index uk_category_name,
     add unique key uk_category_tenant_name (tenant_id, name),
     add key idx_category_tenant_active (tenant_id, active),
     add constraint fk_category_tenant foreign key (tenant_id) references tenant(id);
 
 alter table expense_category
+    drop index uk_expense_category_name,
     add unique key uk_expense_category_tenant_name (tenant_id, name),
     add key idx_expense_category_tenant_active (tenant_id, active),
     add constraint fk_expense_category_tenant foreign key (tenant_id) references tenant(id);
@@ -189,7 +207,11 @@ alter table capital_movement
     add key idx_capital_movement_tenant_type_date (tenant_id, type, movement_date),
     add constraint fk_capital_movement_tenant foreign key (tenant_id) references tenant(id);
 
+-- The tenant-leading unique key cannot support the existing product_id foreign key.
+alter table inventory_stock add key idx_inventory_stock_product (product_id);
+
 alter table inventory_stock
+    drop index uk_inventory_stock_product_warehouse,
     add unique key uk_inventory_stock_tenant_product_warehouse (tenant_id, product_id, warehouse_id),
     add key idx_inventory_stock_tenant_warehouse (tenant_id, warehouse_id),
     add constraint fk_inventory_stock_tenant foreign key (tenant_id) references tenant(id);
