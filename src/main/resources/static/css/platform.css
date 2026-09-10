@@ -1,6 +1,6 @@
-.platform-page { --platform-bg:#f6f7fb; --platform-panel:#fff; --platform-ink:#162033; --platform-border:#b6c0ce; background:var(--platform-bg)!important; color:var(--platform-ink); min-height:100vh; }
+.platform-page { --platform-bg:#f6f7fb; --platform-panel:#fff; --platform-ink:#162033; --platform-border:#788494; background:var(--platform-bg)!important; color:var(--platform-ink); min-height:100vh; }
 [data-theme="sunset"] .platform-page { --platform-bg:#111018; --platform-panel:#181420; --platform-ink:#fff; --platform-border:#a6a1ad; }
-.platform-page * { letter-spacing:0; text-shadow:none!important; }
+html[data-theme] body.platform-page * { letter-spacing:0; text-shadow:none!important; }
 .platform-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; padding:16px 24px; background:var(--platform-panel); border-bottom:1px solid var(--platform-border); }
 .platform-brand { display:flex; align-items:center; gap:12px; min-width:0; }
 .platform-brand strong { font-size:20px; }
@@ -22,7 +22,7 @@
 .platform-search { display:flex; align-items:end; flex-wrap:wrap; gap:12px; margin:24px 0; }
 .platform-search label { width:420px; max-width:100%; }
 .platform-page label { display:flex; flex-direction:column; gap:8px; font-size:14px; font-weight:600; min-width:0; }
-.platform-page .input { width:100%; height:46px; min-height:46px; border:1px solid var(--platform-border)!important; color:var(--platform-ink)!important; -webkit-text-fill-color:var(--platform-ink)!important; background:var(--platform-panel)!important; font-weight:400; border-radius:6px; }
+html[data-theme] body.platform-page .input { width:100%; height:46px; min-height:46px; border:1px solid var(--platform-border)!important; color:var(--platform-ink)!important; -webkit-text-fill-color:var(--platform-ink)!important; background:var(--platform-panel)!important; font-weight:400; border-radius:6px; }
 .platform-page :focus-visible { outline:3px solid #38bdf8; outline-offset:3px; }
 .platform-table-wrap { width:100%; max-width:100%; overflow:auto; border:1px solid var(--platform-border); border-radius:6px; background:var(--platform-panel); }
 .platform-table { min-width:980px; width:100%; }

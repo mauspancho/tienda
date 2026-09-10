@@ -99,7 +99,7 @@
   </div>
 
   <div class="navbar-end gap-2 app-nav-actions">
-    <a sec:authorize="hasRole('PLATFORM_ADMIN')" th:href="@{/platform/tenants}" class="btn btn-outline btn-sm" title="Administración de plataforma">Plataforma</a>
+    <a sec:authorize="hasRole('PLATFORM_ADMIN')" th:href="@{/platform/tenants}" class="btn btn-outline btn-sm platform-nav-link" title="Administración de plataforma">Plataforma</a>
     <details class="dropdown dropdown-end theme-dropdown">
       <summary class="btn btn-ghost btn-sm theme-trigger" aria-label="Cambiar tema" title="Cambiar tema">
         <svg class="theme-trigger-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -138,6 +138,7 @@
         <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/admin/finances/capital}">Capital</a></li>
         <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/admin/users}">Usuarios</a></li>
         <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/admin/settings}">Configuración</a></li>
+        <li sec:authorize="hasRole('PLATFORM_ADMIN')"><a th:href="@{/platform/tenants}">Plataforma</a></li>
         <li class="mobile-menu-logout">
           <form th:action="@{/admin/logout}" method="post">
             <button class="mobile-menu-logout-button" type="submit">Salir</button>

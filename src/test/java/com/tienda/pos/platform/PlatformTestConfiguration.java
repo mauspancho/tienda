@@ -23,7 +23,8 @@ import static org.mockito.Mockito.mock;
 @Import({HardeningTestConfiguration.class, PlatformTenantController.class, PlatformTenantService.class,
         TenantProvisioningService.class, UserService.class, UserController.class, ProductService.class,
         ProductController.class, BarcodeLabelService.class, InventoryController.class, SaleController.class,
-        PosController.class, CashService.class, CategoryController.class, SupplierController.class, AuthController.class})
+        PosController.class, CashService.class, CategoryController.class, SupplierController.class, AuthController.class,
+        com.tienda.pos.api.ProductApiController.class})
 public class PlatformTestConfiguration {
     // Only filesystem/external network collaborators are mocked; persistence, transactions, auth and MVC are real.
     @Bean ProductImageService productImageService() { return mock(ProductImageService.class); }

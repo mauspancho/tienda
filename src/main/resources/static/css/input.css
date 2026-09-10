@@ -1193,7 +1193,8 @@ html[data-theme="sunset"] .mobile-menu-logout-button {
   .app-nav-actions {
     gap: .35rem !important;
   }
-  .desktop-logout {
+  .desktop-logout,
+  .platform-nav-link {
     display: none !important;
   }
   .theme-trigger,

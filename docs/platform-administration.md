@@ -70,6 +70,13 @@ database or localhost fallback for migration tests.
 
 ## Query Audit
 
+Visual QA: PlatformPreviewServer provides a loopback-only H2 fixture, excluded
+from the production JAR. scripts/verify-platform.cjs uses Playwright/Chrome and
+requires PREVIEW_URL, with optional PLAYWRIGHT_MODULE and CHROME_PATH.
+It exercises creation through the browser, both themes, four platform screens,
+1440/390/320px widths, image loading, field contrast and mobile navigation.
+Screenshots and measurements are written to target/platform-visual.
+
 Operational repository calls and aggregates use tenant IDs from CurrentTenant.
 Global queries are confined to platform metadata/provisioning, setup and the
 explicit public resolver. Authentication/account checks necessarily look up the

@@ -154,6 +154,11 @@ class PlatformIntegrationTest {
             assertThat(number("select count(*) from " + table + " where tenant_id=?", id)).as(table).isEqualTo(1);
         assertThat(number("select count(*) from category where tenant_id=?", id)).isEqualTo(9);
         assertThat(number("select count(*) from expense_category where tenant_id=?", id)).isEqualTo(6);
+        assertThat(jdbc.queryForList("select name from category where tenant_id=?", String.class, id))
+                .containsExactlyInAnyOrder("Refrescos","Botanas","Pan","L\u00e1cteos","Abarrotes","Limpieza","Higiene","Dulces","Otros");
+        assertThat(jdbc.queryForList("select name from expense_category where tenant_id=?", String.class, id))
+                .containsExactlyInAnyOrder("Servicios","Renta","Insumos","Transporte","Mantenimiento","Otros");
+        assertThat(jdbc.queryForObject("select name from customer where tenant_id=?", String.class, id)).isEqualTo("P\u00fablico General");
         for (String table : List.of("product", "sale", "inventory_stock", "supplier", "purchase"))
             assertThat(number("select count(*) from " + table + " where tenant_id=?", id)).as(table).isZero();
         assertThat(jdbc.queryForList("select r.name from role r join user_roles ur on r.id=ur.role_id join app_user u on u.id=ur.user_id where u.tenant_id=?", String.class, id)).containsExactly("ROLE_ADMIN");
@@ -248,6 +253,10 @@ class PlatformIntegrationTest {
         assertThat(jdbc.queryForObject("select code from tenant where id=?",String.class,b.id())).isEqualTo(b.username());
         assertThat(number("select tenant_id from app_user where id=?",b.userId())).isEqualTo(b.id());
         String url="/platform/tenants/"+b.id()+"/admins/"+b.userId();
+        String originalHash=jdbc.queryForObject("select password_hash from app_user where id=?",String.class,b.userId());
+        mvc.perform(post(url+"/reset-password").session(session).with(csrf()).param("password","short").param("confirmPassword","short"))
+                .andExpect(status().is3xxRedirection()).andExpect(flash().attributeExists("error"));
+        assertThat(jdbc.queryForObject("select password_hash from app_user where id=?",String.class,b.userId())).isEqualTo(originalHash);
         jdbc.update("update app_user set active=false where id=?",b.userId());
         mvc.perform(post(url+"/reactivate").session(session).with(csrf())).andExpect(status().is3xxRedirection());
         mvc.perform(post(url+"/reset-password").session(session).with(csrf()).param("password","Updated-password-123").param("confirmPassword","Updated-password-123")).andExpect(status().is3xxRedirection());
@@ -261,6 +270,10 @@ class PlatformIntegrationTest {
     void realLoginsIsolateListsAndRejectKnownForeignIds(boolean fromA) throws Exception {
         Shop own=fromA?a:b, other=fromA?b:a;
         MockHttpSession session=login(own.username(),"/admin");
+        mvc.perform(get("/admin/api/products/barcode/1234567890123").session(session)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(own.productId())).andExpect(jsonPath("$.name").value(own.productName()));
+        mvc.perform(get("/admin/api/products/search").param("q","SAME-CODE").session(session)).andExpect(status().isOk())
+                .andExpect(jsonPath("$",hasSize(1))).andExpect(jsonPath("$[0].id").value(own.productId()));
         for(String path:List.of("/admin/products","/admin/inventory","/admin/sales")) {
             mvc.perform(get(path).session(session)).andExpect(status().isOk())
                     .andExpect(content().string(containsString(own.productName())))
@@ -272,6 +285,9 @@ class PlatformIntegrationTest {
         mvc.perform(get("/admin/products/{id}/edit",other.productId()).session(session)).andExpect(status().isNotFound());
         mvc.perform(get("/admin/products/{id}/barcode-label",other.productId()).session(session)).andExpect(status().isNotFound());
         mvc.perform(get("/admin/users/{id}/edit",other.userId()).session(session)).andExpect(status().isBadRequest());
+        for(String action:List.of("toggle","delete"))
+            mvc.perform(post("/admin/users/{id}/"+action,other.userId()).session(session).with(csrf()))
+                    .andExpect(status().is3xxRedirection()).andExpect(flash().attributeExists("error"));
         mvc.perform(get("/admin/sales/{folio}",other.folio()).session(session)).andExpect(status().isBadRequest())
                 .andExpect(content().string(not(containsString(other.productName()))));
         mvc.perform(get("/admin/inventory").param("productId",other.productId().toString()).session(session))
@@ -288,6 +304,23 @@ class PlatformIntegrationTest {
         assertThat(jdbc.queryForObject("select name from product where id=?",String.class,other.productId())).isEqualTo(other.productName());
         assertThat(jdbc.queryForObject("select current_stock from product where id=?",BigDecimal.class,other.productId())).isEqualByComparingTo("9");
         assertThat(number("select count(*) from sale where tenant_id=?",own.id())).isEqualTo(1);
+        assertThat(number("select count(*) from app_user where id=? and tenant_id=? and active=true",other.userId(),other.id())).isEqualTo(1);
+    }
+
+    @Test void tenantUserFormCannotGrantGlobalRoleAndForeignReferencesAreRejected() throws Exception {
+        MockHttpSession session=login(a.username(),"/admin");
+        String username="ordinary-"+suffix;
+        mvc.perform(post("/admin/users").session(session).with(csrf()).param("username",username)
+                .param("firstName","Ordinary").param("lastName","Admin").param("admin","true").param("cashier","false").param("active","true")
+                .param("password",PASSWORD).param("platformAdmin","true").param("roles","ROLE_PLATFORM_ADMIN"))
+                .andExpect(status().is3xxRedirection()).andExpect(flash().attributeExists("success"));
+        assertThat(jdbc.queryForList("select r.name from role r join user_roles ur on r.id=ur.role_id join app_user u on u.id=ur.user_id where u.username=?",String.class,username))
+                .containsExactly("ROLE_ADMIN");
+        Long foreignCategory=number("select min(id) from category where tenant_id=?",b.id());
+        mvc.perform(post("/admin/products").session(session).with(csrf()).param("code","REJECT-REF").param("name","Rejected reference")
+                .param("salePrice","10").param("categoryId",foreignCategory.toString()))
+                .andExpect(status().isOk()).andExpect(model().attributeHasErrors("productForm"));
+        assertThat(number("select count(*) from product where tenant_id=?",a.id())).isEqualTo(1);
     }
 
     @Test void massAssignmentCannotMoveCategoryOrSupplierAndPublicResolverStaysSafe() throws Exception {
