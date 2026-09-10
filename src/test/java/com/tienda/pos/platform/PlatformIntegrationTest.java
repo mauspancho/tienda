@@ -540,6 +540,13 @@ class PlatformIntegrationTest {
         assertThat(session.isInvalid()).isTrue();
     }
 
+    @Test void removingPlatformPrivilegeStillDeniesAnOlderSessionWithoutTreatingItAsSuspension() throws Exception {
+        MockHttpSession session = login(operator, "/platform/tenants");
+        jdbc.update("delete from user_roles where user_id=? and role_id=(select id from role where name='ROLE_PLATFORM_ADMIN')", operatorId);
+        mvc.perform(get("/platform/tenants").session(session)).andExpect(status().isForbidden());
+        assertValid(session);
+    }
+
     private void assertExpired(MockHttpSession session) {
         assertThat(sessions.getSessionInformation(session.getId())).isNotNull();
         assertThat(sessions.getSessionInformation(session.getId()).isExpired()).isTrue();

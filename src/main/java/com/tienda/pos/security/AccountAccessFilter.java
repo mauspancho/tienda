@@ -36,8 +36,8 @@ final class AccountAccessFilter extends OncePerRequestFilter {
                 logout.redirect(request, response, "/admin/login?expired");
                 return;
             }
-            // Platform access survives tenant suspension, but operational access does not.
-            if (platformUser && tenantArea && !activeTenant) {
+            // Recheck persisted platform privileges too; cached session authorities may be stale.
+            if ((platform && !platformUser) || (platformUser && tenantArea && !activeTenant)) {
                 response.sendError(HttpServletResponse.SC_FORBIDDEN, "Acceso no disponible.");
                 return;
             }
