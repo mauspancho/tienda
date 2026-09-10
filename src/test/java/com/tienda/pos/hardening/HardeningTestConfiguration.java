@@ -1,6 +1,7 @@
 package com.tienda.pos.hardening;
 
-import com.tienda.pos.catalog.CatalogController;
+import com.tienda.pos.auth.RootController;
+import com.tienda.pos.security.SessionRevocationService;
 import com.tienda.pos.catalog.CatalogService;
 import com.tienda.pos.common.DisplayFormat;
 import com.tienda.pos.commercial.StoreContextService;
@@ -22,7 +23,8 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 @EnableAutoConfiguration
 @EntityScan("com.tienda.pos")
 @EnableJpaRepositories("com.tienda.pos")
-@Import({SecurityConfig.class, LoginSuccessService.class, DatabaseUserDetailsService.class, CatalogController.class,
+@Import({SecurityConfig.class, LoginSuccessService.class, DatabaseUserDetailsService.class, RootController.class,
+        SessionRevocationService.class,
         CatalogService.class, LocalPublicTenantResolver.class, CurrentTenant.class,
         DisplayFormat.class, GlobalExceptionHandler.class, SaleService.class,
         InventoryService.class, StoreContextService.class})

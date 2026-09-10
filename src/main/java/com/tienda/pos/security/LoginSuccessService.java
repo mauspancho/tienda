@@ -18,9 +18,11 @@ import java.time.LocalDateTime;
 public class LoginSuccessService implements AuthenticationSuccessHandler {
 
     private final AppUserRepository userRepository;
+    private final SessionLogoutService logout;
 
-    public LoginSuccessService(AppUserRepository userRepository) {
+    public LoginSuccessService(AppUserRepository userRepository, SessionLogoutService logout) {
         this.userRepository = userRepository;
+        this.logout = logout;
     }
 
     @Override
@@ -31,10 +33,11 @@ public class LoginSuccessService implements AuthenticationSuccessHandler {
             user.setLastLogin(LocalDateTime.now());
             userRepository.save(user);
         });
-        boolean platform = authentication.getAuthorities().stream()
-                .anyMatch(authority -> "ROLE_PLATFORM_ADMIN".equals(authority.getAuthority()));
-        boolean admin = authentication.getAuthorities().stream()
-                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
-        response.sendRedirect(request.getContextPath() + (platform ? "/platform/tenants" : admin ? "/admin" : "/admin/pos"));
+        String destination = LoginDestination.forAuthentication(authentication);
+        if (destination == null) {
+            logout.redirect(request, response, "/admin/login");
+        } else {
+            response.sendRedirect(request.getContextPath() + destination);
+        }
     }
 }

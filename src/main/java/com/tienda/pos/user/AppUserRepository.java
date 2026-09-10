@@ -10,6 +10,10 @@ import org.springframework.data.repository.query.Param;
 import java.util.Optional;
 
 public interface AppUserRepository extends JpaRepository<AppUser, Long> {
+    @Query("select u.username from AppUser u where u.tenant.id = :tenantId and not exists "
+            + "(select r from u.roles r where r.name = 'ROLE_PLATFORM_ADMIN')")
+    java.util.List<String> findNonPlatformUsernamesByTenantId(@Param("tenantId") Long tenantId);
+
     Optional<AppUser> findByUsername(String username);
 
     @EntityGraph(attributePaths = {"tenant", "roles"})

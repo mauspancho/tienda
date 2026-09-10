@@ -27,6 +27,8 @@ class NormalModeStartupTest {
     void normalModeCreatesRepositoriesAndDependentServices() throws Exception {
         assertThat(context.getEnvironment().getProperty("tienda.setup-mode")).isEqualTo("false");
         for (Class<?> type : new Class<?>[]{ProductRepository.class, TenantRepository.class,
+                com.tienda.pos.auth.RootController.class, com.tienda.pos.security.SessionRevocationService.class,
+                org.springframework.security.core.session.SessionRegistry.class,
                 CatalogService.class, CurrentTenant.class, LocalPublicTenantResolver.class,
                 StoreContextService.class}) {
             assertThat(context.getBean(type)).isNotNull();

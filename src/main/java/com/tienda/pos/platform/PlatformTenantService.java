@@ -5,6 +5,7 @@ import com.tienda.pos.branch.Branch;
 import com.tienda.pos.common.NormalMode;
 import com.tienda.pos.exception.DomainException;
 import com.tienda.pos.settings.BusinessSettings;
+import com.tienda.pos.security.SessionRevocationService;
 import com.tienda.pos.tenant.Tenant;
 import com.tienda.pos.user.AppUser;
 import jakarta.persistence.EntityManager;
@@ -32,11 +33,14 @@ public class PlatformTenantService {
     private final EntityManager em;
     private final Validator validator;
     private final PasswordEncoder encoder;
+    private final SessionRevocationService sessions;
 
-    public PlatformTenantService(EntityManager em, Validator validator, PasswordEncoder encoder) {
+    public PlatformTenantService(EntityManager em, Validator validator, PasswordEncoder encoder,
+                                 SessionRevocationService sessions) {
         this.em = em;
         this.validator = validator;
         this.encoder = encoder;
+        this.sessions = sessions;
     }
 
     public record AdminView(Long id, String username, String fullName, boolean active, boolean platform) {}
@@ -98,6 +102,7 @@ public class PlatformTenantService {
         Tenant tenant = em.find(Tenant.class, id, LockModeType.PESSIMISTIC_WRITE);
         if (tenant == null) throw notFound();
         tenant.setActive(!tenant.isActive());
+        if (!tenant.isActive()) sessions.expireTenantSessions(id);
     }
 
     @Transactional

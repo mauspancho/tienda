@@ -20,6 +20,7 @@ import java.math.BigDecimal;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
+import static org.assertj.core.api.Assertions.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -32,6 +33,7 @@ class CatalogMvcTest {
 
     @Autowired private WebApplicationContext context;
     @Autowired private EntityManager entityManager;
+    @Autowired private CatalogService catalog;
     private MockMvc mvc;
     private Tenant publicTenant;
     private Tenant otherTenant;
@@ -56,28 +58,29 @@ class CatalogMvcTest {
     }
 
     @Test
-    void anonymousHomeRendersOnlyConfiguredTenantProductsCategoriesAndPromotions() throws Exception {
+    void rootDoesNotPublishConfiguredTenantButInternalCatalogRemainsScoped() throws Exception {
         mvc.perform(get("/"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("catalog/index"))
-                .andExpect(content().string(containsString("Tienda publica")))
-                .andExpect(content().string(containsString("Arroz publico")))
-                .andExpect(content().string(containsString("Abarrotes publicos")))
-                .andExpect(content().string(not(containsString("Producto ajeno"))))
-                .andExpect(content().string(not(containsString("Categoria ajena"))));
+                .andExpect(redirectedUrl("/admin/login"))
+                .andExpect(content().string(not(containsString("Arroz publico"))));
+        assertThat(catalog.settings().getStoreName()).isEqualTo("Tienda publica");
+        assertThat(catalog.search("", null, 0).getContent()).extracting(CatalogProductView::name).containsExactly("Arroz publico");
+        assertThat(catalog.promotions()).extracting(CatalogProductView::name).containsExactly("Arroz publico");
+        assertThat(catalog.activeCategories()).extracting("name").containsExactly("Abarrotes publicos");
     }
 
     @Test
-    void anonymousProductDetailRendersWithoutLogin() throws Exception {
+    void retiredProductReturns404WhileInternalDetailRemainsAvailable() throws Exception {
         mvc.perform(get("/producto/{id}", publicProduct.getId()))
-                .andExpect(status().isOk())
-                .andExpect(view().name("catalog/product"))
-                .andExpect(content().string(containsString("Arroz publico")))
-                .andExpect(content().string(containsString("$103.00")));
+                .andExpect(status().isNotFound())
+                .andExpect(content().string(not(containsString("Arroz publico"))));
+        assertThat(catalog.detail(publicProduct.getId()).name()).isEqualTo("Arroz publico");
+        assertThat(catalog.detail(publicProduct.getId()).salePrice()).isEqualByComparingTo("103.00");
     }
 
     @Test
     void foreignOrMissingProductReturns404Not500() throws Exception {
+        assertThat(catalog.detail(otherProduct.getId())).isNull();
+        assertThat(catalog.detail(Long.MAX_VALUE)).isNull();
         mvc.perform(get("/producto/{id}", otherProduct.getId()))
                 .andExpect(status().isNotFound())
                 .andExpect(content().string(not(containsString("Producto ajeno"))));
@@ -90,7 +93,9 @@ class CatalogMvcTest {
         entityManager.find(Product.class, publicProduct.getId()).setActive(false);
         entityManager.flush();
         mvc.perform(get("/producto/{id}", publicProduct.getId())).andExpect(status().isNotFound());
-        mvc.perform(get("/")).andExpect(status().isOk())
+        assertThat(catalog.detail(publicProduct.getId())).isNull();
+        assertThat(catalog.search("", null, 0)).isEmpty();
+        mvc.perform(get("/")).andExpect(redirectedUrl("/admin/login"))
                 .andExpect(content().string(not(containsString("Arroz publico"))));
     }
 
@@ -98,19 +103,20 @@ class CatalogMvcTest {
     void disabledCatalogDoesNotExposeProductDetails() throws Exception {
         entityManager.find(BusinessSettings.class, settings.getId()).setCatalogEnabled(false);
         entityManager.flush();
-        mvc.perform(get("/")).andExpect(status().isOk())
+        assertThat(catalog.settings().isCatalogEnabled()).isFalse();
+        mvc.perform(get("/")).andExpect(redirectedUrl("/admin/login"))
                 .andExpect(content().string(not(containsString("Arroz publico"))));
         mvc.perform(get("/producto/{id}", publicProduct.getId())).andExpect(status().isNotFound());
     }
 
     @Test
     void sessionAndVisitorSuppliedTenantCannotSwitchPublicCatalog() throws Exception {
-        mvc.perform(get("/").with(user("foreign-operator").roles("ADMIN"))
+        mvc.perform(get("/")
                         .param("tenantId", otherTenant.getId().toString())
                         .header("X-Tenant-Id", otherTenant.getId())
                         .header("Host", "other.example"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Arroz publico")))
+                .andExpect(redirectedUrl("/admin/login"))
+                .andExpect(content().string(not(containsString("Arroz publico"))))
                 .andExpect(content().string(not(containsString("Producto ajeno"))));
         mvc.perform(get("/producto/{id}", otherProduct.getId())
                         .with(user("foreign-operator").roles("ADMIN")))
@@ -121,7 +127,9 @@ class CatalogMvcTest {
     void inactiveConfiguredTenantDoesNotFallBackToAnotherActiveTenant() throws Exception {
         entityManager.find(Tenant.class, publicTenant.getId()).setActive(false);
         entityManager.flush();
-        mvc.perform(get("/")).andExpect(status().isServiceUnavailable())
+        assertThatThrownBy(() -> catalog.search("", null, 0))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+        mvc.perform(get("/")).andExpect(redirectedUrl("/admin/login"))
                 .andExpect(content().string(not(containsString("Producto ajeno"))));
     }
 

@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -37,7 +38,7 @@ class LocalCatalogMvcTest {
     }
 
     @Test
-    void singleTenantInstallationPublishesHomeAndProductWithoutLoginOrExtraConfiguration() throws Exception {
+    void singleTenantInstallationDoesNotPublishAnImplicitStorefront() throws Exception {
         Product product = new Product();
         product.setTenant(tenant("local"));
         product.setCode("RICE");
@@ -46,24 +47,24 @@ class LocalCatalogMvcTest {
         entityManager.flush();
         entityManager.clear();
 
-        mvc.perform(get("/")).andExpect(status().isOk())
-                .andExpect(content().string(containsString("Arroz local")));
-        mvc.perform(get("/producto/{id}", product.getId())).andExpect(status().isOk())
-                .andExpect(content().string(containsString("Arroz local")));
+        mvc.perform(get("/")).andExpect(redirectedUrl("/admin/login"))
+                .andExpect(content().string(not(containsString("Arroz local"))));
+        mvc.perform(get("/producto/{id}", product.getId())).andExpect(status().isNotFound())
+                .andExpect(content().string(not(containsString("Arroz local"))));
     }
 
     @Test
-    void multipleActiveTenantsRequireExplicitServerConfiguration() throws Exception {
+    void multipleActiveTenantsStillRedirectToLoginWithoutResolution() throws Exception {
         tenant("first");
         tenant("second");
         entityManager.flush();
-        mvc.perform(get("/")).andExpect(status().isServiceUnavailable())
-                .andExpect(content().string(containsString("<h1>503</h1>")));
+        mvc.perform(get("/")).andExpect(redirectedUrl("/admin/login"));
+        mvc.perform(get("/catalog/anything")).andExpect(status().isNotFound());
     }
 
     @Test
-    void noActiveTenantIsUnavailableRatherThanRedirectingToLogin() throws Exception {
-        mvc.perform(get("/")).andExpect(status().isServiceUnavailable());
+    void noActiveTenantStillRedirectsToLogin() throws Exception {
+        mvc.perform(get("/")).andExpect(redirectedUrl("/admin/login"));
     }
 
     private Tenant tenant(String code) {

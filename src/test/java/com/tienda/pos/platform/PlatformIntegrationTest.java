@@ -61,6 +61,9 @@ class PlatformIntegrationTest {
     @Autowired PlatformTransactionManager tx;
     @Autowired JdbcTemplate jdbc;
     @SpyBean PasswordEncoder encoder;
+    @SpyBean com.tienda.pos.tenant.PublicTenantResolver publicTenants;
+    @SpyBean ProductRepository productRepository;
+    @Autowired org.springframework.security.core.session.SessionRegistry sessions;
     MockMvc mvc;
     String suffix, operator, cashier;
     Long operatorId, operatorTenant;
@@ -206,8 +209,9 @@ class PlatformIntegrationTest {
         MockHttpSession admin = login(b.username(), "/admin");
         MockHttpSession platform = login(operator, "/platform/tenants");
         mvc.perform(post("/platform/tenants/{id}/toggle", b.id()).session(platform).with(csrf())).andExpect(status().is3xxRedirection());
-        mvc.perform(formLogin("/admin/login").user(b.username()).password(PASSWORD)).andExpect(unauthenticated()).andExpect(redirectedUrl("/admin/login?error"));
-        mvc.perform(get("/admin/products").session(admin)).andExpect(status().isForbidden());
+        mvc.perform(formLogin("/admin/login").user(b.username()).password(PASSWORD)).andExpect(unauthenticated()).andExpect(redirectedUrl("/admin/login?suspended"));
+        mvc.perform(get("/admin/products").session(admin)).andExpect(redirectedUrl("/admin/login?expired")).andExpect(unauthenticated());
+        assertThat(admin.isInvalid()).isTrue();
         assertThat(number("select count(*) from app_user where tenant_id=? and active=true", b.id())).isEqualTo(1);
         assertThat(number("select count(*) from product where tenant_id=?", b.id())).isEqualTo(1);
         assertThat(number("select count(*) from sale where tenant_id=?", b.id())).isEqualTo(1);
@@ -222,7 +226,8 @@ class PlatformIntegrationTest {
         mvc.perform(get("/admin/products").session(session)).andExpect(status().isForbidden());
         jdbc.update("update app_user set active=false where id=?", operatorId);
         mvc.perform(formLogin("/admin/login").user(operator).password(PASSWORD)).andExpect(unauthenticated());
-        mvc.perform(get("/platform/tenants").session(session)).andExpect(status().isForbidden());
+        mvc.perform(get("/platform/tenants").session(session)).andExpect(redirectedUrl("/admin/login?expired")).andExpect(unauthenticated());
+        assertThat(session.isInvalid()).isTrue();
     }
 
     @Test void protectsPlatformUserAtServiceAndMvcLayer() throws Exception {
@@ -330,8 +335,231 @@ class PlatformIntegrationTest {
             mvc.perform(post("/admin/"+endpoint).session(session).with(csrf()).param("id",category.toString())
                     .param("tenant.id",a.id().toString()).param("name","ATTACK")).andExpect(status().isForbidden());
         assertThat(number("select tenant_id from category where id=?",category)).isEqualTo(b.id());
-        mvc.perform(get("/")).andExpect(status().isServiceUnavailable());
+        mvc.perform(get("/")).andExpect(redirectedUrl("/admin/login"));
         mvc.perform(get("/admin/login")).andExpect(status().isOk());
+    }
+
+    @Test void rootRedirectsEveryRoleWithoutResolvingCatalogOrReadingProducts() throws Exception {
+        MockHttpSession admin = login(a.username(), "/admin");
+        MockHttpSession seller = login(cashier, "/admin/pos");
+        MockHttpSession platform = login(operator, "/platform/tenants");
+        clearInvocations(publicTenants, productRepository);
+        mvc.perform(get("/")).andExpect(status().isFound()).andExpect(redirectedUrl("/admin/login"));
+        mvc.perform(get("/").session(admin)).andExpect(redirectedUrl("/admin"));
+        mvc.perform(get("/").session(seller)).andExpect(redirectedUrl("/admin/pos"));
+        mvc.perform(get("/").session(platform)).andExpect(redirectedUrl("/platform/tenants"));
+        verifyNoInteractions(publicTenants, productRepository);
+    }
+
+    @Test void retiredStorefrontIs404ForAnonymousAndAuthenticatedVisitors() throws Exception {
+        MockHttpSession admin = login(a.username(), "/admin");
+        clearInvocations(publicTenants, productRepository);
+        for (String path : List.of("/producto", "/producto/" + a.productId(), "/producto/" + b.productId(),
+                "/catalog", "/catalog/products", "/catalog/index")) {
+            mvc.perform(get(path)).andExpect(status().isNotFound())
+                    .andExpect(content().string(not(containsString(a.productName()))));
+            mvc.perform(get(path).session(admin)).andExpect(status().isNotFound())
+                    .andExpect(content().string(not(containsString(b.productName()))));
+        }
+        verifyNoInteractions(publicTenants, productRepository);
+    }
+
+    @Test void invalidCredentialsAndSuspensionHaveDistinctExclusiveMessages() throws Exception {
+        mvc.perform(formLogin("/admin/login").user(a.username()).password("wrong"))
+                .andExpect(unauthenticated()).andExpect(redirectedUrl("/admin/login?error"));
+        mvc.perform(formLogin("/admin/login").user("missing-" + suffix).password(PASSWORD))
+                .andExpect(unauthenticated()).andExpect(redirectedUrl("/admin/login?error"));
+        authenticate(a.username(), "ROLE_ADMIN");
+        users.toggleActive(number("select id from app_user where username=?", cashier));
+        SecurityContextHolder.clearContext();
+        mvc.perform(formLogin("/admin/login").user(cashier).password(PASSWORD))
+                .andExpect(unauthenticated()).andExpect(redirectedUrl("/admin/login?suspended"));
+        Map<String, String> messages = Map.of(
+                "error", "Usuario o contrase\u00f1a incorrectos.",
+                "suspended", "Tu cuenta o tienda est\u00e1 suspendida. Contacta al administrador.",
+                "expired", "Tu sesi\u00f3n fue cerrada porque tu cuenta o tienda fue suspendida.",
+                "logout", "Sesi\u00f3n cerrada correctamente.");
+        for (var entry : messages.entrySet()) {
+            var result = mvc.perform(get("/admin/login").param(entry.getKey(), "")).andExpect(status().isOk());
+            result.andExpect(content().string(containsString(entry.getValue())));
+            for (var other : messages.entrySet()) if (!other.getKey().equals(entry.getKey()))
+                result.andExpect(content().string(not(containsString(other.getValue()))));
+        }
+        mvc.perform(get("/admin/login?expired&suspended&error&logout")).andExpect(status().isOk())
+                .andExpect(content().string(containsString(messages.get("expired"))))
+                .andExpect(content().string(not(containsString(messages.get("logout")))))
+                .andExpect(content().string(not(containsString(messages.get("error")))))
+                .andExpect(content().string(not(containsString(messages.get("suspended")))));
+    }
+
+    @ParameterizedTest @ValueSource(strings = {"toggle", "edit", "delete", "delete-with-history"})
+    void everyUserSuspensionPathExpiresRegistryAndInvalidatesExistingSession(String action) throws Exception {
+        String victim = "victim-" + suffix;
+        authenticate(a.username(), "ROLE_ADMIN");
+        UserForm form = new UserForm(); form.setUsername(victim); form.setFirstName("Victim");
+        form.setLastName("Admin"); form.setPassword(PASSWORD); form.setAdmin(true); form.setActive(true);
+        users.create(form);
+        Long id = number("select id from app_user where username=?", victim);
+        if (action.equals("delete-with-history")) {
+            authenticate(victim, "ROLE_ADMIN");
+            cash.open(victim, BigDecimal.ZERO);
+        }
+        MockHttpSession victimSession = login(victim, "/admin");
+        mvc.perform(get("/admin").session(victimSession)).andExpect(status().isOk()).andExpect(view().name("dashboard/index"));
+        MockHttpSession manager = login(a.username(), "/admin");
+        String endpoint = action.equals("edit") ? "" : "/" + (action.startsWith("delete") ? "delete" : "toggle");
+        var request = post("/admin/users/" + id + endpoint).session(manager).with(csrf());
+        if (action.equals("edit")) request.param("username", victim).param("firstName", "Victim").param("lastName", "Admin")
+                .param("admin", "true").param("active", "false").param("password", "");
+        mvc.perform(request).andExpect(status().is3xxRedirection()).andExpect(flash().attributeExists("success"));
+        assertExpired(victimSession);
+        assertValid(manager);
+        assertLoggedOut(victimSession, "/admin");
+        if (!action.equals("delete")) {
+            assertThat(number("select count(*) from app_user where id=? and active=false", id)).isEqualTo(1);
+            mvc.perform(formLogin("/admin/login").user(victim).password(PASSWORD))
+                    .andExpect(unauthenticated()).andExpect(redirectedUrl("/admin/login?suspended"));
+        }
+    }
+
+    @Test void tenantSuspensionImmediatelyExpiresItsAdminAndCashierButNotOtherTenantsOrPlatform() throws Exception {
+        authenticate(b.username(), "ROLE_ADMIN");
+        String seller = "seller-b-" + suffix;
+        UserForm form = new UserForm(); form.setUsername(seller); form.setFirstName("Seller");
+        form.setLastName("B"); form.setPassword(PASSWORD); form.setCashier(true); form.setActive(true); users.create(form);
+        MockHttpSession adminA = login(a.username(), "/admin");
+        MockHttpSession adminB = login(b.username(), "/admin");
+        MockHttpSession cashierB = login(seller, "/admin/pos");
+        MockHttpSession platform = login(operator, "/platform/tenants");
+        mvc.perform(post("/platform/tenants/{id}/toggle", b.id()).session(platform).with(csrf())).andExpect(status().is3xxRedirection());
+        assertExpired(adminB); assertExpired(cashierB);
+        assertValid(adminA); assertValid(platform);
+        assertLoggedOut(adminB, "/admin"); assertLoggedOut(cashierB, "/admin/pos");
+        mvc.perform(get("/admin").session(adminA)).andExpect(status().isOk());
+        mvc.perform(get("/platform/tenants").session(platform)).andExpect(status().isOk());
+        assertThat(number("select count(*) from app_user where tenant_id=? and active=true", b.id())).isEqualTo(2);
+        mvc.perform(post("/platform/tenants/{id}/toggle", b.id()).session(platform).with(csrf())).andExpect(status().is3xxRedirection());
+        assertThat(adminB.isInvalid()).isTrue(); assertThat(cashierB.isInvalid()).isTrue();
+        login(seller, "/admin/pos");
+    }
+
+    @Test void platformSessionSurvivesSuspensionOfItsOwnTenantWhileNormalAdminDoesNot() throws Exception {
+        jdbc.update("update app_user set tenant_id=? where id=?", a.id(), operatorId);
+        MockHttpSession admin = login(a.username(), "/admin");
+        MockHttpSession platform = login(operator, "/platform/tenants");
+        mvc.perform(post("/platform/tenants/{id}/toggle", a.id()).session(platform).with(csrf())).andExpect(status().is3xxRedirection());
+        assertExpired(admin); assertValid(platform);
+        assertLoggedOut(admin, "/admin");
+        mvc.perform(get("/platform/tenants").session(platform)).andExpect(status().isOk());
+        mvc.perform(get("/admin/products").session(platform)).andExpect(status().isForbidden());
+        assertValid(platform);
+        login(operator, "/platform/tenants");
+    }
+
+    @Test void rollbackOfUserOrTenantSuspensionDoesNotExpireSessions() throws Exception {
+        MockHttpSession seller = login(cashier, "/admin/pos");
+        MockHttpSession admin = login(a.username(), "/admin");
+        authenticate(a.username(), "ROLE_ADMIN");
+        assertThatThrownBy(() -> new TransactionTemplate(tx).executeWithoutResult(status -> {
+            users.toggleActive(number("select id from app_user where username=?", cashier));
+            throw new IllegalStateException("force rollback");
+        })).isInstanceOf(IllegalStateException.class);
+        authenticate(operator, "ROLE_PLATFORM_ADMIN");
+        assertThatThrownBy(() -> new TransactionTemplate(tx).executeWithoutResult(status -> {
+            tenants.toggle(a.id());
+            throw new IllegalStateException("force rollback");
+        })).isInstanceOf(IllegalStateException.class);
+        SecurityContextHolder.clearContext();
+        assertValid(seller); assertValid(admin);
+        mvc.perform(get("/admin").session(admin)).andExpect(status().isOk());
+        mvc.perform(get("/admin/pos").session(seller)).andExpect(status().isOk());
+    }
+
+    @Test void reactivationCannotResurrectAnAlreadyExpiredSessionOrDisabledUser() throws Exception {
+        MockHttpSession admin = login(b.username(), "/admin");
+        MockHttpSession platform = login(operator, "/platform/tenants");
+        mvc.perform(post("/platform/tenants/{id}/toggle", b.id()).session(platform).with(csrf())).andExpect(status().is3xxRedirection());
+        assertExpired(admin);
+        jdbc.update("update app_user set active=false where id=?", b.userId());
+        mvc.perform(post("/platform/tenants/{id}/toggle", b.id()).session(platform).with(csrf())).andExpect(status().is3xxRedirection());
+        assertExpired(admin);
+        assertThat(number("select count(*) from app_user where id=? and active=false", b.userId())).isEqualTo(1);
+        jdbc.update("update app_user set active=true where id=?", b.userId());
+        mvc.perform(get("/admin").session(admin)).andExpect(redirectedUrl("/admin/login?sessionExpired")).andExpect(unauthenticated());
+        assertThat(admin.isInvalid()).isTrue();
+    }
+
+    @Test void deletedAccountBackstopLogsOutAndInsufficientRoleDoesNot() throws Exception {
+        MockHttpSession seller = login(cashier, "/admin/pos");
+        mvc.perform(get("/platform/tenants").session(seller)).andExpect(status().isForbidden());
+        assertValid(seller);
+        mvc.perform(get("/admin/pos").session(seller)).andExpect(status().isOk());
+        Long id = number("select id from app_user where username=?", cashier);
+        jdbc.update("delete from user_roles where user_id=?", id);
+        jdbc.update("delete from app_user where id=?", id);
+        assertLoggedOut(seller, "/admin/pos");
+    }
+
+    @Test void concurrentLoginExpiresPreviousSessionAndExplicitLogoutClearsCookie() throws Exception {
+        MockHttpSession first = login(cashier, "/admin/pos");
+        MockHttpSession second = login(cashier, "/admin/pos");
+        assertExpired(first); assertValid(second);
+        mvc.perform(get("/admin/pos").session(first)).andExpect(redirectedUrl("/admin/login?sessionExpired")).andExpect(unauthenticated());
+        assertThat(first.isInvalid()).isTrue();
+        mvc.perform(post("/admin/logout").session(second).with(csrf())).andExpect(redirectedUrl("/admin/login?logout"))
+                .andExpect(cookie().maxAge("JSESSIONID", 0)).andExpect(unauthenticated());
+        assertThat(second.isInvalid()).isTrue();
+    }
+
+    @Test void rootInvalidatesAuthenticatedSessionWithoutAnOperationalRole() throws Exception {
+        MockHttpSession session = login(cashier, "/admin/pos");
+        var invalidRole = UsernamePasswordAuthenticationToken.authenticated(cashier, "",
+                AuthorityUtils.createAuthorityList("ROLE_UNSUPPORTED"));
+        session.setAttribute("SPRING_SECURITY_CONTEXT",
+                new org.springframework.security.core.context.SecurityContextImpl(invalidRole));
+        clearInvocations(publicTenants, productRepository);
+        mvc.perform(get("/").session(session)).andExpect(redirectedUrl("/admin/login")).andExpect(unauthenticated())
+                .andExpect(cookie().maxAge("JSESSIONID", 0));
+        assertThat(session.isInvalid()).isTrue();
+        verifyNoInteractions(publicTenants, productRepository);
+    }
+
+    @Test void loginCannotLeaveAnAuthenticatedSessionWithNoOperationalRole() throws Exception {
+        Long id = number("select id from app_user where username=?", cashier);
+        jdbc.update("delete from user_roles where user_id=?", id);
+        mvc.perform(formLogin("/admin/login").user(cashier).password(PASSWORD))
+                .andExpect(redirectedUrl("/admin/login")).andExpect(unauthenticated())
+                .andExpect(cookie().maxAge("JSESSIONID", 0));
+    }
+
+    @Test void externallyDisabledAccountIsLoggedOutBeforePostAuthorizationOrCsrfChecks() throws Exception {
+        MockHttpSession session = login(cashier, "/admin/pos");
+        jdbc.update("update app_user set active=false where username=?", cashier);
+        mvc.perform(post("/admin/pos/checkout").session(session)).andExpect(redirectedUrl("/admin/login?expired"))
+                .andExpect(unauthenticated()).andExpect(cookie().maxAge("JSESSIONID", 0));
+        assertThat(session.isInvalid()).isTrue();
+    }
+
+    private void assertExpired(MockHttpSession session) {
+        assertThat(sessions.getSessionInformation(session.getId())).isNotNull();
+        assertThat(sessions.getSessionInformation(session.getId()).isExpired()).isTrue();
+    }
+
+    private void assertValid(MockHttpSession session) {
+        assertThat(session.isInvalid()).isFalse();
+        assertThat(sessions.getSessionInformation(session.getId())).isNotNull();
+        assertThat(sessions.getSessionInformation(session.getId()).isExpired()).isFalse();
+    }
+
+    private void assertLoggedOut(MockHttpSession session, String path) throws Exception {
+        String oldId = session.getId();
+        mvc.perform(get(path).session(session)).andExpect(redirectedUrl("/admin/login?expired"))
+                .andExpect(cookie().maxAge("JSESSIONID", 0)).andExpect(unauthenticated());
+        assertThat(session.isInvalid()).isTrue();
+        assertThat(sessions.getSessionInformation(oldId)).isNull();
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+        mvc.perform(get(path).cookie(new jakarta.servlet.http.Cookie("JSESSIONID", oldId)))
+                .andExpect(redirectedUrlPattern("**/admin/login")).andExpect(unauthenticated());
     }
 
     private MockHttpServletRequestBuilder createRequest(String code) {

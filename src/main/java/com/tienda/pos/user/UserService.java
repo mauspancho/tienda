@@ -4,6 +4,7 @@ import com.tienda.pos.common.CurrentUser;
 import com.tienda.pos.common.NormalMode;
 import com.tienda.pos.exception.DomainException;
 import com.tienda.pos.role.RoleRepository;
+import com.tienda.pos.security.SessionRevocationService;
 import com.tienda.pos.tenant.CurrentTenant;
 import com.tienda.pos.tenant.Tenant;
 import jakarta.persistence.EntityManager;
@@ -20,15 +21,17 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final EntityManager entityManager;
     private final CurrentTenant currentTenant;
+    private final SessionRevocationService sessions;
 
     public UserService(AppUserRepository userRepository, RoleRepository roleRepository,
                        PasswordEncoder passwordEncoder, EntityManager entityManager,
-                       CurrentTenant currentTenant) {
+                       CurrentTenant currentTenant, SessionRevocationService sessions) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.entityManager = entityManager;
         this.currentTenant = currentTenant;
+        this.sessions = sessions;
     }
 
     @Transactional
@@ -53,6 +56,7 @@ public class UserService {
         AppUser user = userRepository.findByIdAndTenantId(id, tenantId).orElseThrow(() -> new DomainException("Usuario no encontrado."));
         requireTenantManaged(user);
         String requestedUsername = form.getUsername().trim();
+        String previousUsername = user.getUsername();
         if (userRepository.existsByUsernameAndIdNot(requestedUsername, id)) {
             throw new DomainException("El usuario ya existe.");
         }
@@ -64,6 +68,9 @@ public class UserService {
             user.setPasswordHash(passwordEncoder.encode(form.getPassword()));
         }
         userRepository.save(user);
+        if (!user.isActive() || !previousUsername.equals(user.getUsername())) {
+            sessions.expireUserSessions(previousUsername);
+        }
     }
 
     @Transactional
@@ -75,6 +82,7 @@ public class UserService {
         }
         user.setActive(!user.isActive());
         userRepository.save(user);
+        if (!user.isActive()) sessions.expireUserSessions(user.getUsername());
     }
 
     @Transactional
@@ -87,10 +95,12 @@ public class UserService {
         if (hasHistory(id)) {
             user.setActive(false);
             userRepository.save(user);
+            sessions.expireUserSessions(user.getUsername());
             return;
         }
         user.getRoles().clear();
         userRepository.delete(user);
+        sessions.expireUserSessions(user.getUsername());
     }
 
     private void applyEditableFields(AppUser user, UserForm form) {
