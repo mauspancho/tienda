@@ -19,6 +19,13 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public String accessDenied(Model model) {
+        model.addAttribute("message", "No tienes permiso para esta operacion.");
+        return "error/403";
+    }
+
     @ExceptionHandler(DomainException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public String domain(DomainException ex, Model model) {

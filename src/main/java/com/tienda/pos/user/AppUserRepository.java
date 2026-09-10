@@ -12,7 +12,7 @@ import java.util.Optional;
 public interface AppUserRepository extends JpaRepository<AppUser, Long> {
     Optional<AppUser> findByUsername(String username);
 
-    @EntityGraph(attributePaths = "tenant")
+    @EntityGraph(attributePaths = {"tenant", "roles"})
     @Query("select u from AppUser u where u.username = :username")
     Optional<AppUser> findByUsernameWithTenant(@Param("username") String username);
 
@@ -21,4 +21,10 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
     Page<AppUser> findByTenantIdOrderByUsernameAsc(Long tenantId, Pageable pageable);
 
     boolean existsByUsername(String username);
+
+    boolean existsByUsernameAndIdNot(String username, Long id);
+
+    @Query("select u from AppUser u where u.tenant.id = :tenantId and not exists "
+            + "(select r from u.roles r where r.name = 'ROLE_PLATFORM_ADMIN') order by u.username")
+    Page<AppUser> findManagedUsers(@Param("tenantId") Long tenantId, Pageable pageable);
 }

@@ -33,7 +33,7 @@ public class UserController {
 
     @GetMapping("/users")
     public String list(Model model) {
-        model.addAttribute("users", userRepository.findByTenantIdOrderByUsernameAsc(currentTenant.id(), PageRequest.of(0, 100)));
+        model.addAttribute("users", userRepository.findManagedUsers(currentTenant.id(), PageRequest.of(0, 100)));
         model.addAttribute("userForm", new UserForm());
         model.addAttribute("mode", "create");
         return "users/index";
@@ -41,8 +41,8 @@ public class UserController {
 
     @GetMapping("/users/{id}/edit")
     public String edit(@PathVariable Long id, Model model) {
-        AppUser user = userRepository.findByIdAndTenantId(id, currentTenant.id()).orElseThrow(() -> new DomainException("Usuario no encontrado."));
-        model.addAttribute("users", userRepository.findByTenantIdOrderByUsernameAsc(currentTenant.id(), PageRequest.of(0, 100)));
+        AppUser user = userService.editableUser(id);
+        model.addAttribute("users", userRepository.findManagedUsers(currentTenant.id(), PageRequest.of(0, 100)));
         model.addAttribute("userForm", UserForm.from(user));
         model.addAttribute("mode", "edit");
         return "users/index";

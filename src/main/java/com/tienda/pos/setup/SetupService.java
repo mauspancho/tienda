@@ -50,11 +50,13 @@ public class SetupService {
                 upsertBusinessSettings(connection, tenantId, form);
                 upsertCommercialStructure(connection, tenantId, form);
                 long userId = insertAdmin(connection, tenantId, form);
-                long adminRoleId = findRoleId(connection, "ROLE_ADMIN");
-                try (PreparedStatement ps = connection.prepareStatement("insert into user_roles(user_id, role_id) values (?, ?)")) {
-                    ps.setLong(1, userId);
-                    ps.setLong(2, adminRoleId);
-                    ps.executeUpdate();
+                for (String role : new String[]{"ROLE_ADMIN", "ROLE_PLATFORM_ADMIN"}) {
+                    long roleId = findRoleId(connection, role);
+                    try (PreparedStatement ps = connection.prepareStatement("insert into user_roles(user_id, role_id) values (?, ?)")) {
+                        ps.setLong(1, userId);
+                        ps.setLong(2, roleId);
+                        ps.executeUpdate();
+                    }
                 }
                 connection.commit();
                 writeExternalConfig(form);

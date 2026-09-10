@@ -51,10 +51,11 @@ public class UserService {
     public void update(Long id, UserForm form) {
         Long tenantId = currentTenant.id();
         AppUser user = userRepository.findByIdAndTenantId(id, tenantId).orElseThrow(() -> new DomainException("Usuario no encontrado."));
+        requireTenantManaged(user);
         String requestedUsername = form.getUsername().trim();
-        userRepository.findByUsername(requestedUsername)
-                .filter(existing -> !existing.getId().equals(id))
-                .ifPresent(existing -> { throw new DomainException("El usuario ya existe."); });
+        if (userRepository.existsByUsernameAndIdNot(requestedUsername, id)) {
+            throw new DomainException("El usuario ya existe.");
+        }
         applyEditableFields(user, form);
         if (form.hasPassword()) {
             if (form.getPassword().length() < 8) {
@@ -68,6 +69,7 @@ public class UserService {
     @Transactional
     public void toggleActive(Long id) {
         AppUser user = userRepository.findByIdAndTenantId(id, currentTenant.id()).orElseThrow(() -> new DomainException("Usuario no encontrado."));
+        requireTenantManaged(user);
         if (user.getUsername().equals(CurrentUser.username()) && user.isActive()) {
             throw new DomainException("No puedes desactivar tu propio usuario activo.");
         }
@@ -78,6 +80,7 @@ public class UserService {
     @Transactional
     public void deleteOrDeactivate(Long id) {
         AppUser user = userRepository.findByIdAndTenantId(id, currentTenant.id()).orElseThrow(() -> new DomainException("Usuario no encontrado."));
+        requireTenantManaged(user);
         if (user.getUsername().equals(CurrentUser.username())) {
             throw new DomainException("No puedes eliminar tu propio usuario.");
         }
@@ -91,6 +94,7 @@ public class UserService {
     }
 
     private void applyEditableFields(AppUser user, UserForm form) {
+        requireTenantManaged(user);
         user.setUsername(form.getUsername().trim());
         user.setFirstName(form.getFirstName().trim());
         user.setLastName(form.getLastName().trim());
@@ -117,6 +121,20 @@ public class UserService {
                 || count("select count(m) from CashMovement m where m.tenant.id = :tenantId and m.user.id = :userId", tenantId, userId) > 0
                 || count("select count(e) from Expense e where e.tenant.id = :tenantId and e.user.id = :userId", tenantId, userId) > 0
                 || count("select count(a) from AuditLog a where a.tenant.id = :tenantId and a.user.id = :userId", tenantId, userId) > 0;
+    }
+
+    @Transactional(readOnly = true)
+    public AppUser editableUser(Long id) {
+        AppUser user = userRepository.findByIdAndTenantId(id, currentTenant.id())
+                .orElseThrow(() -> new DomainException("Usuario no encontrado."));
+        requireTenantManaged(user);
+        return user;
+    }
+
+    private void requireTenantManaged(AppUser user) {
+        if (user.hasRole("ROLE_PLATFORM_ADMIN")) {
+            throw new org.springframework.security.access.AccessDeniedException("Usuario gestionado por la plataforma.");
+        }
     }
 
     private long count(String jpql, Long tenantId, Long userId) {

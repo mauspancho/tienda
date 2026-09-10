@@ -22,11 +22,12 @@ public class DatabaseUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        AppUser user = userRepository.findByUsername(username)
+        AppUser user = userRepository.findByUsernameWithTenant(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario o contraseña incorrectos."));
         return User.withUsername(user.getUsername())
                 .password(user.getPasswordHash())
-                .disabled(!user.isActive())
+                .disabled(!user.isActive() || (!user.hasRole("ROLE_PLATFORM_ADMIN")
+                        && (user.getTenant() == null || !user.getTenant().isActive())))
                 .authorities(user.getRoles().stream()
                         .map(role -> new SimpleGrantedAuthority(role.getName()))
                         .toList())

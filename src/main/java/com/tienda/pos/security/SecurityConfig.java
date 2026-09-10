@@ -1,6 +1,7 @@
 package com.tienda.pos.security;
 
 import com.tienda.pos.common.NormalMode;
+import com.tienda.pos.user.AppUserRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -9,6 +10,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.header.writers.XXssProtectionHeaderWriter;
 
 @Configuration
@@ -26,9 +28,11 @@ public class SecurityConfig {
     }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationSuccessHandler successHandler) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationSuccessHandler successHandler,
+                                            AppUserRepository userRepository) throws Exception {
         return http
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/platform", "/platform/**").hasRole("PLATFORM_ADMIN")
                         .requestMatchers("/", "/producto/**", "/catalog/**", "/css/**", "/js/**", "/vendor/**",
                                 "/images/**", "/uploads/products/**", "/uploads/catalog/**", "/admin/login", "/error").permitAll()
                         .requestMatchers("/admin/users/**", "/admin/settings/**", "/admin/reports/**", "/admin/cash/**", "/admin/finances", "/admin/finances/**").hasRole("ADMIN")
@@ -37,6 +41,7 @@ public class SecurityConfig {
                         .requestMatchers("/admin/pos/**", "/admin/sales/**", "/admin/tickets/**", "/admin/api/products/**").hasAnyRole("ADMIN", "CAJERO")
                         .requestMatchers("/admin/**").authenticated()
                         .anyRequest().authenticated())
+                .addFilterBefore(new AccountAccessFilter(userRepository), AuthorizationFilter.class)
                 .formLogin(form -> form
                         .loginPage("/admin/login")
                         .loginProcessingUrl("/admin/login")
