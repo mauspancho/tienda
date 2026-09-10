@@ -54,8 +54,7 @@ public final class PackagedNormalModeSmoke {
                     var root = anonymous.send(HttpRequest.newBuilder(base.resolve("/"))
                             .method(method, HttpRequest.BodyPublishers.noBody()).timeout(Duration.ofSeconds(15)).build(),
                             HttpResponse.BodyHandlers.ofString());
-                    assertThat(root.statusCode()).isEqualTo(302);
-                    assertThat(root.headers().firstValue("Location")).contains("/admin/login");
+                    assertRedirect(root, base, "/admin/login");
                     assertThat(root.body()).doesNotContain("catalog/index", "catalog-grid", "Clean setup");
                     Files.writeString(directory.resolve("root-" + method + ".txt"),
                             "status=" + root.statusCode() + "\nLocation=" + root.headers().firstValue("Location").orElse("") + "\n" + root.body());
@@ -76,27 +75,24 @@ public final class PackagedNormalModeSmoke {
                 var authenticated = browser.send(HttpRequest.newBuilder(base.resolve("/admin/login"))
                         .header("Content-Type", "application/x-www-form-urlencoded")
                         .POST(HttpRequest.BodyPublishers.ofString(form)).build(), HttpResponse.BodyHandlers.ofString());
-                assertThat(authenticated.statusCode()).isEqualTo(302);
-                assertThat(authenticated.headers().firstValue("Location")).contains("/platform/tenants");
+                assertRedirect(authenticated, base, "/platform/tenants");
                 String oldSession = sessionId(cookies);
                 assertThat(oldSession).isNotBlank().isNotEqualTo(beforeLogin);
                 assertThat(get(browser, base.resolve("/platform/tenants")).statusCode()).isEqualTo(200);
-                assertThat(get(browser, base.resolve("/")).headers().firstValue("Location")).contains("/platform/tenants");
+                assertRedirect(get(browser, base.resolve("/")), base, "/platform/tenants");
                 // Out-of-band DB changes exercise the request-time backstop in a real servlet container.
                 try (var connection = DriverManager.getConnection(db.getJdbcUrl(), db.getUsername(), db.getPassword());
                      var statement = connection.createStatement()) {
                     assertThat(statement.executeUpdate("update app_user set active=false where username='initial-admin'")).isEqualTo(1);
                 }
                 var expired = get(browser, base.resolve("/platform/tenants"));
-                assertThat(expired.statusCode()).isEqualTo(302);
-                assertThat(expired.headers().firstValue("Location")).contains("/admin/login?expired");
+                assertRedirect(expired, base, "/admin/login?expired");
                 assertThat(expired.headers().allValues("Set-Cookie"))
                         .anySatisfy(cookie -> assertThat(cookie).contains("JSESSIONID=", "Max-Age=0"));
                 for (String path : List.of("/admin", "/platform/tenants")) {
                     var replay = anonymous.send(HttpRequest.newBuilder(base.resolve(path))
                             .header("Cookie", "JSESSIONID=" + oldSession).GET().build(), HttpResponse.BodyHandlers.ofString());
-                    assertThat(replay.statusCode()).isEqualTo(302);
-                    assertThat(replay.headers().firstValue("Location").orElseThrow()).endsWith("/admin/login");
+                    assertRedirect(replay, base, "/admin/login");
                 }
                 String evidence = "NORMAL_JAR_OK: isolated MySQL 8; empty schema -> real setup V1..V10; "
                         + "HEAD/GET /=302 /admin/login; login=200; retired storefront=404; "
@@ -105,6 +101,12 @@ public final class PackagedNormalModeSmoke {
                 System.out.println(evidence);
             } finally { stop(application); }
         }
+    }
+
+    private static void assertRedirect(HttpResponse<?> response, URI base, String path) {
+        assertThat(response.statusCode()).isEqualTo(302);
+        // Servlet containers may emit absolute Location headers; require the exact same-origin target.
+        assertThat(base.resolve(response.headers().firstValue("Location").orElseThrow())).isEqualTo(base.resolve(path));
     }
 
     private static HttpResponse<String> get(HttpClient client, URI uri) throws Exception {
