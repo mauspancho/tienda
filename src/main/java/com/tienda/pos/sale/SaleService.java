@@ -85,7 +85,8 @@ public class SaleService {
         sale.setBranch(branch);
         sale.setCashRegister(cashRegister);
         if (request.getCustomerId() != null) {
-            sale.setCustomer(customerRepository.findByIdAndTenantId(request.getCustomerId(), tenantId).orElse(null));
+            sale.setCustomer(customerRepository.findByIdAndTenantId(request.getCustomerId(), tenantId)
+                    .orElseThrow(() -> new DomainException("Cliente no encontrado.")));
         } else {
             customerRepository.findFirstByTenantIdAndName(tenantId, "Público General").ifPresent(sale::setCustomer);
         }

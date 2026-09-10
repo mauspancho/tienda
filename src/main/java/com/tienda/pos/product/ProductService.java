@@ -97,8 +97,10 @@ public class ProductService {
             product.setPresentation(blankToNull(form.getPresentation()));
             product.setImageUrl(imageUrl);
             product.setDescription(form.getDescription());
-            product.setCategory(form.getCategoryId() == null ? null : categoryRepository.findByIdAndTenantId(form.getCategoryId(), tenantId).orElse(null));
-            product.setSupplier(form.getSupplierId() == null ? null : supplierRepository.findByIdAndTenantId(form.getSupplierId(), tenantId).orElse(null));
+            product.setCategory(form.getCategoryId() == null ? null : categoryRepository.findByIdAndTenantId(form.getCategoryId(), tenantId)
+                    .orElseThrow(() -> new DomainException("Categoria no encontrada.")));
+            product.setSupplier(form.getSupplierId() == null ? null : supplierRepository.findByIdAndTenantId(form.getSupplierId(), tenantId)
+                    .orElseThrow(() -> new DomainException("Proveedor no encontrado.")));
             product.setPurchaseCost(MoneyUtils.money(form.getPurchaseCost()));
             product.setSalePrice(MoneyUtils.money(form.getSalePrice()));
             product.setCurrentStock(form.getCurrentStock());

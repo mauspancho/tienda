@@ -20,6 +20,11 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @PreAuthorize("hasRole('ADMIN')")
 public class SupplierController {
 
+    @org.springframework.web.bind.annotation.InitBinder("supplier")
+    void bindSupplier(org.springframework.web.bind.WebDataBinder binder) {
+        binder.setAllowedFields("name", "companyName", "phone", "email", "address", "taxId", "notes", "active");
+    }
+
     private final SupplierRepository supplierRepository;
     private final CurrentTenant currentTenant;
 
@@ -42,6 +47,9 @@ public class SupplierController {
     @PostMapping("/suppliers")
     public String save(@Valid @ModelAttribute Supplier supplier, BindingResult bindingResult,
                        RedirectAttributes redirectAttributes) {
+        if (bindingResult.getSuppressedFields().length > 0) {
+            throw new org.springframework.security.access.AccessDeniedException("Campos no permitidos.");
+        }
         if (bindingResult.hasErrors()) {
             redirectAttributes.addFlashAttribute("error", "Revisa los datos del proveedor.");
             return "redirect:/admin/suppliers";

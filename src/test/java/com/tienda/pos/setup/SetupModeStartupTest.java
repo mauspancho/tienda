@@ -96,6 +96,9 @@ public class SetupModeStartupTest {
             assertThat(context.getBean(SetupSecurityConfig.class)).isNotNull();
             for (Class<?> type : new Class<?>[]{CatalogService.class, CurrentTenant.class,
                     LocalPublicTenantResolver.class, StoreContextService.class,
+                    com.tienda.pos.platform.TenantProvisioningService.class,
+                    com.tienda.pos.platform.PlatformTenantService.class,
+                    com.tienda.pos.platform.PlatformTenantController.class,
                     ProductRepository.class, TenantRepository.class, JpaRepository.class,
                     DataSource.class, EntityManager.class, EntityManagerFactory.class,
                     JdbcTemplate.class, PlatformTransactionManager.class, Flyway.class}) {

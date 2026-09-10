@@ -72,7 +72,8 @@ public class ProductController {
 
     @GetMapping("/products/{id}/edit")
     public String edit(@PathVariable Long id, Model model) {
-        Product product = productRepository.findDetailedByIdAndTenantId(id, currentTenant.id()).orElseThrow();
+        Product product = productRepository.findDetailedByIdAndTenantId(id, currentTenant.id())
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND));
         prepareForm(model, ProductForm.from(product));
         model.addAttribute("initialBarcode", "");
         model.addAttribute("autoLookup", false);
@@ -81,7 +82,8 @@ public class ProductController {
 
     @GetMapping("/products/{id}/barcode-label")
     public String barcodeLabel(@PathVariable Long id, @RequestParam(defaultValue = "1") int quantity, Model model) {
-        Product product = productRepository.findDetailedByIdAndTenantId(id, currentTenant.id()).orElseThrow();
+        Product product = productRepository.findDetailedByIdAndTenantId(id, currentTenant.id())
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND));
         int labelCount = Math.max(1, Math.min(quantity, 500));
         String barcode = product.getBarcode();
         model.addAttribute("product", product);

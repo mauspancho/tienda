@@ -21,6 +21,11 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @PreAuthorize("hasRole('ADMIN')")
 public class CategoryController {
 
+    @org.springframework.web.bind.annotation.InitBinder("category")
+    void bindCategory(org.springframework.web.bind.WebDataBinder binder) {
+        binder.setAllowedFields("name", "description", "active");
+    }
+
     private final CategoryRepository categoryRepository;
     private final CurrentTenant currentTenant;
 
@@ -43,6 +48,9 @@ public class CategoryController {
     @PostMapping("/categories")
     public String save(@Valid @ModelAttribute Category category, BindingResult bindingResult,
                        RedirectAttributes redirectAttributes) {
+        if (bindingResult.getSuppressedFields().length > 0) {
+            throw new org.springframework.security.access.AccessDeniedException("Campos no permitidos.");
+        }
         if (bindingResult.hasErrors()) {
             redirectAttributes.addFlashAttribute("error", "El nombre de la categoría es obligatorio.");
             return "redirect:/admin/categories";

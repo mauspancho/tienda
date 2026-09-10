@@ -17,7 +17,7 @@ defaults:
 jobs:
   mysql-and-mariadb:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -35,6 +35,14 @@ jobs:
           if [ -d target/surefire-reports ]; then
             cp -r target/surefire-reports "$RUNNER_TEMP/clean-test-reports"
           fi
+      - name: Clean test again (mandatory full regression)
+        run: mvn --batch-mode --no-transfer-progress clean test | tee "$RUNNER_TEMP/mvn-clean-test-2.log"
+      - name: Preserve second test reports
+        if: always()
+        run: |
+          if [ -d target/surefire-reports ]; then
+            cp -r target/surefire-reports "$RUNNER_TEMP/clean-test-2-reports"
+          fi
       - name: Clean package (run all tests again)
         run: mvn --batch-mode --no-transfer-progress clean package | tee "$RUNNER_TEMP/mvn-clean-package.log"
       - name: Start the packaged JAR from an empty directory
@@ -47,6 +55,7 @@ jobs:
           path: |
             ${{ runner.temp }}/mvn-clean-*.log
             ${{ runner.temp }}/clean-test-reports
+            ${{ runner.temp }}/clean-test-2-reports
             ${{ runner.temp }}/clean-jar
             target/surefire-reports
       - name: Upload tested JAR
