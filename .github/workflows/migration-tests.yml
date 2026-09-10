@@ -47,6 +47,10 @@ jobs:
         run: mvn --batch-mode --no-transfer-progress clean package | tee "$RUNNER_TEMP/mvn-clean-package.log"
       - name: Start the packaged JAR from an empty directory
         run: bash scripts/smoke-clean-jar.sh target/tienda-pos.jar "$RUNNER_TEMP/clean-jar"
+      - name: Normal-mode JAR with isolated MySQL 8 and real session cookies
+        run: |
+          mvn --batch-mode --no-transfer-progress dependency:build-classpath -Dmdep.outputFile=target/smoke-classpath.txt -Dmdep.includeScope=test
+          java -cp "target/test-classes:target/classes:$(cat target/smoke-classpath.txt)" com.tienda.pos.commercial.PackagedNormalModeSmoke target/tienda-pos.jar "$RUNNER_TEMP/normal-jar"
       - name: Upload verification evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -57,6 +61,8 @@ jobs:
             ${{ runner.temp }}/clean-test-reports
             ${{ runner.temp }}/clean-test-2-reports
             ${{ runner.temp }}/clean-jar
+            ${{ runner.temp }}/normal-jar/*.log
+            ${{ runner.temp }}/normal-jar/*.txt
             target/surefire-reports
       - name: Upload tested JAR
         uses: actions/upload-artifact@v4

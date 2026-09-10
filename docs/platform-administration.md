@@ -28,9 +28,15 @@ Publico General customer, nine product categories and six expense categories.
 No products, suppliers, purchases, sales or inventory are copied.
 A failure rolls back every inserted record.
 
-Suspension changes Tenant.active only. Active normal users cannot log in or
-continue using existing sessions while their tenant is suspended. Reactivation
-restores access without changing AppUser.active or operational data.
+Suspension changes Tenant.active only. SessionRevocationService expires normal
+users' registered sessions immediately after transaction commit, not on rollback.
+UserService applies the same policy to edits, toggles and deletion/deactivation.
+AccountAccessFilter uses standard Spring Security logout as a request-time backstop,
+invalidating HttpSession, clearing SecurityContext and deleting JSESSIONID.
+Suspended sessions redirect to /admin/login?expired; a disabled new login goes to
+?suspended. Incorrect credentials still go to ?error, and valid users without the
+required role receive 403 without logout. Login messages are mutually exclusive.
+Reactivation allows a new login without restoring old sessions or changing AppUser.active.
 An active platform administrator can access /platform even if their own tenant
 is suspended; normal operational routes for that tenant remain blocked.
 
@@ -43,10 +49,20 @@ included in the view models.
 
 ## Public Catalog and Deferred Work
 
-Administrative multi-tenancy is not public multi-domain catalog support.
-Set tienda.catalog.tenant-code explicitly when multiple tenants are active.
-Without an unambiguous public tenant, the catalog returns 503 rather than choosing
-the first tenant. /admin/login remains independent.
+In normal mode, / redirects anonymous visitors to /admin/login. Authenticated
+PLATFORM_ADMIN, ADMIN and CAJERO go to /platform/tenants, /admin and /admin/pos,
+respectively. RootController never invokes PublicTenantResolver or product queries.
+SetupController is unchanged: without configuration, / and /setup render setup.
+
+The global storefront is disabled: /producto/** and /catalog/** return 404 for
+everyone. CatalogService, models, templates and the resolver remain reusable,
+but no configuration, default tenant or session can enable a global storefront.
+Product/catalog image uploads and login assets remain accessible.
+
+SessionRegistry is shared with maximumSessions(1) and supported by
+HttpSessionEventPublisher. This is a single-JVM policy; multiple JAR instances
+will require Spring Session + Redis or an equivalent distributed registry.
+Distributed sessions are deferred, not implemented here.
 
 Deferred: tenant-aware login with UNIQUE(tenant_id, username), domains/subdomains,
 public tenant routing, audited impersonation, billing, subscriptions and email
@@ -65,7 +81,10 @@ It compares every operational table before and after V10.
 TenantMigrationTest continues checking MySQL/MariaDB indexes and foreign keys.
 
 CI runs clean test twice, clean package (including all tests again), and the
-packaged JAR from an empty directory. Docker is mandatory; there is no development
+packaged JAR from an empty directory, followed by PackagedNormalModeSmoke with
+isolated MySQL 8, real setup, HEAD/GET root redirects, login, retired-route 404,
+session fixation and suspended-session cookie replay rejection.
+Docker is mandatory; there is no development
 database or localhost fallback for migration tests.
 
 ## Query Audit

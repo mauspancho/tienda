@@ -58,7 +58,7 @@ tienda-pos/
 - Setup inicial sin datasource externo.
 - Login/logout con Spring Security, BCrypt, CSRF y roles `ROLE_ADMIN` / `ROLE_CAJERO`.
 - Dashboard administrativo bajo /admin.
-- Catalogo publico en / y detalle en /producto/{id} sin login.
+- Entrada general en / con redireccion segun sesion y rol; catalogo global deshabilitado.
 - Productos, categorías y proveedores, con imagenes locales publicas y alta asistida por codigo de barras usando Open Food Facts.
 - Compras con actualización transaccional de inventario.
 - Inventario con movimientos trazables.
@@ -93,33 +93,50 @@ No es necesario Node.js para ejecutar el JAR.
 
 ## Catalogo publico
 
-La raiz `/` muestra un catalogo publico sin login. El area operativa y administrativa vive bajo `/admin/**`; el login queda en `/admin/login`.
+En modo normal, `/` es la entrada general: sin sesion redirige a `/admin/login`;
+con sesion, PLATFORM_ADMIN va a `/platform/tenants`, ADMIN a `/admin` y CAJERO a
+`/admin/pos`. No resuelve un tenant ni consulta productos.
+Sin `config/application.yml`, tanto `/` como `/setup` siguen mostrando el instalador.
 
-El catalogo usa `PublicTenantResolver`, separado de `CurrentTenant`. En la instalacion
-local se selecciona el unico tenant activo. Si hay varios, configura en el servidor
-`tienda.catalog.tenant-code` con el codigo del tenant que se publicara:
+El storefront publico global esta deshabilitado. Las antiguas rutas `/producto/**`
+y `/catalog/**` responden **404**, con o sin login, incluso si solo existe una tienda.
+Configurar `tienda.catalog.tenant-code` no las habilita. No hay tenant global por
+defecto, selector de tenant ni seleccion basada en la sesion.
 
-```yaml
-tienda:
-  catalog:
-    tenant-code: default
-```
-
-Sin una seleccion univoca, o si el tenant configurado no existe o esta inactivo,
-el catalogo responde 503. No toma el tenant de la sesion, parametros, cookies ni
-cabeceras del visitante. Los productos ajenos o inactivos responden 404.
-El contrato `PublicTenantResolver` permite sustituir la estrategia local por una
-resolucion de dominios verificados en el futuro; esa funcionalidad no esta implementada.
+Se conservan CatalogService, modelos, templates y PublicTenantResolver como codigo
+reutilizable con pruebas de aislamiento. Una fase futura podra publicar catalogos
+por hostname, subdominio o dominio verificado; no esta implementada en esta version.
 Las operaciones autenticadas resuelven siempre `AppUser -> Tenant` y rechazan
 usuarios o tenants inactivos, sin elegir otro tenant como alternativa.
 
-Desde `Configuracion` puedes activar o desactivar el catalogo, cambiar titulo/subtitulo, definir el titulo de promociones y subir el logo publico. El logo se guarda fuera del JAR en:
+Los ajustes de catalogo, promociones y logo se conservan para reutilizacion futura;
+no publican una tienda en las rutas globales. El logo permanece fuera del JAR en:
 
 ```text
 data/catalog/
 ```
 
-Los productos marcados como promocionados se muestran en el slider publico, con un maximo de 4. Las imagenes publicas permitidas por seguridad son HTTPS o rutas locales bajo `/uploads/products/` y `/uploads/catalog/`.
+Las imagenes de productos y logos siguen disponibles bajo `/uploads/products/`
+y `/uploads/catalog/` para no romper el panel ni las referencias existentes.
+
+## Suspension y sesiones
+
+Suspender una cuenta o tenant revoca inmediatamente las sesiones correspondientes
+en el SessionRegistry, **despues del commit**. Un rollback no cierra sesiones.
+La suspension de tenant no cambia el estado individual de sus usuarios ni afecta
+a otras tiendas. Se excluyen sus PLATFORM_ADMIN activos; si la cuenta de un
+operador se desactiva, tambien pierde acceso.
+
+En la siguiente peticion se invalida HttpSession, se limpia SecurityContext y se
+elimina JSESSIONID usando Spring Security. AccountAccessFilter verifica ademas los
+cambios externos en cada acceso protegido y redirige al login con un mensaje de
+suspension. Reactivar no restaura sesiones antiguas ni activa usuarios deshabilitados.
+Un usuario activo sin permisos recibe 403 y conserva su sesion.
+
+Se mantienen migracion de sesion al autenticar, una sesion simultanea por usuario,
+CSRF y logout con invalidacion y borrado de cookie. El registro es en memoria y
+valido para **una JVM**. Varias instancias necesitaran Spring Session + Redis o
+equivalente; la revocacion distribuida no esta implementada.
 
 ## Imagenes de productos
 
