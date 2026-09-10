@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{platform/layout :: head('Tiendas')}"></head>
+<body class="platform-page">
+<header th:replace="~{platform/layout :: nav}"></header>
+<main class="platform-main">
+  <div class="platform-title"><div><h1>Tiendas</h1><p th:text="${tenants.totalElements} + ' registradas'"></p></div>
+    <a class="btn btn-primary" th:href="@{/platform/tenants/new}"><img class="platform-icon" th:src="@{/images/platform/plus.svg}" alt="">Nueva tienda</a>
+  </div>
+  <div th:replace="~{fragments/layout :: alerts}"></div>
+  <form class="platform-search" method="get" th:action="@{/platform/tenants}">
+    <label>Nombre o c&oacute;digo<input class="input input-bordered" name="q" th:value="${q}" maxlength="160" type="search"></label>
+    <button class="btn btn-outline">Buscar</button><a th:if="${!#strings.isEmpty(q)}" th:href="@{/platform/tenants}" class="btn btn-ghost">Limpiar</a>
+  </form>
+  <div class="platform-table-wrap">
+    <table class="table platform-table">
+      <thead><tr><th>Tienda / c&oacute;digo</th><th>Negocio</th><th>Administrador</th><th>Usuarios</th><th>Productos</th><th>Creada</th><th>Estado</th><th>Acciones</th></tr></thead>
+      <tbody>
+      <tr th:each="tenant : ${tenants}">
+        <td><strong th:text="${tenant.name}"></strong><small th:text="${tenant.code}"></small></td>
+        <td th:text="${tenant.businessName}"></td><td th:text="${tenant.adminUsername}"></td>
+        <td th:text="${tenant.users}"></td><td th:text="${tenant.products}"></td>
+        <td th:text="${#temporals.format(tenant.createdAt, 'dd/MM/yyyy')}"></td>
+        <td><span class="platform-status" th:classappend="${tenant.active ? 'is-active' : 'is-suspended'}" th:text="${tenant.active ? 'Activa' : 'Suspendida'}"></span></td>
+        <td><div class="platform-row-actions">
+          <a class="btn btn-outline btn-sm" th:href="@{/platform/tenants/{id}(id=${tenant.id})}">Ver</a>
+          <a class="btn btn-outline btn-sm" title="Editar tienda" aria-label="Editar tienda" th:href="@{/platform/tenants/{id}/edit(id=${tenant.id})}"><img class="platform-icon" th:src="@{/images/platform/pencil.svg}" alt=""></a>
+          <form method="post" th:action="@{/platform/tenants/{id}/toggle(id=${tenant.id})}" th:attr="data-confirm=${tenant.active ? 'Suspender el acceso de esta tienda?' : 'Reactivar esta tienda?'}">
+            <button class="btn btn-outline btn-sm" th:text="${tenant.active ? 'Suspender' : 'Reactivar'}"></button>
+          </form>
+        </div></td>
+      </tr>
+      <tr th:if="${tenants.empty}"><td colspan="8">No se encontraron tiendas.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <nav class="platform-pagination" aria-label="Paginacion">
+    <a th:if="${tenants.hasPrevious()}" th:href="@{/platform/tenants(q=${q},page=${tenants.number - 1})}" class="btn btn-outline btn-sm">Anterior</a>
+    <span th:text="'Pagina ' + ${tenants.number + 1} + ' de ' + ${T(java.lang.Math).max(1, tenants.totalPages)}"></span>
+    <a th:if="${tenants.hasNext()}" th:href="@{/platform/tenants(q=${q},page=${tenants.number + 1})}" class="btn btn-outline btn-sm">Siguiente</a>
+  </nav>
+</main>
+</body></html>

@@ -99,6 +99,7 @@
   </div>
 
   <div class="navbar-end gap-2 app-nav-actions">
+    <a sec:authorize="hasRole('PLATFORM_ADMIN')" th:href="@{/platform/tenants}" class="btn btn-outline btn-sm" title="Administración de plataforma">Plataforma</a>
     <details class="dropdown dropdown-end theme-dropdown">
       <summary class="btn btn-ghost btn-sm theme-trigger" aria-label="Cambiar tema" title="Cambiar tema">
         <svg class="theme-trigger-icon" viewBox="0 0 24 24" aria-hidden="true">

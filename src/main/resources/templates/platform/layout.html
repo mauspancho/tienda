@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
+<head th:fragment="head(title)">
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title th:text="${title} + ' | Tienda POS'">Plataforma</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+  <link rel="stylesheet" th:href="@{/css/platform.css}">
+  <script th:src="@{/js/theme-switcher.js}"></script>
+  <script defer th:src="@{/js/platform.js}"></script>
+</head>
+<body>
+<header th:fragment="nav" class="platform-header">
+  <a class="platform-brand" th:href="@{/platform/tenants}">
+    <img class="platform-icon" th:src="@{/images/platform/store.svg}" alt="">
+    <span><strong>Tienda POS</strong><small>Administraci&oacute;n de plataforma</small></span>
+  </a>
+  <nav class="platform-actions" aria-label="Plataforma">
+    <a class="btn btn-ghost btn-sm" th:href="@{/platform/tenants}">Tiendas</a>
+    <a sec:authorize="hasRole('ADMIN')" class="btn btn-ghost btn-sm" th:href="@{/admin}">Operaci&oacute;n</a>
+    <details class="dropdown dropdown-end theme-dropdown">
+      <summary class="btn btn-outline btn-sm theme-trigger" title="Cambiar tema" aria-label="Cambiar tema">
+        <img class="platform-icon" th:src="@{/images/platform/moon.svg}" alt="">
+      </summary>
+      <ul class="menu dropdown-content theme-menu">
+        <li><button type="button" data-theme-option="tienda">Claro</button></li>
+        <li><button type="button" data-theme-option="sunset">Sunset oscuro</button></li>
+      </ul>
+    </details>
+    <form th:action="@{/admin/logout}" method="post"><button class="btn btn-outline btn-sm">Salir</button></form>
+  </nav>
+</header>
+</body>
+</html>

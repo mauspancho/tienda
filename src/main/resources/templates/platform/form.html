@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{platform/layout :: head('Tienda')}"></head>
+<body class="platform-page">
+<header th:replace="~{platform/layout :: nav}"></header>
+<main class="platform-main platform-form-main">
+  <a th:href="@{/platform/tenants}" class="platform-back">Tiendas</a>
+  <h1 th:text="${creating ? 'Nueva tienda' : 'Editar tienda'}"></h1>
+  <form th:object="${form}" method="post" th:action="${creating} ? @{/platform/tenants} : @{/platform/tenants/{id}(id=${tenantId})}" data-single-submit>
+    <div th:if="${#fields.hasAnyErrors()}" class="alert alert-error" role="alert"><ul><li th:each="err : ${#fields.allErrors()}" th:text="${err}"></li></ul></div>
+    <fieldset><legend>Tienda</legend><div class="platform-fields">
+      <label for="name">Nombre<input class="input input-bordered" id="name" th:field="*{name}" required maxlength="160"></label>
+      <label th:if="${creating}" for="code">C&oacute;digo<input class="input input-bordered" id="code" th:field="*{code}" required maxlength="60" pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="tienda-centro"></label>
+      <label th:unless="${creating}">C&oacute;digo<output class="platform-readonly" th:text="${code}"></output></label>
+    </div></fieldset>
+    <fieldset><legend>Negocio</legend><div class="platform-fields">
+      <label for="businessName">Nombre comercial<input class="input input-bordered" id="businessName" th:field="*{businessName}" required maxlength="160"></label>
+      <label for="legalName">Raz&oacute;n social<input class="input input-bordered" id="legalName" th:field="*{legalName}" maxlength="200"></label>
+      <label for="taxId">RFC<input class="input input-bordered" id="taxId" th:field="*{taxId}" maxlength="80"></label>
+      <label for="phone">Tel&eacute;fono<input class="input input-bordered" id="phone" th:field="*{phone}" type="tel" required maxlength="255"></label>
+      <label for="email">Correo<input class="input input-bordered" id="email" th:field="*{email}" type="email" maxlength="255"></label>
+      <label for="address">Direcci&oacute;n<input class="input input-bordered" id="address" th:field="*{address}" required maxlength="255"></label>
+      <label for="currency">Moneda<input class="input input-bordered" id="currency" th:field="*{currency}" required maxlength="3" pattern="[A-Z]{3}"></label>
+      <label for="currencySymbol">S&iacute;mbolo<input class="input input-bordered" id="currencySymbol" th:field="*{currencySymbol}" required maxlength="8"></label>
+      <label for="timezone">Zona horaria<input class="input input-bordered" id="timezone" th:field="*{timezone}" required maxlength="255"></label>
+    </div></fieldset>
+    <fieldset th:if="${creating}"><legend>Administrador de la tienda</legend><div class="platform-fields">
+      <label for="adminFirstName">Nombre<input class="input input-bordered" id="adminFirstName" th:field="*{adminFirstName}" required maxlength="255" autocomplete="given-name"></label>
+      <label for="adminLastName">Apellido<input class="input input-bordered" id="adminLastName" th:field="*{adminLastName}" required maxlength="255" autocomplete="family-name"></label>
+      <label for="adminUsername">Usuario<input class="input input-bordered" id="adminUsername" th:field="*{adminUsername}" required maxlength="60" autocomplete="off" pattern="[a-zA-Z0-9._-]+"></label>
+      <label for="adminEmail">Correo<input class="input input-bordered" id="adminEmail" th:field="*{adminEmail}" type="email" maxlength="255"></label>
+      <label for="password">Contrase&ntilde;a<input class="input input-bordered" id="password" th:field="*{password}" type="password" required minlength="8" maxlength="72" autocomplete="new-password"></label>
+      <label for="confirmPassword">Confirmar contrase&ntilde;a<input class="input input-bordered" id="confirmPassword" th:field="*{confirmPassword}" type="password" required minlength="8" maxlength="72" autocomplete="new-password"></label>
+    </div></fieldset>
+    <div class="platform-actions platform-form-actions"><a class="btn btn-outline" th:href="@{/platform/tenants}">Cancelar</a><button class="btn btn-primary" type="submit" th:text="${creating ? 'Crear tienda' : 'Guardar cambios'}"></button></div>
+  </form>
+</main></body></html>

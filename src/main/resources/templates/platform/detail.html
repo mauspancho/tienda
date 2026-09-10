@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{platform/layout :: head('Detalle de tienda')}"></head>
+<body class="platform-page">
+<header th:replace="~{platform/layout :: nav}"></header>
+<main class="platform-main" th:with="tenant=${detail.tenant},info=${detail.form}">
+  <a th:href="@{/platform/tenants}" class="platform-back">Tiendas</a>
+  <div class="platform-title">
+    <div><h1 th:text="${tenant.name}"></h1><p th:text="${tenant.code}"></p></div>
+    <div class="platform-actions">
+      <a class="btn btn-outline" th:href="@{/platform/tenants/{id}/edit(id=${tenant.id})}"><img class="platform-icon" th:src="@{/images/platform/pencil.svg}" alt="">Editar</a>
+      <form method="post" th:action="@{/platform/tenants/{id}/toggle(id=${tenant.id})}" th:attr="data-confirm=${tenant.active ? 'Suspender el acceso de esta tienda?' : 'Reactivar esta tienda?'}"><button class="btn btn-outline" th:text="${tenant.active ? 'Suspender' : 'Reactivar'}"></button></form>
+    </div>
+  </div>
+  <div th:replace="~{fragments/layout :: alerts}"></div>
+  <dl class="platform-summary">
+    <div><dt>Estado</dt><dd><span class="platform-status" th:classappend="${tenant.active ? 'is-active' : 'is-suspended'}" th:text="${tenant.active ? 'Activa' : 'Suspendida'}"></span></dd></div>
+    <div><dt>Usuarios</dt><dd th:text="${tenant.users}"></dd></div><div><dt>Productos</dt><dd th:text="${tenant.products}"></dd></div>
+    <div><dt>Creada</dt><dd th:text="${#temporals.format(tenant.createdAt, 'dd/MM/yyyy HH:mm')}"></dd></div>
+  </dl>
+  <section class="platform-section"><h2>Negocio</h2><dl class="platform-data">
+    <div><dt>Nombre comercial</dt><dd th:text="${info.businessName}"></dd></div><div><dt>Raz&oacute;n social</dt><dd th:text="${info.legalName ?: '-'}"></dd></div>
+    <div><dt>RFC</dt><dd th:text="${info.taxId ?: '-'}"></dd></div><div><dt>Tel&eacute;fono</dt><dd th:text="${info.phone}"></dd></div>
+    <div><dt>Correo</dt><dd th:text="${info.email ?: '-'}"></dd></div><div><dt>Direcci&oacute;n</dt><dd th:text="${info.address}"></dd></div>
+    <div><dt>Moneda</dt><dd th:text="${info.currency} + ' (' + ${info.currencySymbol} + ')'"></dd></div><div><dt>Zona horaria</dt><dd th:text="${info.timezone}"></dd></div>
+  </dl></section>
+  <section class="platform-section"><h2>Administradores</h2>
+    <p th:if="${#lists.isEmpty(detail.admins)}">Sin administradores registrados.</p>
+    <article class="platform-admin" th:each="admin : ${detail.admins}">
+      <div class="platform-title"><div><h3 th:text="${admin.fullName}"></h3><p th:text="${admin.username}"></p></div>
+        <div class="platform-actions">
+          <span th:if="${admin.platform}" class="platform-status">Plataforma</span>
+          <span class="platform-status" th:classappend="${admin.active ? 'is-active' : 'is-suspended'}" th:text="${admin.active ? 'Activo' : 'Inactivo'}"></span>
+          <form th:unless="${admin.active}" method="post" th:action="@{/platform/tenants/{id}/admins/{adminId}/reactivate(id=${tenant.id},adminId=${admin.id})}"><button class="btn btn-outline btn-sm">Reactivar</button></form>
+        </div>
+      </div>
+      <details class="platform-password"><summary>Cambiar contrase&ntilde;a</summary>
+        <form method="post" data-single-submit th:action="@{/platform/tenants/{id}/admins/{adminId}/reset-password(id=${tenant.id},adminId=${admin.id})}">
+          <div class="platform-fields">
+            <label>Contrase&ntilde;a nueva<input class="input input-bordered" type="password" name="password" required minlength="8" maxlength="72" autocomplete="new-password"></label>
+            <label>Confirmar contrase&ntilde;a<input class="input input-bordered" type="password" name="confirmPassword" required minlength="8" maxlength="72" autocomplete="new-password"></label>
+          </div><button class="btn btn-primary" type="submit">Actualizar contrase&ntilde;a</button>
+        </form>
+      </details>
+    </article>
+  </section>
+</main></body></html>
