@@ -5,6 +5,7 @@ import com.tienda.pos.common.NormalMode;
 import com.tienda.pos.exception.DomainException;
 import com.tienda.pos.supplier.SupplierRepository;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -45,10 +46,22 @@ public class ProductController {
 
     @GetMapping("/products")
     public String list(@RequestParam(defaultValue = "") String q, @RequestParam(defaultValue = "0") int page, Model model) {
-        Pageable pageable = PageRequest.of(page, 20, Sort.by("name"));
-        model.addAttribute("products", q.isBlank() ? productRepository.findAll(pageable) : productRepository.search(q, pageable));
-        model.addAttribute("q", q);
+        String query = q == null ? "" : q.trim();
+        int currentPage = Math.max(page, 0);
+        Pageable pageable = PageRequest.of(currentPage, 20, Sort.by("name"));
+        Page<Product> products = productPage(query, pageable);
+        if (products.getTotalPages() > 0 && currentPage >= products.getTotalPages()) {
+            currentPage = products.getTotalPages() - 1;
+            pageable = PageRequest.of(currentPage, 20, Sort.by("name"));
+            products = productPage(query, pageable);
+        }
+        model.addAttribute("products", products);
+        model.addAttribute("q", query);
         return "products/index";
+    }
+
+    private Page<Product> productPage(String query, Pageable pageable) {
+        return query.isBlank() ? productRepository.findAll(pageable) : productRepository.search(query, pageable);
     }
 
     @GetMapping("/products/new")
