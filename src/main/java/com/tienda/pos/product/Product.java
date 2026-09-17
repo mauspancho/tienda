@@ -84,6 +84,9 @@ public class Product extends BaseEntity {
     @Column(nullable = false)
     private boolean promoted = false;
 
+    @Column(name = "promocion_whatsapp", nullable = false)
+    private boolean promocionWhatsapp = false;
+
     @Column(name = "promotion_order")
     private Integer promotionOrder;
 
@@ -133,6 +136,8 @@ public class Product extends BaseEntity {
     public void setActive(boolean active) { this.active = active; }
     public boolean isPromoted() { return promoted; }
     public void setPromoted(boolean promoted) { this.promoted = promoted; }
+    public boolean isPromocionWhatsapp() { return promocionWhatsapp; }
+    public void setPromocionWhatsapp(boolean promocionWhatsapp) { this.promocionWhatsapp = promocionWhatsapp; }
     public Integer getPromotionOrder() { return promotionOrder; }
     public void setPromotionOrder(Integer promotionOrder) { this.promotionOrder = promotionOrder; }
 }

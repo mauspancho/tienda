@@ -151,6 +151,23 @@ public class ProductController {
         redirectAttributes.addFlashAttribute("success", "Promoción retirada.");
         return "redirect:/admin/products";
     }
+
+    @PostMapping("/products/{id}/whatsapp-promotion")
+    public String updateWhatsappPromotion(@PathVariable Long id,
+                                          @RequestParam(defaultValue = "false") boolean selected,
+                                          @RequestParam(defaultValue = "") String q,
+                                          @RequestParam(defaultValue = "0") int page,
+                                          RedirectAttributes redirectAttributes) {
+        try {
+            productService.setWhatsappPromotion(id, selected);
+        } catch (DomainException ex) {
+            redirectAttributes.addFlashAttribute("error", ex.getMessage());
+        }
+        redirectAttributes.addAttribute("q", q == null ? "" : q.trim());
+        redirectAttributes.addAttribute("page", Math.max(page, 0));
+        return "redirect:/admin/products";
+    }
+
     private void prepareForm(Model model, ProductForm form) {
         model.addAttribute("productForm", form);
         model.addAttribute("categories", categoryRepository.findByActiveTrueOrderByNameAsc());

@@ -225,6 +225,15 @@ public class ProductService {
         product.setPromotionOrder(null);
         productRepository.save(product);
     }
+
+    @Transactional
+    public void setWhatsappPromotion(Long productId, boolean selected) {
+        Product product = productRepository.findByIdForUpdate(productId)
+                .orElseThrow(() -> new DomainException("Producto no encontrado."));
+        product.setPromocionWhatsapp(selected);
+        productRepository.save(product);
+    }
+
     private void validateUniqueCode(String code, Long currentId) {
         if (code == null || code.isBlank()) return;
         productRepository.findByCode(code.trim())

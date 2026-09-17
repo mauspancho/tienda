@@ -153,6 +153,21 @@ class ProductServiceTest {
         verify(productRepository, never()).save(any(Product.class));
     }
 
+    @Test
+    void updatesWhatsappPromotionWithoutChangingCatalogPromotion() {
+        Product product = product("7501055300006");
+        product.setPromoted(true);
+        product.setPromotionOrder(3);
+        when(productRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(product));
+
+        service.setWhatsappPromotion(10L, true);
+
+        assertThat(product.isPromocionWhatsapp()).isTrue();
+        assertThat(product.isPromoted()).isTrue();
+        assertThat(product.getPromotionOrder()).isEqualTo(3);
+        verify(productRepository).save(product);
+    }
+
     private Product product(String barcode) {
         Product product = new Product();
         product.setId(10L);
