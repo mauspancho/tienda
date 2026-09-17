@@ -27,10 +27,10 @@
         <form class="whatsapp-promotion-form" th:action="@{/admin/products/{id}/whatsapp-promotion(id=${p.id})}" method="post">
           <input type="hidden" name="q" th:value="${q}">
           <input type="hidden" name="page" th:value="${products.number}">
-          <label class="whatsapp-promotion-toggle">
-            <input type="checkbox" name="selected" value="true" th:checked="${p.promocionWhatsapp}" th:attr="aria-label=|Promoción WhatsApp para ${p.name}|" data-whatsapp-promotion>
-            <span class="whatsapp-promotion-track" aria-hidden="true"><span></span></span>
-            <span class="whatsapp-promotion-status" th:text="${p.promocionWhatsapp ? 'Seleccionado' : 'No seleccionado'}"></span>
+          <label class="inline-flex items-center cursor-pointer whitespace-nowrap">
+            <input type="checkbox" name="selected" value="true" class="sr-only peer" th:checked="${p.promocionWhatsapp}" th:attr="aria-label=|Promoción WhatsApp para ${p.name}|" data-whatsapp-promotion>
+            <span class="relative w-9 h-5 bg-base-300 rounded-full peer peer-focus:ring-4 peer-focus:ring-green-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border after:border-base-300 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-600" aria-hidden="true"></span>
+            <span class="select-none ms-3 text-sm font-medium text-base-content peer-checked:text-green-700" th:text="${p.promocionWhatsapp ? 'Seleccionado' : 'No seleccionado'}"></span>
           </label>
         </form>
       </td>

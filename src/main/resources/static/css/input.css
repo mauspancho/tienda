@@ -1525,59 +1525,6 @@ html[data-theme="sunset"] .camera-session-summary {
   pointer-events: none;
   opacity: .65;
 }
-.whatsapp-promotion-toggle {
-  display: inline-grid;
-  grid-template-columns: 2.5rem auto;
-  align-items: center;
-  gap: .25rem .55rem;
-  min-width: 9rem;
-  cursor: pointer;
-}
-.whatsapp-promotion-toggle input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-}
-.whatsapp-promotion-track {
-  display: flex;
-  align-items: center;
-  width: 2.5rem;
-  height: 1.4rem;
-  padding: .15rem;
-  border: 1px solid color-mix(in srgb, hsl(var(--bc)) 32%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, hsl(var(--bc)) 16%, hsl(var(--b1)));
-  transition: background .18s ease, border-color .18s ease;
-}
-.whatsapp-promotion-track span {
-  width: 1rem;
-  height: 1rem;
-  border-radius: 50%;
-  background: hsl(var(--b1));
-  box-shadow: 0 1px 3px hsl(var(--bc) / .35);
-  transition: transform .18s ease;
-}
-.whatsapp-promotion-toggle input:checked + .whatsapp-promotion-track {
-  border-color: #15803d;
-  background: #16a34a;
-}
-.whatsapp-promotion-toggle input:checked + .whatsapp-promotion-track span {
-  transform: translateX(1.1rem);
-}
-.whatsapp-promotion-toggle input:focus-visible + .whatsapp-promotion-track {
-  outline: 2px solid hsl(var(--p));
-  outline-offset: 2px;
-}
-.whatsapp-promotion-status {
-  color: hsl(var(--bc) / .7);
-  font-size: .78rem;
-  font-weight: 800;
-  white-space: nowrap;
-}
-.whatsapp-promotion-toggle input:checked ~ .whatsapp-promotion-status {
-  color: #15803d;
-}
 .product-list-product,
 .pos-product-cell {
   display: flex;
