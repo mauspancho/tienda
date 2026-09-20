@@ -22,6 +22,18 @@ const assets = [
   {
     source: path.join(root, "node_modules", "datatables.net-dt", "css", "dataTables.dataTables.min.css"),
     target: path.join(root, "src", "main", "resources", "static", "vendor", "datatables", "dataTables.dataTables.min.css")
+  },
+  {
+    source: path.join(root, "node_modules", "datatables.net-columncontrol", "js", "dataTables.columnControl.min.js"),
+    target: path.join(root, "src", "main", "resources", "static", "vendor", "datatables", "dataTables.columnControl.min.js")
+  },
+  {
+    source: path.join(root, "node_modules", "datatables.net-columncontrol-dt", "js", "columnControl.dataTables.min.js"),
+    target: path.join(root, "src", "main", "resources", "static", "vendor", "datatables", "columnControl.dataTables.min.js")
+  },
+  {
+    source: path.join(root, "node_modules", "datatables.net-columncontrol-dt", "css", "columnControl.dataTables.min.css"),
+    target: path.join(root, "src", "main", "resources", "static", "vendor", "datatables", "columnControl.dataTables.min.css")
   }
 ];
 

@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.MultiValueMap;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/admin/api/products")
@@ -78,7 +80,8 @@ public class ProductApiController {
                                       @RequestParam(required = false) BigDecimal minPrice,
                                       @RequestParam(required = false) BigDecimal maxPrice,
                                       @RequestParam(required = false) Boolean active,
-                                      @RequestParam(required = false) Boolean whatsapp) {
+                                      @RequestParam(required = false) Boolean whatsapp,
+                                      @RequestParam MultiValueMap<String, String> requestParameters) {
         int pageSize = Math.max(10, Math.min(length, 100));
         int page = Math.max(start, 0) / pageSize;
         BigDecimal normalizedMin = nonNegative(minPrice);
@@ -100,10 +103,24 @@ public class ProductApiController {
             default -> "name";
         };
         Sort sort = Sort.by(direction, sortProperty).and(Sort.by(Sort.Direction.ASC, "id"));
-        Page<Product> products = productRepository.filter(normalize(q), normalize(name), normalize(brand),
-                categoryId, normalizedMin, normalizedMax, active, whatsapp, PageRequest.of(page, pageSize, sort));
+        List<String> selectedBrands = requestParameters.entrySet().stream()
+                .filter(entry -> entry.getKey().startsWith("columns[2][columnControl][list]"))
+                .flatMap(entry -> entry.getValue().stream())
+                .map(this::normalize)
+                .filter(value -> !value.isBlank())
+                .map(String::toLowerCase)
+                .distinct()
+                .toList();
+        List<String> brandList = selectedBrands.isEmpty() ? List.of("") : selectedBrands;
+        Page<Product> products = productRepository.filterForTable(normalize(q), normalize(name), normalize(brand),
+                selectedBrands.isEmpty(), brandList, categoryId, normalizedMin, normalizedMax, active, whatsapp,
+                PageRequest.of(page, pageSize, sort));
         List<ProductTableRow> rows = products.getContent().stream().map(ProductTableRow::from).toList();
-        return new ProductTableResponse(draw, productRepository.count(), products.getTotalElements(), rows);
+        List<ColumnControlOption> brandOptions = productRepository.suggestBrands("", PageRequest.of(0, 500)).stream()
+                .map(value -> new ColumnControlOption(value, value))
+                .toList();
+        return new ProductTableResponse(draw, productRepository.count(), products.getTotalElements(), rows,
+                Map.of("brand", brandOptions));
     }
 
     private String normalize(String value) {
@@ -115,7 +132,11 @@ public class ProductApiController {
     }
 
     public record ProductTableResponse(int draw, long recordsTotal, long recordsFiltered,
-                                       List<ProductTableRow> data) {
+                                       List<ProductTableRow> data,
+                                       Map<String, List<ColumnControlOption>> columnControl) {
+    }
+
+    public record ColumnControlOption(String label, String value) {
     }
 
     public record ProductTableRow(Long id, String code, String barcode, String name, String brand,

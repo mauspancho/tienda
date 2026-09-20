@@ -14,6 +14,12 @@ importers:
       datatables.net:
         specifier: ^3.0.4
         version: 3.0.4
+      datatables.net-columncontrol:
+        specifier: ^2.0.2
+        version: 2.0.2
+      datatables.net-columncontrol-dt:
+        specifier: ^2.0.2
+        version: 2.0.2
       datatables.net-dt:
         specifier: ^3.0.4
         version: 3.0.4
@@ -116,6 +122,12 @@ packages:
   daisyui@4.12.24:
     resolution: {integrity: sha512-JYg9fhQHOfXyLadrBrEqCDM6D5dWCSSiM6eTNCRrBRzx/VlOCrLS8eDfIw9RVvs64v2mJdLooKXY8EwQzoszAA==}
     engines: {node: '>=16.9.0'}
+
+  datatables.net-columncontrol-dt@2.0.2:
+    resolution: {integrity: sha512-qz9d/BkOthUI6QBJ7hV7/mYsmP87wjbZG3aBFVy3nStTecTV9FqbNyhEpbwb4IlFofAVdfkRRDud5tAaX8VZMw==}
+
+  datatables.net-columncontrol@2.0.2:
+    resolution: {integrity: sha512-nQO4bUTbaekTkg5V7Tj/ThYPhQa7cMIPGmFIX4sRp6GdQLv2+S/ZSw2NUl5qBBtmmBJe302zbrqmOPdoFD6F7Q==}
 
   datatables.net-dt@3.0.4:
     resolution: {integrity: sha512-4ageAKiv2H+1iHvWuWGG3PiMxo+/k+iqeqUplwQLRming8o3R/PpA29lR0rO876jDDgOkY7/U87k7SAEt8WCMA==}
@@ -461,6 +473,15 @@ snapshots:
       postcss-js: 4.1.0(postcss@8.5.26)
     transitivePeerDependencies:
       - postcss
+
+  datatables.net-columncontrol-dt@2.0.2:
+    dependencies:
+      datatables.net-columncontrol: 2.0.2
+      datatables.net-dt: 3.0.4
+
+  datatables.net-columncontrol@2.0.2:
+    dependencies:
+      datatables.net: 3.0.4
 
   datatables.net-dt@3.0.4:
     dependencies:

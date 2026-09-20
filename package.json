@@ -12,6 +12,8 @@
   "dependencies": {
     "@zxing/browser": "^0.2.1",
     "datatables.net": "^3.0.4",
+    "datatables.net-columncontrol": "^2.0.2",
+    "datatables.net-columncontrol-dt": "^2.0.2",
     "datatables.net-dt": "^3.0.4",
     "jquery": "^4.0.0"
   }

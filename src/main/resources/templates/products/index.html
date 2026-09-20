@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="_csrf" th:content="${_csrf.token}"><meta name="_csrf_header" th:content="${_csrf.headerName}">
-  <title>Productos</title><link rel="stylesheet" th:href="@{/vendor/datatables/dataTables.dataTables.min.css}"><link rel="stylesheet" th:href="@{/css/app.css}">
+  <title>Productos</title><link rel="stylesheet" th:href="@{/vendor/datatables/dataTables.dataTables.min.css}"><link rel="stylesheet" th:href="@{/vendor/datatables/columnControl.dataTables.min.css}"><link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
 <body>
 <div class="app-shell"><div th:replace="~{fragments/layout :: sidebar}"></div><main class="main"><div th:replace="~{fragments/layout :: header}"></div><section class="content">
@@ -90,5 +90,7 @@
 <script th:src="@{/vendor/jquery/jquery.min.js}"></script>
 <script th:src="@{/vendor/datatables/dataTables.min.js}"></script>
 <script th:src="@{/vendor/datatables/dataTables.dataTables.min.js}"></script>
+<script th:src="@{/vendor/datatables/dataTables.columnControl.min.js}"></script>
+<script th:src="@{/vendor/datatables/columnControl.dataTables.min.js}"></script>
 <script th:src="@{/js/product-table.js}"></script>
 </body></html>

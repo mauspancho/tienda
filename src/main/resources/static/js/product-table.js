@@ -1,5 +1,6 @@
 (() => {
   const $ = window.jQuery;
+  const DataTable = window.DataTable;
   const filterForm = document.querySelector("[data-product-filter-form]");
   const tableElement = document.querySelector("[data-products-table]");
   const modal = document.querySelector("[data-label-modal]");
@@ -11,19 +12,11 @@
   let filterTimer;
   let labelUrl = "";
 
-  if (!$ || !$.fn.DataTable || !filterForm || !tableElement) return;
+  if (!$ || !DataTable || !$.fn.DataTable || !filterForm || !tableElement) return;
 
-  const money = value => new Intl.NumberFormat("es-MX", {
-    style: "currency",
-    currency: "MXN",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(Number(value || 0));
-  const number = value => new Intl.NumberFormat("es-MX", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(Number(value || 0));
-  const percent = value => `${number(value)}%`;
+  const localeMoney = DataTable.render.number(null, null, 2, "$");
+  const localeNumber = DataTable.render.number(null, null, 2);
+  const localePercent = DataTable.render.number(null, null, 2, "", "%");
   const escapeHtml = value => $("<div>").text(value ?? "").html();
   const safeImageUrl = value => {
     const url = String(value || "").trim();
@@ -84,6 +77,11 @@
     pageLength: 20,
     lengthMenu: [10, 20, 50, 100],
     order: [[1, "asc"]],
+    columnControl: ["order"],
+    columnDefs: [
+      { targets: 2, columnControl: ["order", ["searchList"]] }
+    ],
+    ordering: { indicators: false, handler: false },
     ajax: {
       url: tableElement.dataset.source,
       data(data) {
@@ -94,15 +92,15 @@
       }
     },
     columns: [
-      { data: null, render: (_data, type, row) => type === "display" ? codeCell(row) : row.code },
-      { data: null, render: (_data, type, row) => type === "display" ? productCell(row) : row.name },
-      { data: "brand", defaultContent: "" },
-      { data: "salePrice", render: (value, type) => type === "display" ? money(value) : value },
-      { data: "purchaseCost", render: (value, type) => type === "display" ? money(value) : value },
-      { data: "stock", render: (value, type, row) => type === "display" ? `<span class="badge ${row.lowStock ? "badge-yellow" : "badge-green"}">${number(value)}</span>` : value },
-      { data: "margin", orderable: false, render: (value, type) => type === "display" ? percent(value) : value },
-      { data: null, orderable: false, render: (_data, type, row) => type === "display" ? whatsappCell(row) : row.whatsapp },
-      { data: null, orderable: false, render: (_data, type, row) => type === "display" ? actionCell(row) : row.id }
+      { data: null, name: "code", render: (_data, type, row) => type === "display" ? codeCell(row) : row.code },
+      { data: null, name: "name", render: (_data, type, row) => type === "display" ? productCell(row) : row.name },
+      { data: "brand", name: "brand", defaultContent: "" },
+      { data: "salePrice", name: "salePrice", render: localeMoney },
+      { data: "purchaseCost", name: "purchaseCost", render: localeMoney },
+      { data: "stock", name: "currentStock", render: (value, type, row) => type === "display" ? `<span class="badge ${row.lowStock ? "badge-yellow" : "badge-green"}">${localeNumber.display(value)}</span>` : value },
+      { data: "margin", name: "margin", orderable: false, render: localePercent },
+      { data: null, name: "whatsapp", orderable: false, render: (_data, type, row) => type === "display" ? whatsappCell(row) : row.whatsapp },
+      { data: null, name: "actions", orderable: false, render: (_data, type, row) => type === "display" ? actionCell(row) : row.id }
     ],
     language: {
       processing: "Actualizando productos...",
