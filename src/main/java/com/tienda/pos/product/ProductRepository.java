@@ -78,6 +78,22 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                          Pageable pageable);
 
     @Query("""
+            select distinct p.name from Product p
+            where lower(p.name) like lower(concat('%', :q, '%'))
+            order by p.name asc
+            """)
+    List<String> suggestNames(@Param("q") String query, Pageable pageable);
+
+    @Query("""
+            select distinct p.brand from Product p
+            where p.brand is not null
+              and p.brand <> ''
+              and lower(p.brand) like lower(concat('%', :q, '%'))
+            order by p.brand asc
+            """)
+    List<String> suggestBrands(@Param("q") String query, Pageable pageable);
+
+    @Query("""
             select p from Product p
             where p.active = true and (
                 lower(p.name) like lower(concat('%', :q, '%'))

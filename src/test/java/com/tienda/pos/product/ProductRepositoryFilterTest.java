@@ -54,6 +54,11 @@ class ProductRepositoryFilterTest {
         assertThat(result.getContent())
                 .extracting(Product::getName)
                 .containsExactly("Agua grande", "Agua chica");
+
+        assertThat(productRepository.suggestNames("gran", PageRequest.of(0, 10)))
+                .containsExactly("Agua grande");
+        assertThat(productRepository.suggestBrands("ac", PageRequest.of(0, 10)))
+                .containsExactly("Acme");
     }
 
     private Product product(String code, String name, String brand, String salePrice,

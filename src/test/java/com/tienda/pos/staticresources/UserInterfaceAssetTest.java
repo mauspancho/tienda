@@ -67,6 +67,8 @@ class UserInterfaceAssetTest {
         String productIndex = Files.readString(ROOT.resolve("src/main/resources/templates/products/index.html"));
         String productController = Files.readString(ROOT.resolve("src/main/java/com/tienda/pos/product/ProductController.java"));
         String productRepository = Files.readString(ROOT.resolve("src/main/java/com/tienda/pos/product/ProductRepository.java"));
+        String productApi = Files.readString(ROOT.resolve("src/main/java/com/tienda/pos/api/ProductApiController.java"));
+        String productTable = Files.readString(ROOT.resolve("src/main/resources/static/js/product-table.js"));
         String css = Files.readString(ROOT.resolve("src/main/resources/static/css/input.css"));
 
         assertThat(productIndex)
@@ -77,7 +79,12 @@ class UserInterfaceAssetTest {
                 .contains("name=\"categoryId\"")
                 .contains("name=\"sort\"")
                 .contains("name=\"direction\"")
-                .contains("setTimeout(submitFilters, 400)");
+                .contains("data-product-results")
+                .contains("id=\"productsTable\"")
+                .contains("data-autocomplete-field=\"name\"")
+                .contains("/vendor/jquery/jquery.min.js")
+                .contains("/vendor/datatables/dataTables.min.js")
+                .contains("/js/product-table.js");
         assertThat(productController)
                 .contains("productSortProperty")
                 .contains("PageRequest.of(currentPage, 20, productSort")
@@ -85,11 +92,30 @@ class UserInterfaceAssetTest {
         assertThat(productRepository)
                 .contains("Page<Product> filter")
                 .contains(":minPrice is null or p.salePrice >= :minPrice")
-                .contains(":whatsapp is null or p.promocionWhatsapp = :whatsapp");
+                .contains(":whatsapp is null or p.promocionWhatsapp = :whatsapp")
+                .contains("suggestNames")
+                .contains("suggestBrands");
+        assertThat(productApi)
+                .contains("/suggestions")
+                .contains("/table")
+                .contains("ProductTableResponse")
+                .contains("case \"name\"")
+                .contains("case \"brand\"");
+        assertThat(productTable)
+                .contains("$.fn.DataTable")
+                .contains("serverSide: true")
+                .contains("DataTable({")
+                .contains("function loadSuggestions")
+                .contains("table.ajax.reload")
+                .contains("window.history.replaceState")
+                .contains("[data-whatsapp-promotion]");
         assertThat(css)
                 .contains(".product-filter-grid")
                 .contains(".products-table")
-                .contains(".product-meta");
+                .contains(".product-meta")
+                .contains(".product-autocomplete-menu")
+                .contains("div.dt-container")
+                .contains(".dt-paging-button");
     }
 
     @Test
