@@ -1682,6 +1682,58 @@ div.dtcc-dropdown option {
   background: hsl(var(--b1)) !important;
   color: hsl(var(--bc)) !important;
 }
+html[data-theme="tienda"] div.dtcc-dropdown,
+html[data-theme="tienda"] div.dtcc-dropdown div.dtcc-search,
+html[data-theme="tienda"] div.dtcc-dropdown div.dtcc-search > div,
+html[data-theme="tienda"] div.dtcc-dropdown div.dtcc-list,
+html[data-theme="tienda"] div.dtcc-dropdown div.dtcc-list-buttons,
+html[data-theme="tienda"] div.dtcc-dropdown div.dtcc-list-controls,
+html[data-theme="tienda"] div.dtcc-popover {
+  background-color: #ffffff !important;
+  color: #162033 !important;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html[data-theme="tienda"] div.dtcc-dropdown button.dtcc-button,
+html[data-theme="tienda"] div.dtcc-dropdown input,
+html[data-theme="tienda"] div.dtcc-dropdown select,
+html[data-theme="tienda"] div.dtcc-dropdown option {
+  background-color: #ffffff !important;
+  color: #162033 !important;
+}
+html[data-theme="tienda"] div.dtcc-dropdown button.dtcc-button:hover,
+html[data-theme="tienda"] div.dtcc-dropdown button.dtcc-button:focus-visible,
+html[data-theme="tienda"] div.dtcc-dropdown button.dtcc-button.dtcc-button_active {
+  background-color: #eaf1ff !important;
+  color: #174ea6 !important;
+}
+html[data-theme="sunset"] div.dtcc-dropdown,
+html[data-theme="sunset"] div.dtcc-dropdown div.dtcc-search,
+html[data-theme="sunset"] div.dtcc-dropdown div.dtcc-search > div,
+html[data-theme="sunset"] div.dtcc-dropdown div.dtcc-list,
+html[data-theme="sunset"] div.dtcc-dropdown div.dtcc-list-buttons,
+html[data-theme="sunset"] div.dtcc-dropdown div.dtcc-list-controls,
+html[data-theme="sunset"] div.dtcc-popover {
+  background-color: #181420 !important;
+  color: #fff7ed !important;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html[data-theme="sunset"] div.dtcc-dropdown button.dtcc-button,
+html[data-theme="sunset"] div.dtcc-dropdown input,
+html[data-theme="sunset"] div.dtcc-dropdown select,
+html[data-theme="sunset"] div.dtcc-dropdown option {
+  background-color: #181420 !important;
+  color: #fff7ed !important;
+}
+html[data-theme="sunset"] div.dtcc-dropdown button.dtcc-button:hover,
+html[data-theme="sunset"] div.dtcc-dropdown button.dtcc-button:focus-visible,
+html[data-theme="sunset"] div.dtcc-dropdown button.dtcc-button.dtcc-button_active {
+  background-color: #3a2532 !important;
+  color: #ffffff !important;
+}
 .product-meta {
   display: flex;
   flex-wrap: wrap;
