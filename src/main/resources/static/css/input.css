@@ -1615,6 +1615,43 @@ div.dt-container .dt-processing {
   color: hsl(var(--bc));
   box-shadow: 0 12px 28px rgba(0, 0, 0, .16);
 }
+html {
+  --dtcc-dropdown_background: hsl(var(--b1));
+  --dtcc-dropdown-button_background: hsl(var(--b1));
+  --dtcc-dropdown-button_color: hsl(var(--bc));
+  --dtcc-dropdown-button_hover-background: color-mix(in srgb, hsl(var(--p)) 14%, hsl(var(--b1)));
+  --dtcc-list-buttons_background: color-mix(in srgb, hsl(var(--b2)) 88%, hsl(var(--b1)));
+  --dtcc-search-input_background: hsl(var(--b1));
+  --dtcc-search-input_background-color: hsl(var(--b1));
+}
+div.dtcc-dropdown {
+  border-color: color-mix(in srgb, hsl(var(--bc)) 30%, transparent) !important;
+  background: hsl(var(--b1)) !important;
+  color: hsl(var(--bc)) !important;
+}
+div.dtcc-dropdown button.dtcc-button {
+  border-bottom: 1px solid color-mix(in srgb, hsl(var(--bc)) 12%, transparent);
+  background: hsl(var(--b1)) !important;
+  color: hsl(var(--bc)) !important;
+}
+div.dtcc-dropdown button.dtcc-button:hover,
+div.dtcc-dropdown button.dtcc-button:focus-visible,
+div.dtcc-dropdown button.dtcc-button.dtcc-button_active {
+  background: color-mix(in srgb, hsl(var(--p)) 14%, hsl(var(--b1))) !important;
+  color: hsl(var(--bc)) !important;
+}
+div.dtcc-dropdown div.dtcc-list div.dtcc-list-buttons,
+div.dtcc-dropdown div.dtcc-list div.dtcc-list-controls {
+  background: hsl(var(--b1)) !important;
+  color: hsl(var(--bc)) !important;
+}
+div.dtcc-dropdown input,
+div.dtcc-dropdown select,
+div.dtcc-dropdown option {
+  border-color: color-mix(in srgb, hsl(var(--bc)) 28%, transparent) !important;
+  background: hsl(var(--b1)) !important;
+  color: hsl(var(--bc)) !important;
+}
 .product-meta {
   display: flex;
   flex-wrap: wrap;
