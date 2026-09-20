@@ -1518,6 +1518,38 @@ html[data-theme="sunset"] .camera-session-summary {
   flex-wrap: wrap;
   gap: .6rem;
 }
+.product-filter-form {
+  gap: 1rem;
+}
+.product-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(9rem, 1fr));
+  gap: .8rem;
+  align-items: end;
+}
+.product-filter-wide {
+  grid-column: span 2;
+}
+.product-filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+}
+.products-table {
+  min-width: 74rem;
+}
+.product-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .2rem .7rem;
+  margin-top: .22rem;
+  color: hsl(var(--bc) / .68);
+  font-size: .78rem;
+}
+.product-meta span:not(:last-child)::after {
+  content: "·";
+  margin-left: .7rem;
+}
 .whatsapp-promotion-form {
   margin: 0;
 }
@@ -1570,7 +1602,29 @@ html[data-theme="sunset"] .product-thumb,
 html[data-theme="sunset"] .product-image-preview {
   background: rgba(17, 16, 24, .82);
 }
+@media (max-width: 1180px) {
+  .product-filter-grid {
+    grid-template-columns: repeat(3, minmax(9rem, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  .product-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .product-filter-wide {
+    grid-column: 1 / -1;
+  }
+}
 @media (max-width: 640px) {
+  .product-filter-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .product-filter-wide {
+    grid-column: auto;
+  }
+  .product-filter-actions > .btn {
+    flex: 1 1 auto;
+  }
   .product-image-actions > .btn {
     flex: 1 1 100%;
   }

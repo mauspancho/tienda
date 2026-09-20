@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -44,6 +45,37 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                or lower(coalesce(p.barcode, '')) like lower(concat('%', :q, '%'))
             """)
     Page<Product> search(@Param("q") String query, Pageable pageable);
+
+    @EntityGraph(attributePaths = "category")
+    @Query("""
+            select p from Product p
+            left join p.category c
+            where (
+                :q = ''
+                or lower(p.name) like lower(concat('%', :q, '%'))
+                or lower(p.code) like lower(concat('%', :q, '%'))
+                or lower(coalesce(p.barcode, '')) like lower(concat('%', :q, '%'))
+                or lower(coalesce(p.brand, '')) like lower(concat('%', :q, '%'))
+                or lower(coalesce(p.presentation, '')) like lower(concat('%', :q, '%'))
+                or lower(coalesce(c.name, '')) like lower(concat('%', :q, '%'))
+            )
+              and (:name = '' or lower(p.name) like lower(concat('%', :name, '%')))
+              and (:brand = '' or lower(coalesce(p.brand, '')) like lower(concat('%', :brand, '%')))
+              and (:categoryId is null or c.id = :categoryId)
+              and (:minPrice is null or p.salePrice >= :minPrice)
+              and (:maxPrice is null or p.salePrice <= :maxPrice)
+              and (:active is null or p.active = :active)
+              and (:whatsapp is null or p.promocionWhatsapp = :whatsapp)
+            """)
+    Page<Product> filter(@Param("q") String query,
+                         @Param("name") String name,
+                         @Param("brand") String brand,
+                         @Param("categoryId") Long categoryId,
+                         @Param("minPrice") BigDecimal minPrice,
+                         @Param("maxPrice") BigDecimal maxPrice,
+                         @Param("active") Boolean active,
+                         @Param("whatsapp") Boolean whatsapp,
+                         Pageable pageable);
 
     @Query("""
             select p from Product p

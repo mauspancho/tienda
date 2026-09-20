@@ -63,6 +63,36 @@ class UserInterfaceAssetTest {
     }
 
     @Test
+    void productListOffersCombinedFiltersAndSorting() throws Exception {
+        String productIndex = Files.readString(ROOT.resolve("src/main/resources/templates/products/index.html"));
+        String productController = Files.readString(ROOT.resolve("src/main/java/com/tienda/pos/product/ProductController.java"));
+        String productRepository = Files.readString(ROOT.resolve("src/main/java/com/tienda/pos/product/ProductRepository.java"));
+        String css = Files.readString(ROOT.resolve("src/main/resources/static/css/input.css"));
+
+        assertThat(productIndex)
+                .contains("data-product-filter-form")
+                .contains("name=\"brand\"")
+                .contains("name=\"minPrice\"")
+                .contains("name=\"maxPrice\"")
+                .contains("name=\"categoryId\"")
+                .contains("name=\"sort\"")
+                .contains("name=\"direction\"")
+                .contains("setTimeout(submitFilters, 400)");
+        assertThat(productController)
+                .contains("productSortProperty")
+                .contains("PageRequest.of(currentPage, 20, productSort")
+                .contains("categoryRepository.findByActiveTrueOrderByNameAsc()");
+        assertThat(productRepository)
+                .contains("Page<Product> filter")
+                .contains(":minPrice is null or p.salePrice >= :minPrice")
+                .contains(":whatsapp is null or p.promocionWhatsapp = :whatsapp");
+        assertThat(css)
+                .contains(".product-filter-grid")
+                .contains(".products-table")
+                .contains(".product-meta");
+    }
+
+    @Test
     void uploadedProductAndCatalogImagesArePublicWithoutLogin() throws Exception {
         String securityConfig = Files.readString(ROOT.resolve("src/main/java/com/tienda/pos/security/SecurityConfig.java"));
 

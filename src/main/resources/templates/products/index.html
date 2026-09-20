@@ -7,9 +7,24 @@
 <body>
 <div class="app-shell"><div th:replace="~{fragments/layout :: sidebar}"></div><main class="main"><div th:replace="~{fragments/layout :: header}"></div><section class="content">
 <div class="page-title"><h1>Productos</h1><a class="btn btn-primary" th:href="@{/admin/products/new}">Nuevo producto</a></div><div th:replace="~{fragments/layout :: alerts}"></div>
-<form class="card" method="get" data-product-search-form><div class="field"><label>Buscar</label><input name="q" th:value="${q}" placeholder="Nombre, código o código de barras" autocomplete="off" data-product-search><input type="hidden" name="page" value="0"></div></form>
+<form class="card product-filter-form" method="get" th:action="@{/admin/products}" data-product-filter-form>
+  <div class="product-filter-grid">
+    <div class="field product-filter-wide"><label>Búsqueda general</label><input name="q" th:value="${q}" placeholder="Código, barras, nombre, marca o categoría" autocomplete="off" data-product-filter></div>
+    <div class="field"><label>Nombre</label><input name="name" th:value="${name}" placeholder="Contiene..." autocomplete="off" data-product-filter></div>
+    <div class="field"><label>Marca</label><input name="brand" th:value="${brand}" placeholder="Contiene..." autocomplete="off" data-product-filter></div>
+    <div class="field"><label>Categoría</label><select name="categoryId" data-product-filter><option value="">Todas</option><option th:each="category : ${categories}" th:value="${category.id}" th:text="${category.name}" th:selected="${categoryId != null and categoryId == category.id}"></option></select></div>
+    <div class="field"><label>Precio mínimo</label><input type="number" name="minPrice" th:value="${minPrice}" min="0" step="0.01" inputmode="decimal" placeholder="$0.00" data-product-filter></div>
+    <div class="field"><label>Precio máximo</label><input type="number" name="maxPrice" th:value="${maxPrice}" min="0" step="0.01" inputmode="decimal" placeholder="Sin límite" data-product-filter></div>
+    <div class="field"><label>Estado</label><select name="active" data-product-filter><option value="" th:selected="${active == null}">Todos</option><option value="true" th:selected="${active != null and active}">Activos</option><option value="false" th:selected="${active != null and !active}">Inactivos</option></select></div>
+    <div class="field"><label>Promoción WhatsApp</label><select name="whatsapp" data-product-filter><option value="" th:selected="${whatsapp == null}">Todos</option><option value="true" th:selected="${whatsapp != null and whatsapp}">Seleccionados</option><option value="false" th:selected="${whatsapp != null and !whatsapp}">No seleccionados</option></select></div>
+    <div class="field"><label>Ordenar por</label><select name="sort" data-product-filter><option value="name" th:selected="${sort == 'name'}">Nombre</option><option value="brand" th:selected="${sort == 'brand'}">Marca</option><option value="code" th:selected="${sort == 'code'}">Código</option><option value="salePrice" th:selected="${sort == 'salePrice'}">Precio</option><option value="purchaseCost" th:selected="${sort == 'purchaseCost'}">Costo</option><option value="currentStock" th:selected="${sort == 'currentStock'}">Stock</option></select></div>
+    <div class="field"><label>Dirección</label><select name="direction" data-product-filter><option value="asc" th:selected="${direction == 'asc'}">Ascendente</option><option value="desc" th:selected="${direction == 'desc'}">Descendente</option></select></div>
+  </div>
+  <input type="hidden" name="page" value="0">
+  <div class="product-filter-actions"><button class="btn btn-primary" type="submit">Aplicar filtros</button><a class="btn btn-muted" th:href="@{/admin/products}">Limpiar</a></div>
+</form>
 <div class="table-wrap" style="margin-top:16px">
-  <table>
+  <table class="products-table">
     <tr><th>Código</th><th>Producto</th><th>Precio</th><th>Costo</th><th>Stock</th><th>Margen</th><th>Promoción WhatsApp</th><th></th></tr>
     <tr th:each="p:${products.content}">
       <td>
@@ -18,7 +33,7 @@
           <button class="btn btn-muted btn-sm" type="button" th:if="${p.barcode != null and !#strings.isEmpty(p.barcode)}" th:data-label-url="@{/admin/products/{id}/barcode-label(id=${p.id})}" th:data-label-product="${p.name}" th:data-label-barcode="${p.barcode}" data-open-label-modal>Imprimir</button>
         </div>
       </td>
-      <td><div class="product-list-product"><img class="product-thumb" th:if="${p.imageUrl != null and !#strings.isEmpty(p.imageUrl)}" th:src="${p.imageUrl}" alt="" loading="lazy"><span class="product-thumb product-thumb-placeholder" th:unless="${p.imageUrl != null and !#strings.isEmpty(p.imageUrl)}">▣</span><div><strong th:text="${p.name}"></strong><br><span class="muted" th:text="${p.barcode}"></span></div></div></td>
+      <td><div class="product-list-product"><img class="product-thumb" th:if="${p.imageUrl != null and !#strings.isEmpty(p.imageUrl)}" th:src="${p.imageUrl}" alt="" loading="lazy"><span class="product-thumb product-thumb-placeholder" th:unless="${p.imageUrl != null and !#strings.isEmpty(p.imageUrl)}">▣</span><div><strong th:text="${p.name}"></strong><div class="product-meta"><span th:if="${p.brand != null and !#strings.isEmpty(p.brand)}" th:text="${p.brand}"></span><span th:if="${p.category != null}" th:text="${p.category.name}"></span><span th:if="${p.barcode != null and !#strings.isEmpty(p.barcode)}" th:text="${p.barcode}"></span></div></div></div></td>
       <td th:text="${@display.money(p.salePrice)}"></td>
       <td th:text="${@display.money(p.purchaseCost)}"></td>
       <td><span th:class="${p.hasLowStock() ? 'badge badge-yellow' : 'badge badge-green'}" th:text="${@display.number(p.currentStock)}"></span></td>
@@ -26,6 +41,15 @@
       <td>
         <form class="whatsapp-promotion-form" th:action="@{/admin/products/{id}/whatsapp-promotion(id=${p.id})}" method="post">
           <input type="hidden" name="q" th:value="${q}">
+          <input type="hidden" name="name" th:value="${name}">
+          <input type="hidden" name="brand" th:value="${brand}">
+          <input type="hidden" name="categoryId" th:value="${categoryId}">
+          <input type="hidden" name="minPrice" th:value="${minPrice}">
+          <input type="hidden" name="maxPrice" th:value="${maxPrice}">
+          <input type="hidden" name="active" th:value="${active}">
+          <input type="hidden" name="whatsapp" th:value="${whatsapp}">
+          <input type="hidden" name="sort" th:value="${sort}">
+          <input type="hidden" name="direction" th:value="${direction}">
           <input type="hidden" name="page" th:value="${products.number}">
           <label class="inline-flex items-center cursor-pointer whitespace-nowrap">
             <input type="checkbox" name="selected" value="true" class="sr-only peer" th:checked="${p.promocionWhatsapp}" th:attr="aria-label=|Promoción WhatsApp para ${p.name}|" data-whatsapp-promotion>
@@ -43,14 +67,14 @@
 <div class="card" style="margin-top:16px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap" th:if="${products.totalElements > 0}" th:with="first=${products.number * products.size + 1}, last=${products.number * products.size + products.numberOfElements}">
   <span class="muted" th:text="|Mostrando ${first}-${last} de ${products.totalElements} productos|"></span>
   <div class="join" th:if="${products.totalPages > 1}" th:with="startPage=${products.number > 2 ? products.number - 2 : 0}, endPage=${products.number + 2 < products.totalPages - 1 ? products.number + 2 : products.totalPages - 1}">
-    <a class="btn btn-muted join-item" th:if="${products.hasPrevious()}" th:href="@{/admin/products(q=${q}, page=${products.number - 1})}">Anterior</a>
+    <a class="btn btn-muted join-item" th:if="${products.hasPrevious()}" th:href="@{/admin/products(q=${q},name=${name},brand=${brand},categoryId=${categoryId},minPrice=${minPrice},maxPrice=${maxPrice},active=${active},whatsapp=${whatsapp},sort=${sort},direction=${direction},page=${products.number - 1})}">Anterior</a>
     <span class="btn btn-muted join-item" th:unless="${products.hasPrevious()}">Anterior</span>
-    <a class="btn btn-muted join-item" th:if="${startPage > 0}" th:href="@{/admin/products(q=${q}, page=0)}">1</a>
+    <a class="btn btn-muted join-item" th:if="${startPage > 0}" th:href="@{/admin/products(q=${q},name=${name},brand=${brand},categoryId=${categoryId},minPrice=${minPrice},maxPrice=${maxPrice},active=${active},whatsapp=${whatsapp},sort=${sort},direction=${direction},page=0)}">1</a>
     <span class="btn btn-muted join-item" th:if="${startPage > 1}">...</span>
-    <a th:each="pageNumber : ${#numbers.sequence(startPage, endPage)}" th:class="${pageNumber == products.number ? 'btn btn-primary join-item' : 'btn btn-muted join-item'}" th:href="@{/admin/products(q=${q}, page=${pageNumber})}" th:text="${pageNumber + 1}"></a>
+    <a th:each="pageNumber : ${#numbers.sequence(startPage, endPage)}" th:class="${pageNumber == products.number ? 'btn btn-primary join-item' : 'btn btn-muted join-item'}" th:href="@{/admin/products(q=${q},name=${name},brand=${brand},categoryId=${categoryId},minPrice=${minPrice},maxPrice=${maxPrice},active=${active},whatsapp=${whatsapp},sort=${sort},direction=${direction},page=${pageNumber})}" th:text="${pageNumber + 1}"></a>
     <span class="btn btn-muted join-item" th:if="${endPage < products.totalPages - 2}">...</span>
-    <a class="btn btn-muted join-item" th:if="${endPage < products.totalPages - 1}" th:href="@{/admin/products(q=${q}, page=${products.totalPages - 1})}" th:text="${products.totalPages}"></a>
-    <a class="btn btn-muted join-item" th:if="${products.hasNext()}" th:href="@{/admin/products(q=${q}, page=${products.number + 1})}">Siguiente</a>
+    <a class="btn btn-muted join-item" th:if="${endPage < products.totalPages - 1}" th:href="@{/admin/products(q=${q},name=${name},brand=${brand},categoryId=${categoryId},minPrice=${minPrice},maxPrice=${maxPrice},active=${active},whatsapp=${whatsapp},sort=${sort},direction=${direction},page=${products.totalPages - 1})}" th:text="${products.totalPages}"></a>
+    <a class="btn btn-muted join-item" th:if="${products.hasNext()}" th:href="@{/admin/products(q=${q},name=${name},brand=${brand},categoryId=${categoryId},minPrice=${minPrice},maxPrice=${maxPrice},active=${active},whatsapp=${whatsapp},sort=${sort},direction=${direction},page=${products.number + 1})}">Siguiente</a>
     <span class="btn btn-muted join-item" th:unless="${products.hasNext()}">Siguiente</span>
   </div>
 </div>
@@ -73,17 +97,24 @@
 </section></main></div>
 <script>
 (() => {
-  const searchForm = document.querySelector('[data-product-search-form]');
-  const searchInput = document.querySelector('[data-product-search]');
-  let searchTimer;
+  const filterForm = document.querySelector('[data-product-filter-form]');
+  const filterControls = document.querySelectorAll('[data-product-filter]');
+  let filterTimer;
+  const submitFilters = () => {
+    clearTimeout(filterTimer);
+    if (typeof filterForm.requestSubmit === 'function') filterForm.requestSubmit();
+    else filterForm.submit();
+  };
 
-  searchInput?.addEventListener('input', () => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => {
-      if (typeof searchForm.requestSubmit === 'function') searchForm.requestSubmit();
-      else searchForm.submit();
-    }, 300);
+  filterControls.forEach(control => {
+    const eventName = control.matches('select') ? 'change' : 'input';
+    control.addEventListener(eventName, () => {
+      clearTimeout(filterTimer);
+      if (eventName === 'change') submitFilters();
+      else filterTimer = setTimeout(submitFilters, 400);
+    });
   });
+  filterForm?.addEventListener('submit', () => clearTimeout(filterTimer));
 
   document.querySelectorAll('[data-whatsapp-promotion]').forEach(input => {
     input.addEventListener('change', () => {
