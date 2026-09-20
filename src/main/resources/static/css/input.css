@@ -1537,10 +1537,14 @@ html[data-theme="sunset"] .camera-session-summary {
 }
 .product-autocomplete {
   position: relative;
+  z-index: 1;
+}
+.product-autocomplete:focus-within {
+  z-index: 100;
 }
 .product-autocomplete-menu {
   position: absolute;
-  z-index: 40;
+  z-index: 100;
   top: calc(100% + .25rem);
   left: 0;
   right: 0;
@@ -1549,8 +1553,12 @@ html[data-theme="sunset"] .camera-session-summary {
   padding: .3rem;
   border: 1px solid color-mix(in srgb, hsl(var(--bc)) 26%, transparent);
   border-radius: 6px;
-  background: hsl(var(--b1));
+  background-color: hsl(var(--b1)) !important;
   box-shadow: 0 12px 28px rgba(0, 0, 0, .18);
+  opacity: 1 !important;
+  isolation: isolate;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 .product-autocomplete-menu[hidden] {
   display: none;
@@ -1561,7 +1569,7 @@ html[data-theme="sunset"] .camera-session-summary {
   padding: .58rem .7rem;
   border: 0;
   border-radius: 4px;
-  background: transparent;
+  background-color: hsl(var(--b1)) !important;
   color: hsl(var(--bc));
   text-align: left;
   cursor: pointer;
@@ -1572,6 +1580,28 @@ html[data-theme="sunset"] .camera-session-summary {
   outline: none;
   background: color-mix(in srgb, hsl(var(--p)) 14%, hsl(var(--b1)));
   color: hsl(var(--p));
+}
+html[data-theme="tienda"] .product-autocomplete-menu,
+html[data-theme="tienda"] .product-autocomplete-option {
+  background-color: #ffffff !important;
+  color: #162033 !important;
+}
+html[data-theme="tienda"] .product-autocomplete-option:hover,
+html[data-theme="tienda"] .product-autocomplete-option:focus-visible,
+html[data-theme="tienda"] .product-autocomplete-option[aria-selected="true"] {
+  background-color: #eaf1ff !important;
+  color: #174ea6 !important;
+}
+html[data-theme="sunset"] .product-autocomplete-menu,
+html[data-theme="sunset"] .product-autocomplete-option {
+  background-color: #181420 !important;
+  color: #fff7ed !important;
+}
+html[data-theme="sunset"] .product-autocomplete-option:hover,
+html[data-theme="sunset"] .product-autocomplete-option:focus-visible,
+html[data-theme="sunset"] .product-autocomplete-option[aria-selected="true"] {
+  background-color: #3a2532 !important;
+  color: #ffffff !important;
 }
 .products-table {
   min-width: 82rem;
