@@ -111,8 +111,13 @@ class ProductServiceTest {
         form.setMinimumStock(BigDecimal.ZERO);
         form.setUnit(UnitType.PIEZA);
         form.setActive(true);
+        String remoteImage = "https://images.openfoodfacts.org/images/products/750/105/530/0006/front_es.jpg";
+        form.setImageUrl(remoteImage);
         when(productRepository.findByCode("PRD-12345678")).thenReturn(Optional.empty());
         when(productRepository.findByBarcode("7501055300006")).thenReturn(Optional.empty());
+        when(productImageService.cleanImageReference(remoteImage)).thenReturn(remoteImage);
+        when(productImageService.isOpenFoodFactsImage(remoteImage)).thenReturn(true);
+        when(productImageService.storeOpenFoodFactsImage(remoteImage)).thenReturn("/uploads/products/local.jpg");
         when(productRepository.save(any(Product.class))).thenAnswer(invocation -> {
             Product saved = invocation.getArgument(0);
             saved.setId(42L);
@@ -122,6 +127,8 @@ class ProductServiceTest {
         Product saved = service.save(form);
 
         assertThat(saved.getCurrentStock()).isEqualByComparingTo(new BigDecimal("24.000"));
+        assertThat(saved.getImageUrl()).isEqualTo("/uploads/products/local.jpg");
+        verify(productImageService).storeOpenFoodFactsImage(remoteImage);
         ArgumentCaptor<InventoryMovement> movementCaptor = ArgumentCaptor.forClass(InventoryMovement.class);
         verify(movementRepository).save(movementCaptor.capture());
         InventoryMovement movement = movementCaptor.getValue();

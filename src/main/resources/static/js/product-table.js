@@ -264,7 +264,7 @@
     const previousValue = !input.checked;
     input.disabled = true;
     $.ajax({
-      url: `/admin/products/${input.dataset.productId}/whatsapp-promotion`,
+      url: `/admin/products/${input.dataset.productId}/whatsapp-promotion/state`,
       method: "POST",
       data: { selected: input.checked, _csrf: csrfToken }
     }).done(() => table.ajax.reload(null, false))

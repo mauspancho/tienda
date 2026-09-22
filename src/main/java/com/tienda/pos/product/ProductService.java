@@ -72,6 +72,9 @@ public class ProductService {
             if (uploadedImage) {
                 newLocalImageUrl = productImageService.store(imageFile);
                 imageUrl = newLocalImageUrl;
+            } else if (productImageService.isOpenFoodFactsImage(imageUrl)) {
+                newLocalImageUrl = productImageService.storeOpenFoodFactsImage(imageUrl);
+                imageUrl = newLocalImageUrl;
             }
             product.setCode(form.getCode().trim());
             product.setBarcode(barcode);

@@ -3,6 +3,7 @@ package com.tienda.pos.product;
 import com.tienda.pos.exception.DomainException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.util.unit.DataSize;
 
@@ -11,8 +12,10 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -21,6 +24,17 @@ class ProductImageServiceTest {
 
     @TempDir
     Path tempDir;
+
+    @Test
+    void springCreatesServiceUsingProductionConstructor() {
+        try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext()) {
+            context.registerBean(ProductImagesProperties.class);
+            context.register(ProductImageService.class);
+            context.refresh();
+
+            assertThat(context.getBean(ProductImageService.class)).isNotNull();
+        }
+    }
 
     @Test
     void validJpegIsProcessedAndStoredAsLocalReference() throws Exception {
@@ -76,6 +90,48 @@ class ProductImageServiceTest {
     }
 
     @Test
+    void openFoodFactsImageIsDownloadedAndStoredAsLocalReference() throws Exception {
+        byte[] remoteImage = jpegBytes(1200, 900);
+        AtomicReference<String> requestedUrl = new AtomicReference<>();
+        ProductImageService service = service((uri, maxBytes) -> {
+            requestedUrl.set(uri.toString());
+            return new ProductImageService.DownloadedImage(remoteImage, "image/jpeg");
+        });
+
+        String imageUrl = service.storeOpenFoodFactsImage(
+                "https://images.openfoodfacts.org/images/products/750/105/530/0006/front_es.jpg");
+
+        assertThat(requestedUrl.get()).startsWith("https://images.openfoodfacts.org/");
+        assertThat(imageUrl).startsWith("/uploads/products/").endsWith(".jpg");
+        Path stored = tempDir.resolve(imageUrl.substring("/uploads/products/".length())).normalize();
+        assertThat(stored).exists().isRegularFile();
+        assertThat(ImageIO.read(stored.toFile()).getWidth()).isEqualTo(800);
+    }
+
+    @Test
+    void openFoodFactsDownloadRejectsOtherHosts() {
+        ProductImageService service = service((uri, maxBytes) -> {
+            throw new AssertionError("The remote host must be rejected before downloading");
+        });
+
+        assertThatThrownBy(() -> service.storeOpenFoodFactsImage("https://example.com/product.jpg"))
+                .isInstanceOf(DomainException.class)
+                .hasMessageContaining("Open Food Facts");
+    }
+
+    @Test
+    void unavailableOpenFoodFactsImageReturnsNoRemoteReference() {
+        ProductImageService service = service((uri, maxBytes) -> {
+            throw new IOException("timeout");
+        });
+
+        String imageUrl = service.storeOpenFoodFactsImage(
+                "https://images.openfoodfacts.org/images/products/750/105/530/0006/front_es.jpg");
+
+        assertThat(imageUrl).isNull();
+    }
+
+    @Test
     void localReplacementCanDeletePreviousLocalImage() throws Exception {
         ProductImageService service = service();
         String imageUrl = service.store(imageFile("old.jpg", "image/jpeg", 300, 300));
@@ -112,6 +168,15 @@ class ProductImageServiceTest {
         properties.setMaxWidth(800);
         properties.setMaxHeight(800);
         return new ProductImageService(properties);
+    }
+
+    private ProductImageService service(ProductImageService.RemoteImageFetcher remoteImageFetcher) {
+        ProductImagesProperties properties = new ProductImagesProperties();
+        properties.setDirectory(tempDir.toString());
+        properties.setMaxUploadSize(DataSize.ofMegabytes(5));
+        properties.setMaxWidth(800);
+        properties.setMaxHeight(800);
+        return new ProductImageService(properties, remoteImageFetcher);
     }
 
     private MockMultipartFile imageFile(String name, String contentType, int width, int height) throws Exception {

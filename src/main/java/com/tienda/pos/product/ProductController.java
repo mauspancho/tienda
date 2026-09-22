@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -244,6 +245,18 @@ public class ProductController {
         redirectAttributes.addAttribute("direction", "desc".equalsIgnoreCase(direction) ? "desc" : "asc");
         redirectAttributes.addAttribute("page", Math.max(page, 0));
         return "redirect:/admin/products";
+    }
+
+    @PostMapping("/products/{id}/whatsapp-promotion/state")
+    @ResponseBody
+    public ResponseEntity<Void> updateWhatsappPromotionState(@PathVariable Long id,
+                                                              @RequestParam(defaultValue = "false") boolean selected) {
+        try {
+            productService.setWhatsappPromotion(id, selected);
+            return ResponseEntity.noContent().build();
+        } catch (DomainException ex) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     private void prepareForm(Model model, ProductForm form) {
