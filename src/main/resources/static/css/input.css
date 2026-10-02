@@ -1581,6 +1581,30 @@ html[data-theme="sunset"] .camera-session-summary {
   background: color-mix(in srgb, hsl(var(--p)) 14%, hsl(var(--b1)));
   color: hsl(var(--p));
 }
+.purchase-product-menu {
+  min-width: min(34rem, calc(100vw - 3rem));
+}
+.purchase-product-option-name,
+.purchase-product-option-meta {
+  display: block;
+}
+.purchase-product-option-name {
+  font-weight: 700;
+}
+.purchase-product-option-meta {
+  margin-top: .15rem;
+  color: hsl(var(--bc) / .68);
+  font-size: .8rem;
+}
+.product-autocomplete-option[aria-selected="true"] .purchase-product-option-meta,
+.product-autocomplete-option:hover .purchase-product-option-meta {
+  color: inherit;
+}
+.purchase-product-empty {
+  padding: .75rem;
+  color: hsl(var(--bc) / .65);
+  font-size: .9rem;
+}
 html[data-theme="tienda"] .product-autocomplete-menu,
 html[data-theme="tienda"] .product-autocomplete-option {
   background-color: #ffffff !important;

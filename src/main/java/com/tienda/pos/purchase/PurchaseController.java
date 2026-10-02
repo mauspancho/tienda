@@ -5,6 +5,7 @@ import com.tienda.pos.product.ProductRepository;
 import com.tienda.pos.supplier.SupplierRepository;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -38,7 +39,7 @@ public class PurchaseController {
         model.addAttribute("purchases", purchaseRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(0, 50)));
         model.addAttribute("purchaseForm", new PurchaseForm());
         model.addAttribute("suppliers", supplierRepository.findByActiveTrueOrderByNameAsc());
-        model.addAttribute("products", productRepository.findAll(PageRequest.of(0, 500)).getContent());
+        model.addAttribute("products", productRepository.findAll(Sort.by(Sort.Direction.ASC, "name")));
         model.addAttribute("fundingSources", PurchaseFundingSource.values());
         return "purchases/index";
     }
