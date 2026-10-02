@@ -21,9 +21,11 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class CategoryController {
 
     private final CategoryRepository categoryRepository;
+    private final CategoryService categoryService;
 
-    public CategoryController(CategoryRepository categoryRepository) {
+    public CategoryController(CategoryRepository categoryRepository, CategoryService categoryService) {
         this.categoryRepository = categoryRepository;
+        this.categoryService = categoryService;
     }
 
     @GetMapping("/categories")
@@ -43,16 +45,14 @@ public class CategoryController {
             redirectAttributes.addFlashAttribute("error", "El nombre de la categoría es obligatorio.");
             return "redirect:/admin/categories";
         }
-        categoryRepository.save(category);
+        categoryService.save(category);
         redirectAttributes.addFlashAttribute("success", "Categoría guardada correctamente.");
         return "redirect:/admin/categories";
     }
 
     @PostMapping("/categories/{id}/toggle")
     public String toggle(@PathVariable Long id, RedirectAttributes redirectAttributes) {
-        Category category = categoryRepository.findById(id).orElseThrow();
-        category.setActive(!category.isActive());
-        categoryRepository.save(category);
+        categoryService.toggle(id);
         redirectAttributes.addFlashAttribute("success", "Categoría actualizada.");
         return "redirect:/admin/categories";
     }

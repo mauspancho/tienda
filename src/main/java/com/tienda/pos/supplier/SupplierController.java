@@ -20,9 +20,11 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class SupplierController {
 
     private final SupplierRepository supplierRepository;
+    private final SupplierService supplierService;
 
-    public SupplierController(SupplierRepository supplierRepository) {
+    public SupplierController(SupplierRepository supplierRepository, SupplierService supplierService) {
         this.supplierRepository = supplierRepository;
+        this.supplierService = supplierService;
     }
 
     @GetMapping("/suppliers")
@@ -42,7 +44,7 @@ public class SupplierController {
             redirectAttributes.addFlashAttribute("error", "Revisa los datos del proveedor.");
             return "redirect:/admin/suppliers";
         }
-        supplierRepository.save(supplier);
+        supplierService.save(supplier);
         redirectAttributes.addFlashAttribute("success", "Proveedor guardado correctamente.");
         return "redirect:/admin/suppliers";
     }

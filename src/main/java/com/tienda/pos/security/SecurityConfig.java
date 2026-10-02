@@ -3,6 +3,7 @@ package com.tienda.pos.security;
 import com.tienda.pos.common.NormalMode;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -26,11 +27,13 @@ public class SecurityConfig {
     }
 
     @Bean
+    @Order(2)
     SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationSuccessHandler successHandler) throws Exception {
         return http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/producto/**", "/catalog/**", "/css/**", "/js/**", "/vendor/**",
-                                "/images/**", "/uploads/products/**", "/uploads/catalog/**", "/admin/login", "/error").permitAll()
+                                "/images/**", "/uploads/products/**", "/uploads/catalog/**", "/admin/login", "/error",
+                                "/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/admin/users/**", "/admin/settings/**", "/admin/reports/**", "/admin/cash/**", "/admin/finances", "/admin/finances/**").hasRole("ADMIN")
                         .requestMatchers("/admin/products/**", "/admin/categories/**", "/admin/suppliers/**", "/admin/purchases/**",
                                 "/admin/inventory/**", "/admin/expenses/**").hasRole("ADMIN")

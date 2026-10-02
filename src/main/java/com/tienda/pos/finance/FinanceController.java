@@ -71,22 +71,7 @@ public class FinanceController {
                            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         LocalDate today = LocalDate.now();
         FinanceRange range = financeService.range("CUSTOM", from == null ? today.minusDays(29) : from, to == null ? today : to);
-        StringBuilder csv = new StringBuilder("Fecha,Ventas,Costo vendido,Ganancia bruta,Gastos,Utilidad neta,Compras,Reinversion,Aportaciones,Retiros,Tickets,Unidades\n");
-        for (DailyFinanceSummary day : financeService.daily(range.from(), range.to())) {
-            csv.append(day.date()).append(',')
-                    .append(number(day.sales())).append(',')
-                    .append(number(day.costOfGoodsSold())).append(',')
-                    .append(number(day.grossProfit())).append(',')
-                    .append(number(day.expenses())).append(',')
-                    .append(number(day.netProfit())).append(',')
-                    .append(number(day.purchases())).append(',')
-                    .append(number(day.reinvestment())).append(',')
-                    .append(number(day.ownerContributions())).append(',')
-                    .append(number(day.ownerWithdrawals())).append(',')
-                    .append(day.tickets()).append(',')
-                    .append(number(day.soldUnits())).append('\n');
-        }
-        return csv.toString();
+        return financeService.dailyCsv(range.from(), range.to());
     }
 
     @GetMapping("/capital")
@@ -138,7 +123,4 @@ public class FinanceController {
         return Arrays.stream(CapitalMovementType.values()).filter(CapitalMovementType::isManual).toList();
     }
 
-    private String number(BigDecimal value) {
-        return value == null ? "0.00" : value.toPlainString();
-    }
 }

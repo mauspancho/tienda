@@ -105,7 +105,7 @@ Los productos marcados como promocionados se muestran en el slider publico, con 
 
 ## Imagenes de productos
 
-Los productos conservan la referencia final en la columna `product.image_url`. Si escribes una URL externa, solo se guarda la URL; si subes un archivo manual, la aplicación guarda una copia optimizada fuera del JAR en:
+Los productos conservan la referencia final en la columna `product.image_url`. Si subes un archivo manual, la aplicación guarda una copia optimizada fuera del JAR en:
 
 ```text
 data/products/
@@ -132,7 +132,7 @@ tienda:
 
 El formulario acepta JPEG, PNG o WebP de hasta 5 MB, valida que el archivo sea una imagen real y genera nombres UUID para evitar usar nombres originales. Para no agregar dependencias nuevas, la copia optimizada se guarda como JPEG. Al reemplazar o quitar una imagen solo se eliminan archivos locales bajo `/uploads/products/`; nunca se borra una URL externa.
 
-Open Food Facts puede precargar una URL de imagen, pero la aplicación no la descarga automáticamente. Si subes una imagen manualmente, esa imagen reemplaza la URL externa.
+Cuando Open Food Facts proporciona una imagen, la aplicación intenta descargarla y guardarla como imagen local. Así, el catálogo y la API no dependen de que el servidor externo siga disponible. Si la descarga falla, el alta puede continuar sin imagen; una imagen manual reemplaza la referencia anterior.
 ## Logs
 
 Los logs se escriben en:
@@ -167,7 +167,7 @@ La pantalla `Productos -> Nuevo producto` incluye un bloque para escanear o escr
 - categoría sugerida;
 - URL de imagen.
 
-La integración no descarga imágenes al servidor y nunca obtiene stock, costo ni precio desde Open Food Facts. Esos datos siguen siendo propios de la tienda y deben capturarse manualmente antes de guardar.
+La integración descarga localmente la imagen disponible, pero nunca obtiene stock, costo ni precio desde Open Food Facts. Esos datos siguen siendo propios de la tienda y deben capturarse manualmente antes de guardar.
 
 La configuración por defecto es:
 
@@ -242,3 +242,94 @@ En `Compras` se captura el origen del dinero:
 La pantalla `Finanzas -> Historico diario` permite consultar por fecha y exportar CSV. La pantalla `Finanzas -> Capital` permite registrar inversion inicial, aportaciones, retiros y ajustes manuales.
 
 `V7__add_finance_module.sql` agrega `capital_movement`, `purchase.funding_source` e indices para consultas financieras.
+
+## API REST v1
+
+La interfaz web y la API comparten los mismos Services y Repositories. La web conserva Form Login, sesión `JSESSIONID` y CSRF bajo `/admin/**`; la API usa JSON, es stateless y acepta Bearer Token exclusivamente bajo `/api/v1/**`.
+
+La URL base es:
+
+```text
+http://servidor:8080/api/v1
+```
+
+HTTP puede utilizarse durante desarrollo o dentro de una red local controlada. Para acceso externo o producción debe publicarse detrás de HTTPS.
+
+### Autenticación
+
+- `POST /api/v1/auth/login`: valida los mismos usuarios y contraseñas de la web y devuelve access token, refresh token y usuario.
+- `POST /api/v1/auth/refresh`: rota el refresh token y entrega un par nuevo.
+- `POST /api/v1/auth/logout`: revoca el refresh token indicado.
+- `GET /api/v1/auth/me`: devuelve el usuario autenticado y sus roles.
+
+El access token dura 15 minutos y el refresh token 30 días por defecto. Los refresh tokens se guardan como hash SHA-256, tienen expiración y revocación, y la reutilización de un token ya rotado revoca las sesiones activas del usuario.
+
+Configura un secreto estable y de al menos 32 bytes antes de usar la API en producción. Si se omite, se genera uno temporal al arrancar y todos los access tokens dejan de funcionar en el siguiente reinicio.
+
+```text
+TIENDA_API_JWT_SECRET=una-clave-aleatoria-de-32-bytes-o-mas
+TIENDA_API_ISSUER=tienda-pos
+TIENDA_API_ACCESS_TOKEN_TTL=15m
+TIENDA_API_REFRESH_TOKEN_TTL=30d
+TIENDA_API_CORS_ALLOWED_ORIGINS=https://app.ejemplo.mx,https://admin.ejemplo.mx
+TIENDA_API_DOCS_ENABLED=true
+```
+
+Los orígenes CORS están vacíos por defecto y se configuran como una lista separada por comas. No se habilitan credenciales CORS ni comodines. Una aplicación Android nativa no necesita CORS.
+
+### Compatibilidad y documentación
+
+- `GET /api/v1/health`: público y estable; identifica aplicación, versión de API y versión del servidor.
+- `GET /api/v1/info`: público; publica únicamente información no sensible de compatibilidad.
+- OpenAPI JSON: `/api-docs`.
+- Swagger UI: `/swagger-ui`.
+
+OpenAPI describe únicamente `/api/v1/**`. En producción puede deshabilitarse con `TIENDA_API_DOCS_ENABLED=false`.
+
+### Recursos
+
+- Productos: `/products`, `/products/{id}`, `/products/search`, `/products/code/{code}`, `/products/barcode/{barcode}`, alta y edición JSON/multipart, estado y promociones.
+- Catálogos: `/categories` y `/suppliers` con listado paginado, detalle, alta, edición y estado.
+- POS y ventas: `/pos`, `/pos/checkout`, `/sales`, `/sales/{folio}` y `/tickets/{folio}`.
+- Compras: `/purchases` con histórico, detalle y registro.
+- Inventario: `/inventory/stock`, `/inventory/movements`, ajustes y reversión.
+- Caja: `/cash/current`, apertura, cierre e histórico de sesiones con movimientos.
+- Administración: `/expenses`, `/finances`, `/reports`, `/users` y `/settings`.
+- Indicadores: `/dashboard` y `/dashboard/profit`.
+
+Los listados que pueden crecer usan `page`, `size` y, cuando aplica, `sort=campo,asc|desc`. El contrato paginado contiene `content`, `page`, `size`, `totalElements` y `totalPages`. Fechas se entregan en ISO-8601 e importes como `BigDecimal`, sin símbolos monetarios.
+
+`ROLE_ADMIN` administra todos los módulos. `ROLE_CAJERO` puede consultar productos activos, usar POS, abrir/cerrar su caja, registrar ventas, consultar sus propias ventas y ver los indicadores que ya permite la web. El servidor valida los permisos; no depende de que el cliente oculte acciones.
+
+`POST /api/v1/sales` y `POST /api/v1/purchases` aceptan opcionalmente `Idempotency-Key`. Repetir la misma clave con el mismo cuerpo devuelve el resultado original sin duplicar la operación; reutilizarla con otro cuerpo responde `409 Conflict`.
+
+### Ejemplos curl
+
+```bash
+curl http://localhost:8080/api/v1/health
+```
+
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"contraseña"}'
+```
+
+```bash
+curl "http://localhost:8080/api/v1/products?page=0&size=20&sort=name,asc" \
+  -H "Authorization: Bearer ACCESS_TOKEN"
+```
+
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"refreshToken":"REFRESH_TOKEN"}'
+```
+
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/logout \
+  -H "Content-Type: application/json" \
+  -d '{"refreshToken":"REFRESH_TOKEN"}'
+```
+
+Las migraciones `V9__add_api_refresh_tokens.sql` y `V10__add_api_idempotency.sql` crean el almacenamiento de refresh tokens y respuestas idempotentes sin alterar las tablas existentes.

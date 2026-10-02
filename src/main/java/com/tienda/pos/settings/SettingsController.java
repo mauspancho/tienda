@@ -1,6 +1,5 @@
 package com.tienda.pos.settings;
 
-import com.tienda.pos.catalog.CatalogImageService;
 import com.tienda.pos.common.NormalMode;
 import com.tienda.pos.exception.DomainException;
 import jakarta.validation.Valid;
@@ -21,17 +20,15 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @PreAuthorize("hasRole('ADMIN')")
 public class SettingsController {
 
-    private final BusinessSettingsRepository settingsRepository;
-    private final CatalogImageService catalogImageService;
+    private final SettingsService settingsService;
 
-    public SettingsController(BusinessSettingsRepository settingsRepository, CatalogImageService catalogImageService) {
-        this.settingsRepository = settingsRepository;
-        this.catalogImageService = catalogImageService;
+    public SettingsController(SettingsService settingsService) {
+        this.settingsService = settingsService;
     }
 
     @GetMapping("/settings")
     public String settings(Model model) {
-        model.addAttribute("settings", settingsRepository.findById(1L).orElseGet(BusinessSettings::new));
+        model.addAttribute("settings", settingsService.current());
         return "settings/index";
     }
 
@@ -44,46 +41,13 @@ public class SettingsController {
             redirectAttributes.addFlashAttribute("error", "Revisa la configuración.");
             return "redirect:/admin/settings";
         }
-        BusinessSettings current = settingsRepository.findById(1L).orElseGet(BusinessSettings::new);
-        String previousLogo = current.getLogoPath();
-        String newLogo = null;
         try {
-            current.setId(1L);
-            current.setStoreName(settings.getStoreName());
-            current.setAddress(settings.getAddress());
-            current.setPhone(settings.getPhone());
-            current.setTaxId(settings.getTaxId());
-            current.setCurrency(settings.getCurrency());
-            current.setCurrencySymbol(settings.getCurrencySymbol());
-            current.setTimezone(settings.getTimezone());
-            current.setDefaultTax(settings.getDefaultTax());
-            current.setCatalogEnabled(settings.isCatalogEnabled());
-            current.setCatalogTitle(blankToNull(settings.getCatalogTitle()));
-            current.setCatalogSubtitle(blankToNull(settings.getCatalogSubtitle()));
-            current.setPromotionTitle(blankToNull(settings.getPromotionTitle()));
-            current.setNegativeStockAllowed(settings.isNegativeStockAllowed());
-            if (removeLogo) {
-                current.setLogoPath(null);
-            }
-            if (logoFile != null && !logoFile.isEmpty()) {
-                newLogo = catalogImageService.store(logoFile);
-                current.setLogoPath(newLogo);
-            }
-            settingsRepository.save(current);
-            if ((removeLogo || newLogo != null) && catalogImageService.isLocalLogo(previousLogo)) {
-                catalogImageService.deleteLocalLogo(previousLogo);
-            }
+            settingsService.save(settings, logoFile, removeLogo);
             redirectAttributes.addFlashAttribute("success", "Configuración guardada.");
         } catch (DomainException ex) {
-            if (newLogo != null) {
-                catalogImageService.deleteLocalLogo(newLogo);
-            }
             redirectAttributes.addFlashAttribute("error", ex.getMessage());
         }
         return "redirect:/admin/settings";
     }
 
-    private String blankToNull(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
-    }
 }

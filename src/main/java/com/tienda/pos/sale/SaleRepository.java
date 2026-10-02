@@ -14,10 +14,10 @@ import java.util.Optional;
 
 public interface SaleRepository extends JpaRepository<Sale, Long> {
 
-    @EntityGraph(attributePaths = {"cashier", "customer", "payment", "items"})
+    @EntityGraph(attributePaths = {"cashier", "customer", "payment", "items", "items.product"})
     Optional<Sale> findByFolio(String folio);
 
-    @EntityGraph(attributePaths = {"cashier", "customer", "payment", "items"})
+    @EntityGraph(attributePaths = {"cashier", "customer", "payment", "items", "items.product"})
     Optional<Sale> findByFolioAndCashierUsername(String folio, String username);
 
     @EntityGraph(attributePaths = {"cashier", "customer", "payment", "items", "items.product"})

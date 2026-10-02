@@ -27,7 +27,7 @@ public class UserService {
     }
 
     @Transactional
-    public void create(UserForm form) {
+    public AppUser create(UserForm form) {
         if (userRepository.existsByUsername(form.getUsername())) {
             throw new DomainException("El usuario ya existe.");
         }
@@ -37,11 +37,11 @@ public class UserService {
         AppUser user = new AppUser();
         applyEditableFields(user, form);
         user.setPasswordHash(passwordEncoder.encode(form.getPassword()));
-        userRepository.save(user);
+        return userRepository.save(user);
     }
 
     @Transactional
-    public void update(Long id, UserForm form) {
+    public AppUser update(Long id, UserForm form) {
         AppUser user = userRepository.findById(id).orElseThrow(() -> new DomainException("Usuario no encontrado."));
         String requestedUsername = form.getUsername().trim();
         userRepository.findByUsername(requestedUsername)
@@ -54,17 +54,17 @@ public class UserService {
             }
             user.setPasswordHash(passwordEncoder.encode(form.getPassword()));
         }
-        userRepository.save(user);
+        return userRepository.save(user);
     }
 
     @Transactional
-    public void toggleActive(Long id) {
+    public AppUser toggleActive(Long id) {
         AppUser user = userRepository.findById(id).orElseThrow(() -> new DomainException("Usuario no encontrado."));
         if (user.getUsername().equals(CurrentUser.username()) && user.isActive()) {
             throw new DomainException("No puedes desactivar tu propio usuario activo.");
         }
         user.setActive(!user.isActive());
-        userRepository.save(user);
+        return userRepository.save(user);
     }
 
     @Transactional

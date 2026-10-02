@@ -237,6 +237,15 @@ public class ProductService {
         productRepository.save(product);
     }
 
+    @Transactional
+    public void setActive(Long productId, boolean active) {
+        Product product = productRepository.findByIdForUpdate(productId)
+                .orElseThrow(() -> new DomainException("Producto no encontrado."));
+        product.setActive(active);
+        product.setUpdatedBy(CurrentUser.username());
+        productRepository.save(product);
+    }
+
     private void validateUniqueCode(String code, Long currentId) {
         if (code == null || code.isBlank()) return;
         productRepository.findByCode(code.trim())

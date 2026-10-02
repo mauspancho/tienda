@@ -25,7 +25,8 @@ public class SetupModeEnvironmentPostProcessor implements EnvironmentPostProcess
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
-        boolean configured = hasExternalDatasourceConfig();
+        String forcedMode = System.getProperty("tienda.setup-mode");
+        boolean configured = forcedMode == null ? hasExternalDatasourceConfig() : !Boolean.parseBoolean(forcedMode);
         Map<String, Object> properties = new LinkedHashMap<>();
         properties.put("tienda.setup-mode", configured ? "false" : "true");
         if (!configured) {

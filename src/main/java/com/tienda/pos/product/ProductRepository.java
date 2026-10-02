@@ -46,7 +46,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             """)
     Page<Product> search(@Param("q") String query, Pageable pageable);
 
-    @EntityGraph(attributePaths = "category")
+    @EntityGraph(attributePaths = {"category", "supplier"})
     @Query("""
             select p from Product p
             left join p.category c
@@ -77,7 +77,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                          @Param("whatsapp") Boolean whatsapp,
                          Pageable pageable);
 
-    @EntityGraph(attributePaths = "category")
+    @EntityGraph(attributePaths = {"category", "supplier"})
     @Query("""
             select p from Product p
             left join p.category c

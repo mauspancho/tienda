@@ -119,6 +119,26 @@ public class FinanceService {
         return periodSummary(date, date);
     }
 
+    public String dailyCsv(LocalDate from, LocalDate to) {
+        FinanceRange range = range("CUSTOM", from, to);
+        StringBuilder csv = new StringBuilder("Fecha,Ventas,Costo vendido,Ganancia bruta,Gastos,Utilidad neta,Compras,Reinversion,Aportaciones,Retiros,Tickets,Unidades\n");
+        for (DailyFinanceSummary day : daily(range.from(), range.to())) {
+            csv.append(day.date()).append(',')
+                    .append(csvNumber(day.sales())).append(',')
+                    .append(csvNumber(day.costOfGoodsSold())).append(',')
+                    .append(csvNumber(day.grossProfit())).append(',')
+                    .append(csvNumber(day.expenses())).append(',')
+                    .append(csvNumber(day.netProfit())).append(',')
+                    .append(csvNumber(day.purchases())).append(',')
+                    .append(csvNumber(day.reinvestment())).append(',')
+                    .append(csvNumber(day.ownerContributions())).append(',')
+                    .append(csvNumber(day.ownerWithdrawals())).append(',')
+                    .append(day.tickets()).append(',')
+                    .append(csvNumber(day.soldUnits())).append('\n');
+        }
+        return csv.toString();
+    }
+
     @Transactional
     public CapitalMovement registerCapitalMovement(CapitalMovementForm form) {
         if (form.getType() == null || !form.getType().isManual() || form.getType() == CapitalMovementType.REINVESTMENT) {
@@ -313,6 +333,10 @@ public class FinanceService {
 
     private BigDecimal money(BigDecimal value) {
         return MoneyUtils.money(value);
+    }
+
+    private String csvNumber(BigDecimal value) {
+        return value == null ? "0.00" : value.toPlainString();
     }
 
     private BigDecimal value(Object[] row, int index) {

@@ -30,6 +30,15 @@ spring:
   flyway:
     enabled: true
 
+springdoc:
+  api-docs:
+    enabled: ${TIENDA_API_DOCS_ENABLED:true}
+    path: /api-docs
+  swagger-ui:
+    enabled: ${TIENDA_API_DOCS_ENABLED:true}
+    path: /swagger-ui
+  paths-to-match: /api/v1/**
+
 logging:
   level:
     root: INFO
@@ -46,6 +55,12 @@ tienda:
   timezone: America/Mexico_City
   currency: MXN
   currency-symbol: "$"
+  api:
+    issuer: ${TIENDA_API_ISSUER:tienda-pos}
+    jwt-secret: ${TIENDA_API_JWT_SECRET:}
+    access-token-ttl: ${TIENDA_API_ACCESS_TOKEN_TTL:15m}
+    refresh-token-ttl: ${TIENDA_API_REFRESH_TOKEN_TTL:30d}
+    cors-allowed-origins: ${TIENDA_API_CORS_ALLOWED_ORIGINS:}
   catalog-images:
     directory: ./data/catalog
     public-path: /uploads/catalog

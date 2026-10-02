@@ -21,10 +21,13 @@ public class ExpenseController {
 
     private final ExpenseRepository expenseRepository;
     private final ExpenseCategoryRepository categoryRepository;
+    private final ExpenseService expenseService;
 
-    public ExpenseController(ExpenseRepository expenseRepository, ExpenseCategoryRepository categoryRepository) {
+    public ExpenseController(ExpenseRepository expenseRepository, ExpenseCategoryRepository categoryRepository,
+                             ExpenseService expenseService) {
         this.expenseRepository = expenseRepository;
         this.categoryRepository = categoryRepository;
+        this.expenseService = expenseService;
     }
 
     @GetMapping("/expenses")
@@ -38,13 +41,7 @@ public class ExpenseController {
     public String save(@RequestParam String concept, @RequestParam Long categoryId, @RequestParam BigDecimal amount,
                        @RequestParam LocalDate expenseDate, @RequestParam(required = false) String notes,
                        RedirectAttributes redirectAttributes) {
-        Expense expense = new Expense();
-        expense.setConcept(concept);
-        expense.setCategory(categoryRepository.findById(categoryId).orElse(null));
-        expense.setAmount(amount);
-        expense.setExpenseDate(expenseDate);
-        expense.setNotes(notes);
-        expenseRepository.save(expense);
+        expenseService.create(concept, categoryId, amount, expenseDate, notes);
         redirectAttributes.addFlashAttribute("success", "Gasto registrado.");
         return "redirect:/admin/expenses";
     }

@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public interface PurchaseRepository extends JpaRepository<Purchase, Long> {
     @EntityGraph(attributePaths = {"supplier"})
@@ -17,6 +18,13 @@ public interface PurchaseRepository extends JpaRepository<Purchase, Long> {
 
     @EntityGraph(attributePaths = {"supplier"})
     Page<Purchase> findByFundingSourceAndPurchaseDateBetweenOrderByPurchaseDateDesc(PurchaseFundingSource fundingSource, LocalDate from, LocalDate to, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"supplier"})
+    Page<Purchase> findByPurchaseDateBetweenOrderByPurchaseDateDesc(LocalDate from, LocalDate to, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"supplier", "user", "items", "items.product"})
+    @Query("select p from Purchase p where p.id = :id")
+    Optional<Purchase> findDetailedById(@Param("id") Long id);
 
     @Query("select coalesce(sum(p.total), 0) from Purchase p where p.purchaseDate between :from and :to and p.status = 'CONFIRMED'")
     BigDecimal totalBetween(@Param("from") LocalDate from, @Param("to") LocalDate to);
