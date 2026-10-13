@@ -1,0 +1,17 @@
+.gradle/
+.idea/
+.kotlin/
+**/build/
+local.properties
+*.jks
+*.keystore
+.tools/
+.gradle-user/
+*.log
+backend-classpath.txt
+validation/*.class
+# Keep Android source packages despite the server repository's generic data/ ignore.
+!app/src/main/java/com/mauspancho/tiendapos/data/
+!app/src/main/java/com/mauspancho/tiendapos/data/**
+server-docs-login.html
+docs/screenshots/*-ui.xml
