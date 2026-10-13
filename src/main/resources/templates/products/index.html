@@ -2,15 +2,33 @@
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Productos</title><link rel="stylesheet" th:href="@{/css/app.css}">
+  <meta name="_csrf" th:content="${_csrf.token}"><meta name="_csrf_header" th:content="${_csrf.headerName}">
+  <title>Productos</title><link rel="stylesheet" th:href="@{/vendor/datatables/dataTables.dataTables.min.css}"><link rel="stylesheet" th:href="@{/vendor/datatables/columnControl.dataTables.min.css}"><link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
 <body>
 <div class="app-shell"><div th:replace="~{fragments/layout :: sidebar}"></div><main class="main"><div th:replace="~{fragments/layout :: header}"></div><section class="content">
 <div class="page-title"><h1>Productos</h1><a class="btn btn-primary" th:href="@{/admin/products/new}">Nuevo producto</a></div><div th:replace="~{fragments/layout :: alerts}"></div>
-<form class="card" method="get"><div class="field"><label>Buscar</label><input name="q" th:value="${q}" placeholder="Nombre, código o código de barras"></div></form>
+<form class="card product-filter-form" method="get" th:action="@{/admin/products}" data-product-filter-form>
+  <div class="product-filter-grid">
+    <div class="field product-filter-wide"><label>Búsqueda general</label><input name="q" th:value="${q}" placeholder="Código, barras, nombre, marca o categoría" autocomplete="off" data-product-filter></div>
+    <div class="field product-autocomplete" data-product-autocomplete><label>Nombre</label><input name="name" th:value="${name}" placeholder="Escribe para ver coincidencias" autocomplete="off" data-product-filter data-autocomplete-field="name" aria-autocomplete="list" aria-expanded="false"><div class="product-autocomplete-menu" role="listbox" data-autocomplete-menu hidden></div></div>
+    <div class="field product-autocomplete" data-product-autocomplete><label>Marca</label><input name="brand" th:value="${brand}" placeholder="Escribe para ver marcas" autocomplete="off" data-product-filter data-autocomplete-field="brand" aria-autocomplete="list" aria-expanded="false"><div class="product-autocomplete-menu" role="listbox" data-autocomplete-menu hidden></div></div>
+    <div class="field"><label>Categoría</label><select name="categoryId" data-product-filter><option value="">Todas</option><option th:each="category : ${categories}" th:value="${category.id}" th:text="${category.name}" th:selected="${categoryId != null and categoryId == category.id}"></option></select></div>
+    <div class="field"><label>Precio mínimo</label><input type="number" name="minPrice" th:value="${minPrice}" min="0" step="0.01" inputmode="decimal" placeholder="$0.00" data-product-filter></div>
+    <div class="field"><label>Precio máximo</label><input type="number" name="maxPrice" th:value="${maxPrice}" min="0" step="0.01" inputmode="decimal" placeholder="Sin límite" data-product-filter></div>
+    <div class="field"><label>Estado</label><select name="active" data-product-filter><option value="" th:selected="${active == null}">Todos</option><option value="true" th:selected="${active != null and active}">Activos</option><option value="false" th:selected="${active != null and !active}">Inactivos</option></select></div>
+    <div class="field"><label>Promoción WhatsApp</label><select name="whatsapp" data-product-filter><option value="" th:selected="${whatsapp == null}">Todos</option><option value="true" th:selected="${whatsapp != null and whatsapp}">Seleccionados</option><option value="false" th:selected="${whatsapp != null and !whatsapp}">No seleccionados</option></select></div>
+  </div>
+  <input type="hidden" name="page" value="0">
+  <div class="product-filter-actions"><button class="btn btn-primary" type="submit">Aplicar filtros</button><a class="btn btn-muted" th:href="@{/admin/products}" data-clear-product-filters>Limpiar</a></div>
+</form>
+<div class="product-results" data-product-results aria-live="polite">
 <div class="table-wrap" style="margin-top:16px">
-  <table>
-    <tr><th>Código</th><th>Producto</th><th>Precio</th><th>Costo</th><th>Stock</th><th>Margen</th><th></th></tr>
+  <table id="productsTable" class="products-table display" data-products-table th:data-source="@{/admin/api/products/table}" th:data-start="${products.number * products.size}" th:data-sort="${sort}" th:data-direction="${direction}">
+    <thead><tr>
+      <th>Código</th><th>Producto</th><th>Marca</th><th>Precio</th><th>Costo</th><th>Stock</th><th>Margen</th><th>Promoción WhatsApp</th><th></th>
+    </tr></thead>
+    <tbody>
     <tr th:each="p:${products.content}">
       <td>
         <div class="flex items-center gap-2">
@@ -18,14 +36,39 @@
           <button class="btn btn-muted btn-sm" type="button" th:if="${p.barcode != null and !#strings.isEmpty(p.barcode)}" th:data-label-url="@{/admin/products/{id}/barcode-label(id=${p.id})}" th:data-label-product="${p.name}" th:data-label-barcode="${p.barcode}" data-open-label-modal>Imprimir</button>
         </div>
       </td>
-      <td><div class="product-list-product"><img class="product-thumb" th:if="${p.imageUrl != null and !#strings.isEmpty(p.imageUrl)}" th:src="${p.imageUrl}" alt="" loading="lazy"><span class="product-thumb product-thumb-placeholder" th:unless="${p.imageUrl != null and !#strings.isEmpty(p.imageUrl)}">▣</span><div><strong th:text="${p.name}"></strong><br><span class="muted" th:text="${p.barcode}"></span></div></div></td>
+      <td><div class="product-list-product"><img class="product-thumb" th:if="${p.imageUrl != null and !#strings.isEmpty(p.imageUrl)}" th:src="${p.imageUrl}" alt="" loading="lazy"><span class="product-thumb product-thumb-placeholder" th:unless="${p.imageUrl != null and !#strings.isEmpty(p.imageUrl)}">▣</span><div><strong th:text="${p.name}"></strong><div class="product-meta"><span th:if="${p.brand != null and !#strings.isEmpty(p.brand)}" th:text="${p.brand}"></span><span th:if="${p.category != null}" th:text="${p.category.name}"></span><span th:if="${p.barcode != null and !#strings.isEmpty(p.barcode)}" th:text="${p.barcode}"></span></div></div></div></td>
+      <td th:text="${p.brand}"></td>
       <td th:text="${@display.money(p.salePrice)}"></td>
       <td th:text="${@display.money(p.purchaseCost)}"></td>
       <td><span th:class="${p.hasLowStock() ? 'badge badge-yellow' : 'badge badge-green'}" th:text="${@display.number(p.currentStock)}"></span></td>
       <td th:text="${@display.percent(p.marginPercent())}"></td>
+      <td>
+        <form class="whatsapp-promotion-form" th:action="@{/admin/products/{id}/whatsapp-promotion(id=${p.id})}" method="post">
+          <input type="hidden" name="q" th:value="${q}">
+          <input type="hidden" name="name" th:value="${name}">
+          <input type="hidden" name="brand" th:value="${brand}">
+          <input type="hidden" name="categoryId" th:value="${categoryId}">
+          <input type="hidden" name="minPrice" th:value="${minPrice}">
+          <input type="hidden" name="maxPrice" th:value="${maxPrice}">
+          <input type="hidden" name="active" th:value="${active}">
+          <input type="hidden" name="whatsapp" th:value="${whatsapp}">
+          <input type="hidden" name="sort" th:value="${sort}">
+          <input type="hidden" name="direction" th:value="${direction}">
+          <input type="hidden" name="page" th:value="${products.number}">
+          <label class="inline-flex items-center cursor-pointer whitespace-nowrap">
+            <input type="checkbox" name="selected" value="true" class="sr-only peer" th:checked="${p.promocionWhatsapp}" th:attr="aria-label=|Promoción WhatsApp para ${p.name}|" data-whatsapp-promotion>
+            <span class="relative w-9 h-5 bg-base-300 rounded-full peer peer-focus:ring-4 peer-focus:ring-green-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border after:border-base-300 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-600" aria-hidden="true"></span>
+            <span class="select-none ms-3 text-sm font-medium text-base-content peer-checked:text-green-700" th:text="${p.promocionWhatsapp ? 'Seleccionado' : 'No seleccionado'}"></span>
+          </label>
+        </form>
+      </td>
       <td><div class="join"><a class="btn btn-muted join-item" th:href="@{'/admin/products/' + ${p.id} + '/edit'}">Editar</a><form class="join-item" th:if="${!p.promoted}" th:action="@{/admin/products/{id}/promote(id=${p.id})}" method="post"><button class="btn btn-primary" type="submit">Promocionar</button></form><form class="join-item" th:if="${p.promoted}" th:action="@{/admin/products/{id}/unpromote(id=${p.id})}" method="post"><button class="btn btn-muted" type="submit">Quitar promoción</button></form></div><span th:if="${p.promoted}" class="badge badge-yellow mt-2">★ Promocionado</span></td>
     </tr>
+    <tr th:if="${products.empty}"><td colspan="9" class="muted">No hay productos para mostrar.</td></tr>
+    </tbody>
   </table>
+</div>
+
 </div>
 
 <dialog class="modal" data-label-modal>
@@ -44,39 +87,10 @@
   </div>
 </dialog>
 </section></main></div>
-<script>
-(() => {
-  const modal = document.querySelector('[data-label-modal]');
-  const quantityInput = document.querySelector('[data-label-quantity]');
-  const productName = document.querySelector('[data-label-product-name]');
-  const productBarcode = document.querySelector('[data-label-product-barcode]');
-  let labelUrl = '';
-
-  document.querySelectorAll('[data-open-label-modal]').forEach(button => {
-    button.addEventListener('click', () => {
-      labelUrl = button.dataset.labelUrl;
-      productName.textContent = button.dataset.labelProduct || 'Producto';
-      productBarcode.textContent = button.dataset.labelBarcode || '';
-      quantityInput.value = '1';
-      if (typeof modal.showModal === 'function') modal.showModal();
-      else modal.setAttribute('open', 'open');
-      setTimeout(() => quantityInput.focus(), 40);
-    });
-  });
-
-  document.querySelector('[data-label-cancel]')?.addEventListener('click', () => modal.close());
-  document.querySelector('[data-label-print]')?.addEventListener('click', () => {
-    const quantity = Math.max(1, Math.min(Number(quantityInput.value || 1), 500));
-    modal.close();
-    window.open(`${labelUrl}?quantity=${encodeURIComponent(quantity)}`, '_blank', 'noopener');
-  });
-
-  quantityInput?.addEventListener('keydown', event => {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      document.querySelector('[data-label-print]')?.click();
-    }
-  });
-})();
-</script>
+<script th:src="@{/vendor/jquery/jquery.min.js}"></script>
+<script th:src="@{/vendor/datatables/dataTables.min.js}"></script>
+<script th:src="@{/vendor/datatables/dataTables.dataTables.min.js}"></script>
+<script th:src="@{/vendor/datatables/dataTables.columnControl.min.js}"></script>
+<script th:src="@{/vendor/datatables/columnControl.dataTables.min.js}"></script>
+<script th:src="@{/js/product-table.js(v='20260921-1')}"></script>
 </body></html>

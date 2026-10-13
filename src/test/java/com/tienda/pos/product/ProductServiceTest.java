@@ -130,8 +130,13 @@ class ProductServiceTest {
         form.setMinimumStock(BigDecimal.ZERO);
         form.setUnit(UnitType.PIEZA);
         form.setActive(true);
+        String remoteImage = "https://images.openfoodfacts.org/images/products/750/105/530/0006/front_es.jpg";
+        form.setImageUrl(remoteImage);
         when(productRepository.findByTenantIdAndCode(1L, "PRD-12345678")).thenReturn(Optional.empty());
         when(productRepository.findByTenantIdAndBarcode(1L, "7501055300006")).thenReturn(Optional.empty());
+        when(productImageService.cleanImageReference(remoteImage)).thenReturn(remoteImage);
+        when(productImageService.isOpenFoodFactsImage(remoteImage)).thenReturn(true);
+        when(productImageService.storeOpenFoodFactsImage(remoteImage)).thenReturn("/uploads/products/local.jpg");
         Branch branch = new Branch();
         branch.setTenant(tenant);
         Warehouse warehouse = new Warehouse();
@@ -150,6 +155,8 @@ class ProductServiceTest {
 
         assertThat(saved.getTenant()).isSameAs(tenant);
         assertThat(saved.getCurrentStock()).isEqualByComparingTo(new BigDecimal("24.000"));
+        assertThat(saved.getImageUrl()).isEqualTo("/uploads/products/local.jpg");
+        verify(productImageService).storeOpenFoodFactsImage(remoteImage);
         ArgumentCaptor<InventoryMovement> movementCaptor = ArgumentCaptor.forClass(InventoryMovement.class);
         verify(movementRepository).save(movementCaptor.capture());
         InventoryMovement movement = movementCaptor.getValue();
@@ -189,6 +196,21 @@ class ProductServiceTest {
                 .isInstanceOf(DomainException.class)
                 .hasMessageContaining("código de barras");
         verify(productRepository, never()).save(any(Product.class));
+    }
+
+    @Test
+    void updatesWhatsappPromotionWithoutChangingCatalogPromotion() {
+        Product product = product("7501055300006");
+        product.setPromoted(true);
+        product.setPromotionOrder(3);
+        when(productRepository.findByIdAndTenantIdForUpdate(10L, 1L)).thenReturn(Optional.of(product));
+
+        service.setWhatsappPromotion(10L, true);
+
+        assertThat(product.isPromocionWhatsapp()).isTrue();
+        assertThat(product.isPromoted()).isTrue();
+        assertThat(product.getPromotionOrder()).isEqualTo(3);
+        verify(productRepository).save(product);
     }
 
     private Product product(String barcode) {

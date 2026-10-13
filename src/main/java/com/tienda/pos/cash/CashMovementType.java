@@ -7,5 +7,7 @@ public enum CashMovementType {
     WITHDRAWAL,
     DEPOSIT,
     REFUND,
-    CLOSING
+    CLOSING,
+    CREDIT_PAYMENT,
+    CREDIT_PAYMENT_REVERSAL
 }

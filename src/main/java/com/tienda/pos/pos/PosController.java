@@ -29,6 +29,7 @@ import java.math.BigDecimal;
 @PreAuthorize("hasAnyRole('ADMIN','CAJERO')")
 public class PosController {
 
+    private final com.tienda.pos.customer.CustomerRepository customerRepository;
     private final SaleService saleService;
     private final CashService cashService;
     private final CashRegisterSessionRepository cashRegisterSessionRepository;
@@ -37,7 +38,9 @@ public class PosController {
 
     public PosController(SaleService saleService, CashService cashService,
                          CashRegisterSessionRepository cashRegisterSessionRepository,
-                         AppUserRepository userRepository, CurrentTenant currentTenant) {
+                         AppUserRepository userRepository, CurrentTenant currentTenant,
+                         com.tienda.pos.customer.CustomerRepository customerRepository) {
+        this.customerRepository = customerRepository;
         this.saleService = saleService;
         this.cashService = cashService;
         this.cashRegisterSessionRepository = cashRegisterSessionRepository;
@@ -51,6 +54,8 @@ public class PosController {
         var currentCashSession = cashRegisterSessionRepository.findByTenantIdAndCashierAndOpenTrue(currentTenant.id(), cashier).orElse(null);
         model.addAttribute("currentCashSession", currentCashSession);
         model.addAttribute("cashOpen", currentCashSession != null);
+        model.addAttribute("creditCustomers", customerRepository.findByTenantIdAndActiveTrueOrderByNameAscLastNameAsc(currentTenant.id()).stream()
+                .filter(c -> !"Público General".equalsIgnoreCase(c.getName())).toList());
         return "pos/index";
     }
 

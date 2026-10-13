@@ -88,6 +88,9 @@ public class ProductService {
             if (uploadedImage) {
                 newLocalImageUrl = productImageService.store(imageFile);
                 imageUrl = newLocalImageUrl;
+            } else if (productImageService.isOpenFoodFactsImage(imageUrl)) {
+                newLocalImageUrl = productImageService.storeOpenFoodFactsImage(imageUrl);
+                imageUrl = newLocalImageUrl != null ? newLocalImageUrl : previousImageUrl;
             }
             product.setTenant(tenant);
             product.setCode(form.getCode().trim());
@@ -269,6 +272,15 @@ public class ProductService {
         productRepository.save(product);
     }
 
+    @Transactional
+    public void setWhatsappPromotion(Long productId, boolean selected) {
+        Long tenantId = currentTenant.id();
+        Product product = productRepository.findByIdAndTenantIdForUpdate(productId, tenantId)
+                .orElseThrow(() -> new DomainException("Producto no encontrado."));
+        product.setPromocionWhatsapp(selected);
+        productRepository.save(product);
+    }
+
     private void validateUniqueCode(Long tenantId, String code, Long currentId) {
         if (code == null || code.isBlank()) return;
         productRepository.findByTenantIdAndCode(tenantId, code.trim())
@@ -333,4 +345,13 @@ public class ProductService {
 
     private record CategoryMatch(String suggestion, Long categoryId) {
     }
+
+    @Transactional
+    public void setActive(Long id, boolean active) {
+        Product product = productRepository.findByIdAndTenantIdForUpdate(id, currentTenant.id())
+                .orElseThrow(() -> new DomainException("Producto no encontrado."));
+        product.setActive(active);
+        productRepository.save(product);
+    }
+
 }

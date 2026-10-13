@@ -35,7 +35,7 @@ public class UserService {
     }
 
     @Transactional
-    public void create(UserForm form) {
+    public AppUser create(UserForm form) {
         Tenant tenant = currentTenant.get();
         if (userRepository.existsByUsername(form.getUsername())) {
             throw new DomainException("El usuario ya existe.");
@@ -47,11 +47,11 @@ public class UserService {
         user.setTenant(tenant);
         applyEditableFields(user, form);
         user.setPasswordHash(passwordEncoder.encode(form.getPassword()));
-        userRepository.save(user);
+        return userRepository.save(user);
     }
 
     @Transactional
-    public void update(Long id, UserForm form) {
+    public AppUser update(Long id, UserForm form) {
         Long tenantId = currentTenant.id();
         AppUser user = userRepository.findByIdAndTenantId(id, tenantId).orElseThrow(() -> new DomainException("Usuario no encontrado."));
         requireTenantManaged(user);
@@ -60,6 +60,7 @@ public class UserService {
         if (userRepository.existsByUsernameAndIdNot(requestedUsername, id)) {
             throw new DomainException("El usuario ya existe.");
         }
+        user.revokeApiTokens();
         applyEditableFields(user, form);
         if (form.hasPassword()) {
             if (form.getPassword().length() < 8) {
@@ -71,10 +72,11 @@ public class UserService {
         if (!user.isActive() || !previousUsername.equals(user.getUsername())) {
             sessions.expireUserSessions(previousUsername);
         }
+        return user;
     }
 
     @Transactional
-    public void toggleActive(Long id) {
+    public AppUser toggleActive(Long id) {
         AppUser user = userRepository.findByIdAndTenantId(id, currentTenant.id()).orElseThrow(() -> new DomainException("Usuario no encontrado."));
         requireTenantManaged(user);
         if (user.getUsername().equals(CurrentUser.username()) && user.isActive()) {
@@ -83,6 +85,7 @@ public class UserService {
         user.setActive(!user.isActive());
         userRepository.save(user);
         if (!user.isActive()) sessions.expireUserSessions(user.getUsername());
+        return user;
     }
 
     @Transactional
@@ -124,7 +127,9 @@ public class UserService {
 
     private boolean hasHistory(Long userId) {
         Long tenantId = currentTenant.id();
-        return count("select count(s) from Sale s where s.tenant.id = :tenantId and s.cashier.id = :userId", tenantId, userId) > 0
+        return count("select count(c) from CreditCharge c where c.tenant.id = :tenantId and c.user.id = :userId", tenantId, userId) > 0
+                || count("select count(p) from CreditPayment p where p.tenant.id = :tenantId and p.user.id = :userId", tenantId, userId) > 0
+                || count("select count(s) from Sale s where s.tenant.id = :tenantId and s.cashier.id = :userId", tenantId, userId) > 0
                 || count("select count(p) from Purchase p where p.tenant.id = :tenantId and p.user.id = :userId", tenantId, userId) > 0
                 || count("select count(m) from InventoryMovement m where m.tenant.id = :tenantId and m.user.id = :userId", tenantId, userId) > 0
                 || count("select count(c) from CashRegisterSession c where c.tenant.id = :tenantId and c.cashier.id = :userId", tenantId, userId) > 0

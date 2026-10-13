@@ -7,6 +7,13 @@
   const results = document.querySelector("[data-search-results]");
   const checkoutButton = document.querySelector("[data-checkout]");
   const posPanel = document.querySelector("[data-cash-open]");
+  const creditCustomer = document.querySelector("[data-credit-customer]");
+  const customerSelect = document.querySelector("[data-customer-id]");
+  const immediatePayment = document.querySelector("[data-immediate-payment]");
+  const creditPage = posPanel?.dataset.creditPage === "true";
+  let previousCreditBalance = 0;
+  let creditBalanceEl = null;
+  let projectedBalanceEl = null;
   const cashOpen = posPanel?.dataset.cashOpen === "true";
   const cart = new Map();
   let busy = false;
@@ -15,6 +22,7 @@
   let lastInputValue = "";
   let fastInputStreak = 0;
   let lastAutoCode = "";
+  let scannerFocusPaused = document.querySelector("[name='settlementType']:checked")?.value === "CREDIT";
 
   const AUTO_SCAN_MIN_LENGTH = 4;
   const SCANNER_KEY_INTERVAL_MS = 55;
@@ -29,8 +37,8 @@
     message.className = kind === "error" ? "alert alert-error" : "alert alert-success";
   };
   const focusScanner = () => {
-    if (!cashOpen || input.disabled) return;
-    setTimeout(() => input.focus(), 40);
+    if (!cashOpen || input.disabled || scannerFocusPaused) return;
+    setTimeout(() => { if (!scannerFocusPaused) input.focus(); }, 40);
   };
   document.addEventListener("click", focusScanner);
   focusScanner();
@@ -70,6 +78,19 @@
   function normalizeCartQuantity(value) {
     const quantity = Math.floor(Number(value || 0));
     return Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
+  }
+
+  function parseScannerEntry(value) {
+    const text = String(value || "").trim();
+    const match = text.match(/^(\d+)\s*\*\s*(.*)$/);
+    if (!match) return { code: text, quantity: 1, hasMultiplier: false, valid: true };
+    const quantity = Number(match[1]);
+    return {
+      code: match[2].trim(),
+      quantity,
+      hasMultiplier: true,
+      valid: Number.isSafeInteger(quantity) && quantity > 0
+    };
   }
 
   function cartTotal() {
@@ -130,6 +151,33 @@
       cartBody.appendChild(tr);
     }
     totalEl.textContent = money(cartTotal());
+    if (projectedBalanceEl) projectedBalanceEl.textContent = money(previousCreditBalance + cartTotal());
+  }
+
+  async function loadCustomerBalance() {
+    if (!creditPage || !customerSelect?.value) {
+      previousCreditBalance = 0;
+      if (creditBalanceEl) creditBalanceEl.textContent = money(0);
+      if (projectedBalanceEl) projectedBalanceEl.textContent = money(cartTotal());
+      return;
+    }
+    const response = await fetch(`/admin/credits/customers/${encodeURIComponent(customerSelect.value)}/balance`);
+    if (!response.ok) return;
+    const data = await response.json();
+    previousCreditBalance = Number(data.balance || 0);
+    creditBalanceEl.textContent = money(previousCreditBalance);
+    projectedBalanceEl.textContent = money(previousCreditBalance + cartTotal());
+  }
+
+  async function refreshCreditCustomers() {
+    if (!customerSelect) return;
+    const selected = customerSelect.value;
+    const response = await fetch("/admin/credits/customers/options");
+    if (!response.ok) return;
+    const customers = await response.json();
+    customerSelect.replaceChildren(new Option("Seleccionar cliente", ""),
+      ...customers.map(customer => new Option(customer.name, String(customer.id))));
+    customerSelect.value = selected;
   }
 
   function registerUrlFor(barcode) {
@@ -158,12 +206,13 @@
     results.appendChild(panel);
   }
 
-  function addProduct(product) {
+  function addProduct(product, requestedQuantity = 1) {
+    const quantity = normalizeCartQuantity(requestedQuantity);
     const existing = cart.get(product.id);
-    if (existing) existing.quantity = Number(existing.quantity) + 1;
-    else cart.set(product.id, { ...product, quantity: 1 });
+    if (existing) existing.quantity = normalizeCartQuantity(existing.quantity) + quantity;
+    else cart.set(product.id, { ...product, quantity });
     render();
-    say("Producto agregado.");
+    say(quantity === 1 ? "Producto agregado." : `${quantity} piezas de ${product.name} agregadas.`);
     input.value = "";
     results.innerHTML = "";
     lastInputValue = "";
@@ -172,9 +221,18 @@
     focusScanner();
   }
 
-  async function fetchBarcode(code) {
-    const barcode = code.trim();
-    if (!barcode || busy || !cashOpen) return { status: "ignored", barcode };
+  async function fetchBarcode(entry) {
+    const parsed = parseScannerEntry(entry);
+    const barcode = parsed.code;
+    if (!parsed.valid) {
+      say("La cantidad debe ser un número entero mayor que cero.", "error");
+      return { status: "invalid", barcode };
+    }
+    if (!barcode) {
+      if (parsed.hasMultiplier) say("Escanea o escribe el código después de la cantidad y el asterisco.", "error");
+      return { status: "ignored", barcode };
+    }
+    if (busy || !cashOpen) return { status: "ignored", barcode };
     busy = true;
     try {
       const response = await fetch(`/admin/api/products/barcode/${encodeURIComponent(barcode)}`);
@@ -185,8 +243,8 @@
         return result;
       }
       const product = await response.json();
-      addProduct(product);
-      const result = { status: "found", barcode, product, productName: product.name, message: `${product.name} agregado.` };
+      addProduct(product, parsed.quantity);
+      const result = { status: "found", barcode, quantity: parsed.quantity, product, productName: product.name, message: `${product.name} agregado.` };
       notifyCameraLookup(result);
       return result;
     } catch (error) {
@@ -204,7 +262,7 @@
     }
   }
 
-  async function search(q) {
+  async function search(q, requestedQuantity = 1) {
     if (!cashOpen || q.length < 2) {
       results.innerHTML = "";
       return;
@@ -225,7 +283,7 @@
       meta.textContent = `${money(product.price)} · Stock ${number(product.stock)}`;
       text.append(name, document.createElement("br"), meta);
       node.appendChild(text);
-      node.addEventListener("click", () => addProduct(product));
+      node.addEventListener("click", () => addProduct(product, requestedQuantity));
       results.appendChild(node);
     });
   }
@@ -237,11 +295,12 @@
     }
   }
 
-  function scheduleAutoScanLookup(code) {
+  function scheduleAutoScanLookup(entry) {
     clearAutoScanTimer();
-    if (code.length < AUTO_SCAN_MIN_LENGTH || code === lastAutoCode) return;
-    lastAutoCode = code;
-    autoScanTimer = setTimeout(() => fetchBarcode(code), AUTO_SCAN_IDLE_MS);
+    const parsed = parseScannerEntry(entry);
+    if (!parsed.valid || parsed.code.length < AUTO_SCAN_MIN_LENGTH || entry === lastAutoCode) return;
+    lastAutoCode = entry;
+    autoScanTimer = setTimeout(() => fetchBarcode(entry), AUTO_SCAN_IDLE_MS);
   }
 
   function trackScannerInput(value) {
@@ -270,7 +329,11 @@
   document.addEventListener("barcode:detected", event => {
     const barcode = event.detail?.barcode;
     if (event.detail?.source !== "camera" || !barcode) return;
-    fetchBarcode(barcode);
+    const pending = parseScannerEntry(input.value);
+    const entry = pending.valid && pending.hasMultiplier && !pending.code
+      ? `${pending.quantity}*${barcode}`
+      : barcode;
+    fetchBarcode(entry);
   });
   input.addEventListener("keydown", event => {
     if (event.key === "Enter") {
@@ -281,8 +344,13 @@
   });
   input.addEventListener("input", event => {
     const value = event.target.value.trim();
+    const parsed = parseScannerEntry(value);
     trackScannerInput(value);
-    search(value);
+    if (!parsed.valid) {
+      results.innerHTML = "";
+      return;
+    }
+    search(parsed.code, parsed.quantity);
   });
   cartBody.addEventListener("input", event => {
     const id = Number(event.target.dataset.qty);
@@ -309,7 +377,17 @@
     }
     const csrf = document.querySelector("meta[name='_csrf']")?.content;
     const csrfHeader = document.querySelector("meta[name='_csrf_header']")?.content;
+    const settlementType = document.querySelector("[name='settlementType']:checked")?.value || "IMMEDIATE";
+    const customerId = customerSelect?.value ? Number(customerSelect.value) : null;
+    if (settlementType === "CREDIT" && !customerId) {
+      say("Selecciona un cliente para la venta a crédito.", "error");
+      return;
+    }
+    if (settlementType === "CREDIT" && !window.confirm(`Se agregarán ${money(cartTotal())} al adeudo del cliente. ¿Confirmar entrega?`)) return;
+    checkoutButton.disabled = true;
     const body = {
+      customerId,
+      settlementType,
       discount: Number(discountInput?.value || 0),
       receivedAmount: cartTotal(),
       paymentMethod: document.querySelector("[name='paymentMethod']:checked")?.value || "CASH",
@@ -317,15 +395,42 @@
     };
     const headers = { "Content-Type": "application/json" };
     if (csrf && csrfHeader) headers[csrfHeader] = csrf;
-    const response = await fetch("/admin/pos/checkout", { method: "POST", headers, body: JSON.stringify(body) });
-    if (!response.ok) {
-      say(cleanErrorText(await response.text()), "error");
-      return;
+    try {
+      const response = await fetch("/admin/pos/checkout", { method: "POST", headers, body: JSON.stringify(body) });
+      if (!response.ok) { say(cleanErrorText(await response.text()), "error"); return; }
+      const result = await response.json();
+      cart.clear(); render();
+      say(settlementType === "CREDIT" ? `Crédito registrado. Folio ${result.folio}.` : `Venta completada. Folio ${result.folio}. Cambio ${money(result.change)}.`);
+      window.open(`/admin/tickets/${result.folio}`, "_blank");
+      if (creditPage) window.location.assign(`/admin/credits/customers/${customerId}`);
+    } finally {
+      checkoutButton.disabled = false;
     }
-    const result = await response.json();
-    cart.clear();
-    render();
-    say(`Venta completada. Folio ${result.folio}. Cambio ${money(result.change)}.`);
-    window.open(`/admin/tickets/${result.folio}`, "_blank");
   });
+
+  document.querySelectorAll("[name='settlementType']").forEach(input => input.addEventListener("change", () => {
+    const credit = document.querySelector("[name='settlementType']:checked")?.value === "CREDIT";
+    scannerFocusPaused = credit;
+    clearAutoScanTimer();
+    if (creditCustomer) creditCustomer.hidden = !credit;
+    if (immediatePayment) immediatePayment.hidden = credit;
+    checkoutButton.textContent = credit ? "Registrar crédito" : "Cobrar";
+    if (!credit) focusScanner();
+  }));
+  customerSelect?.addEventListener("focus", () => { scannerFocusPaused = true; });
+  customerSelect?.addEventListener("change", () => {
+    scannerFocusPaused = !customerSelect.value;
+    if (customerSelect.value) focusScanner();
+  });
+  if (creditPage && customerSelect && discountInput) {
+    const projection = document.createElement("div");
+    projection.className = "grid grid-2";
+    projection.innerHTML = '<div><span class="muted">Adeudo anterior</span><strong data-previous-credit>$0.00</strong></div><div><span class="muted">Nuevo saldo proyectado</span><strong data-projected-credit>$0.00</strong></div>';
+    discountInput.closest(".field")?.before(projection);
+    creditBalanceEl = projection.querySelector("[data-previous-credit]");
+    projectedBalanceEl = projection.querySelector("[data-projected-credit]");
+    customerSelect.addEventListener("change", loadCustomerBalance);
+    loadCustomerBalance();
+  }
+  if (customerSelect) window.addEventListener("focus", refreshCreditCustomers);
 })();

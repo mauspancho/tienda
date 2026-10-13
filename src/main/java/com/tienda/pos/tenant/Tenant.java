@@ -17,10 +17,15 @@ public class Tenant extends BaseEntity {
 
     private boolean active = true;
 
+    @Column(nullable = false)
+    private long authEpoch;
+    public long getAuthEpoch() { return authEpoch; }
+    public void revokeApiTokens() { authEpoch++; }
+
     public String getCode() { return code; }
     public void setCode(String code) { this.code = code; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public boolean isActive() { return active; }
-    public void setActive(boolean active) { this.active = active; }
+    public void setActive(boolean active) { if (this.active != active) authEpoch++; this.active = active; }
 }

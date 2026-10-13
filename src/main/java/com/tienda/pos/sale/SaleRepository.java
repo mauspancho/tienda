@@ -165,4 +165,14 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
             order by sum(i.subtotal) desc
             """)
     List<Object[]> topBillingProducts(@Param("tenantId") Long tenantId, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"customer", "cashier", "items", "items.product"})
+    List<Sale> findByTenantIdAndCustomerIdAndSettlementTypeOrderBySaleDateAsc(Long tenantId, Long customerId, SettlementType settlementType);
+    Optional<Sale> findByIdAndTenantId(Long id, Long tenantId);
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from Sale s where s.id = :id and s.tenant.id = :tenantId")
+    Optional<Sale> findByIdAndTenantIdForUpdate(@Param("id") Long id, @Param("tenantId") Long tenantId);
+    @Query("select coalesce(sum(s.total), 0) from Sale s where s.tenant.id = :tenantId and s.settlementType = 'CREDIT' and s.status = 'COMPLETED'")
+    BigDecimal totalCreditSales(@Param("tenantId") Long tenantId);
+
 }

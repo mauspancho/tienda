@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface ExpenseRepository extends JpaRepository<Expense, Long> {
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"category", "user"})
     Page<Expense> findByTenantIdOrderByExpenseDateDesc(Long tenantId, Pageable pageable);
 
     @Query("select coalesce(sum(e.amount), 0) from Expense e where e.tenant.id = :tenantId and e.expenseDate between :start and :end")
@@ -24,4 +25,8 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
             order by e.expenseDate
             """)
     List<Object[]> dailyTotalsBetween(@Param("tenantId") Long tenantId, @Param("start") LocalDate start, @Param("end") LocalDate end);
+
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"category", "user"})
+    java.util.Optional<Expense> findDetailedByIdAndTenantId(Long id, Long tenantId);
+
 }

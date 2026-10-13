@@ -1,5 +1,44 @@
 # Tienda POS
 
+## Integracion multi-tienda de main (octubre 2026)
+
+La rama commercial-v1 incorpora las mejoras de main hasta 41ac17f: tabla de productos,
+selector de compras, imagenes locales, API REST v1 y cuentas de credito de clientes.
+No existe una rama remota separada de credito: esos cambios estan en main.
+
+- Todos los endpoints operativos resuelven la tienda desde el usuario autenticado.
+  No se acepta un tenant elegido por el cliente ni un tenant por defecto.
+- Creditos, cargos, abonos y reversiones pertenecen a la tienda del cliente.
+  La cancelacion repone stock en el almacen registrado en la venta.
+- El cajero sigue viendo solamente sus ventas y no puede cerrar cajas ajenas.
+  El administrador de tienda no obtiene permisos de administrador de plataforma.
+- Los tokens API incluyen usuario, tienda y una firma del estado de la cuenta.
+  Cambiar credenciales/permisos o suspender la cuenta/tienda invalida los tokens.
+  Reactivar una tienda no revive sus tokens anteriores. El acceso global de
+  plataforma se conserva en la interfaz web, separado de la API operativa.
+- Los reintentos con Idempotency-Key se separan por tienda, usuario y operacion;
+  la serializacion se mantiene hasta confirmar la transaccion en la base.
+
+### API
+
+POST /api/v1/auth/login recibe username y password; devuelve accessToken,
+refreshToken y el usuario. Envia Authorization: Bearer TOKEN en las peticiones.
+POST /api/v1/auth/refresh rota el refresh token; POST /api/v1/auth/logout lo revoca.
+Usa HTTPS y configura TIENDA_API_JWT_SECRET (al menos 32 bytes) y los origenes CORS
+permitidos en TIENDA_API_CORS_ALLOWED_ORIGINS. Sin secreto persistente, reiniciar
+el servidor invalida los access tokens. Las credenciales no se incluyen en el repo.
+
+### Migraciones y verificacion
+
+V1 a V11 mantienen sus nombres y contenido anteriores. Las migraciones de main
+se adaptaron como V12 a V15, con claves e indices por tenant. No copies las
+migraciones V9 a V12 de main a esta rama y no uses flyway repair para saltarlas.
+Realiza un respaldo y prueba la actualizacion antes de desplegar.
+
+Pruebas locales: mvn test -Dtest=!TenantMigrationTest,!PlatformMigrationTest.
+Las suites TenantMigrationTest y PlatformMigrationTest requieren Docker y usan
+Testcontainers MySQL 8 y MariaDB; no conectan a la base de desarrollo.
+
 Sistema web monolítico de Punto de Venta e Inventario para una tienda de abarrotes.
 
 ## Requisitos
@@ -167,7 +206,9 @@ tienda:
 
 El formulario acepta JPEG, PNG o WebP de hasta 5 MB, valida que el archivo sea una imagen real y genera nombres UUID para evitar usar nombres originales. Para no agregar dependencias nuevas, la copia optimizada se guarda como JPEG. Al reemplazar o quitar una imagen solo se eliminan archivos locales bajo `/uploads/products/`; nunca se borra una URL externa.
 
-Open Food Facts puede precargar una URL de imagen, pero la aplicación no la descarga automáticamente. Si subes una imagen manualmente, esa imagen reemplaza la URL externa.
+Open Food Facts puede precargar una URL de imagen. Al guardar el producto, la aplicacion descarga esa imagen,
+la valida y optimiza, y conserva unicamente la referencia local bajo `/uploads/products/`. Si la descarga falla,
+el producto no guarda una dependencia remota de Open Food Facts. Una imagen subida manualmente tiene prioridad.
 ## Logs
 
 Los logs se escriben en:

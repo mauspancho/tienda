@@ -30,11 +30,13 @@ public class FinanceController {
 
     private static final List<String> PERIODS = List.of("TODAY", "YESTERDAY", "LAST_7_DAYS", "LAST_30_DAYS", "THIS_MONTH", "PREVIOUS_MONTH", "THIS_YEAR", "CUSTOM");
 
+    private final com.tienda.pos.credit.CreditService creditService;
     private final FinanceService financeService;
     private final CapitalMovementRepository capitalMovementRepository;
     private final CurrentTenant currentTenant;
 
-    public FinanceController(FinanceService financeService, CapitalMovementRepository capitalMovementRepository, CurrentTenant currentTenant) {
+    public FinanceController(FinanceService financeService, CapitalMovementRepository capitalMovementRepository, CurrentTenant currentTenant, com.tienda.pos.credit.CreditService creditService) {
+        this.creditService = creditService;
         this.financeService = financeService;
         this.capitalMovementRepository = capitalMovementRepository;
         this.currentTenant = currentTenant;
@@ -47,6 +49,7 @@ public class FinanceController {
                         @RequestParam(defaultValue = "profit") String productSort,
                         Model model) {
         model.addAttribute("summary", financeService.summary(period, from, to, productSort));
+        model.addAttribute("creditSummary", creditService.summary());
         model.addAttribute("periods", PERIODS);
         model.addAttribute("productSort", productSort);
         return "finances/index";

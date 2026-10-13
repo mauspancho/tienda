@@ -31,4 +31,9 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
     @Query("select u from AppUser u where u.tenant.id = :tenantId and not exists "
             + "(select r from u.roles r where r.name = 'ROLE_PLATFORM_ADMIN') order by u.username")
     Page<AppUser> findManagedUsers(@Param("tenantId") Long tenantId, Pageable pageable);
+
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from AppUser u where u.username = :username and u.tenant.id = :tenantId")
+    Optional<AppUser> lockForApiWrite(@Param("username") String username, @Param("tenantId") Long tenantId);
+
 }

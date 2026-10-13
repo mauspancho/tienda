@@ -9,10 +9,96 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
+
+    long countByTenantId(Long tenantId);
+
+    @EntityGraph(attributePaths = {"category", "supplier"})
+    @Query("""
+            select p from Product p
+            left join p.category c
+            where p.tenant.id = :tenantId and (
+                :q = ''
+                or lower(p.name) like lower(concat('%', :q, '%'))
+                or lower(p.code) like lower(concat('%', :q, '%'))
+                or lower(coalesce(p.barcode, '')) like lower(concat('%', :q, '%'))
+                or lower(coalesce(p.brand, '')) like lower(concat('%', :q, '%'))
+                or lower(coalesce(p.presentation, '')) like lower(concat('%', :q, '%'))
+                or lower(coalesce(c.name, '')) like lower(concat('%', :q, '%'))
+            )
+              and (:name = '' or lower(p.name) like lower(concat('%', :name, '%')))
+              and (:brand = '' or lower(coalesce(p.brand, '')) like lower(concat('%', :brand, '%')))
+              and (:categoryId is null or c.id = :categoryId)
+              and (:minPrice is null or p.salePrice >= :minPrice)
+              and (:maxPrice is null or p.salePrice <= :maxPrice)
+              and (:active is null or p.active = :active)
+              and (:whatsapp is null or p.promocionWhatsapp = :whatsapp)
+            """)
+    Page<Product> filter(@Param("tenantId") Long tenantId, @Param("q") String query,
+                         @Param("name") String name,
+                         @Param("brand") String brand,
+                         @Param("categoryId") Long categoryId,
+                         @Param("minPrice") BigDecimal minPrice,
+                         @Param("maxPrice") BigDecimal maxPrice,
+                         @Param("active") Boolean active,
+                         @Param("whatsapp") Boolean whatsapp,
+                         Pageable pageable);
+
+    @EntityGraph(attributePaths = {"category", "supplier"})
+    @Query("""
+            select p from Product p
+            left join p.category c
+            where p.tenant.id = :tenantId and (
+                :q = ''
+                or lower(p.name) like lower(concat('%', :q, '%'))
+                or lower(p.code) like lower(concat('%', :q, '%'))
+                or lower(coalesce(p.barcode, '')) like lower(concat('%', :q, '%'))
+                or lower(coalesce(p.brand, '')) like lower(concat('%', :q, '%'))
+                or lower(coalesce(p.presentation, '')) like lower(concat('%', :q, '%'))
+                or lower(coalesce(c.name, '')) like lower(concat('%', :q, '%'))
+            )
+              and (:name = '' or lower(p.name) like lower(concat('%', :name, '%')))
+              and (:brand = '' or lower(coalesce(p.brand, '')) like lower(concat('%', :brand, '%')))
+              and (:brandListEmpty = true or lower(coalesce(p.brand, '')) in :brandList)
+              and (:categoryId is null or c.id = :categoryId)
+              and (:minPrice is null or p.salePrice >= :minPrice)
+              and (:maxPrice is null or p.salePrice <= :maxPrice)
+              and (:active is null or p.active = :active)
+              and (:whatsapp is null or p.promocionWhatsapp = :whatsapp)
+            """)
+    Page<Product> filterForTable(@Param("tenantId") Long tenantId, @Param("q") String query,
+                                 @Param("name") String name,
+                                 @Param("brand") String brand,
+                                 @Param("brandListEmpty") boolean brandListEmpty,
+                                 @Param("brandList") List<String> brandList,
+                                 @Param("categoryId") Long categoryId,
+                                 @Param("minPrice") BigDecimal minPrice,
+                                 @Param("maxPrice") BigDecimal maxPrice,
+                                 @Param("active") Boolean active,
+                                 @Param("whatsapp") Boolean whatsapp,
+                                 Pageable pageable);
+
+    @Query("""
+            select distinct p.name from Product p
+            where p.tenant.id = :tenantId and lower(p.name) like lower(concat('%', :q, '%'))
+            order by p.name asc
+            """)
+    List<String> suggestNames(@Param("tenantId") Long tenantId, @Param("q") String query, Pageable pageable);
+
+    @Query("""
+            select distinct p.brand from Product p
+            where p.tenant.id = :tenantId and p.brand is not null
+              and p.brand <> ''
+              and lower(p.brand) like lower(concat('%', :q, '%'))
+            order by p.brand asc
+            """)
+    List<String> suggestBrands(@Param("tenantId") Long tenantId, @Param("q") String query, Pageable pageable);
+
+
 
     Optional<Product> findByTenantIdAndBarcode(Long tenantId, String barcode);
 
@@ -110,4 +196,5 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     @Query("select coalesce(max(p.promotionOrder), 0) from Product p where p.tenant.id = :tenantId and p.promoted = true")
     Integer maxPromotionOrder(@Param("tenantId") Long tenantId);
+    List<Product> findByTenantIdAndActiveTrueOrderByNameAsc(Long tenantId);
 }

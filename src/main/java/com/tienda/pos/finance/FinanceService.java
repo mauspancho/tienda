@@ -44,16 +44,22 @@ public class FinanceService {
     private final ProductRepository productRepository;
     private final CapitalMovementRepository capitalMovementRepository;
     private final CurrentTenant currentTenant;
+    private final com.tienda.pos.payment.PaymentRepository paymentRepository;
+    private final com.tienda.pos.credit.CreditPaymentRepository creditPaymentRepository;
 
     public FinanceService(SaleRepository saleRepository, ExpenseRepository expenseRepository,
                           PurchaseRepository purchaseRepository, ProductRepository productRepository,
-                          CapitalMovementRepository capitalMovementRepository, CurrentTenant currentTenant) {
+                          CapitalMovementRepository capitalMovementRepository, CurrentTenant currentTenant,
+                          com.tienda.pos.payment.PaymentRepository paymentRepository,
+                          com.tienda.pos.credit.CreditPaymentRepository creditPaymentRepository) {
         this.saleRepository = saleRepository;
         this.expenseRepository = expenseRepository;
         this.purchaseRepository = purchaseRepository;
         this.productRepository = productRepository;
         this.capitalMovementRepository = capitalMovementRepository;
         this.currentTenant = currentTenant;
+        this.paymentRepository = paymentRepository;
+        this.creditPaymentRepository = creditPaymentRepository;
     }
 
     public FinanceSummary summary(String period, LocalDate from, LocalDate to, String productSort) {
@@ -84,7 +90,9 @@ public class FinanceService {
                 ? money(initialInvestment.subtract(netProfitAccumulated).max(BigDecimal.ZERO))
                 : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
 
-        BigDecimal cashIn = money(selected.sales().add(selected.ownerContributions()));
+        BigDecimal cashIn = money(money(paymentRepository.totalReceivedBetween(tenantId, start(range.from()), end(range.to())))
+                .add(money(creditPaymentRepository.totalActivePaymentsBetween(tenantId, start(range.from()), end(range.to()))))
+                .add(selected.ownerContributions()));
         BigDecimal cashOut = money(selected.reinvestment().add(selected.expenses()).add(selected.ownerWithdrawals()));
         BigDecimal cashFlow = money(cashIn.subtract(cashOut));
 
@@ -410,4 +418,18 @@ public class FinanceService {
             return new CapitalDay(contributions.add(other.contributions), withdrawals.add(other.withdrawals));
         }
     }
+
+    public String dailyCsv(LocalDate from, LocalDate to) {
+        StringBuilder csv = new StringBuilder("Fecha,Ventas,Costo vendido,Ganancia bruta,Gastos,Utilidad neta,Compras,Reinversion,Aportaciones,Retiros,Tickets,Unidades\n");
+        for (DailyFinanceSummary day : daily(from, to)) {
+            csv.append(day.date());
+            for (BigDecimal value : List.of(day.sales(), day.costOfGoodsSold(), day.grossProfit(), day.expenses(),
+                    day.netProfit(), day.purchases(), day.reinvestment(), day.ownerContributions(), day.ownerWithdrawals())) {
+                csv.append(',').append(money(value).toPlainString());
+            }
+            csv.append(',').append(day.tickets()).append(',').append(money(day.soldUnits()).toPlainString()).append('\n');
+        }
+        return csv.toString();
+    }
+
 }

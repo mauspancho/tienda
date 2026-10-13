@@ -11,6 +11,23 @@ class CameraScannerAssetTest {
     private static final Path ROOT = Path.of("");
 
     @Test
+    void posAcceptsQuantityBeforeBarcode() throws Exception {
+        String pos = Files.readString(ROOT.resolve("src/main/resources/templates/pos/index.html"));
+        String posScanner = Files.readString(ROOT.resolve("src/main/resources/static/js/barcode-scanner.js"));
+
+        assertThat(pos)
+                .contains("Cantidad * código de barras")
+                .contains("5*7501234567890");
+        assertThat(posScanner)
+                .contains("function parseScannerEntry")
+                .contains("hasMultiplier")
+                .contains("Number.isSafeInteger(quantity)")
+                .contains("function addProduct(product, requestedQuantity = 1)")
+                .contains("addProduct(product, parsed.quantity)")
+                .contains("`${pending.quantity}*${barcode}`");
+    }
+
+    @Test
     void cameraScannerAssetAndVendorBundleExist() throws Exception {
         Path scanner = ROOT.resolve("src/main/resources/static/js/camera-barcode-scanner.js");
         Path zxing = ROOT.resolve("src/main/resources/static/vendor/zxing/zxing-browser.min.js");

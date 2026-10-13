@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{platform/layout :: head('Importar / Exportar')}"></head>
+<body class="platform-page">
+<header th:replace="~{platform/layout :: nav}"></header>
+<main class="platform-main">
+  <div class="platform-title">
+    <div><h1>Importar / Exportar</h1><p><strong th:text="${tenant.name}"></strong> &middot; <span th:text="${tenant.code}"></span></p></div>
+    <a class="btn btn-outline" th:href="@{/platform/tenants/{id}(id=${tenant.id})}">Volver a la tienda</a>
+  </div>
+  <div th:replace="~{fragments/layout :: alerts}"></div>
+  <div class="platform-backup-grid">
+    <section>
+      <h2>Exportar tienda</h2>
+      <p>Productos, existencias, compras, ventas, cr&eacute;ditos, movimientos, configuraci&oacute;n e im&aacute;genes de <strong th:text="${tenant.name}"></strong>.</p>
+      <p>No incluye contrase&ntilde;as, permisos ni tokens de acceso.</p>
+      <a class="btn btn-primary" th:href="@{/platform/tenants/{id}/backup/export(id=${tenant.id})}">Descargar ZIP</a>
+    </section>
+    <section>
+      <h2>Importar respaldo</h2>
+      <p>Reemplaza los datos de <strong th:text="${tenant.name}"></strong>. No modifica ninguna otra tienda. Descarga un respaldo antes de continuar.</p>
+      <p>Las cuentas actuales conservan sus permisos y contrase&ntilde;as. Los usuarios hist&oacute;ricos nuevos quedan desactivados, con rol de cajero.</p>
+      <p th:if="${tenant.active}" class="alert alert-warning">Suspende esta tienda desde su ficha antes de importar.</p>
+      <form method="post" enctype="multipart/form-data" th:action="@{/platform/tenants/{id}/backup/import(id=${tenant.id})}">
+        <fieldset>
+          <label for="backup-file">Archivo ZIP (m&aacute;ximo 256 MB)</label>
+          <input id="backup-file" class="file-input file-input-bordered" type="file" name="backupFile" accept=".zip,application/zip" required>
+          <label for="backup-confirm">Confirmaci&oacute;n: <strong th:text="'IMPORTAR ' + ${tenant.code}"></strong></label>
+          <input id="backup-confirm" class="input input-bordered" name="confirmation" autocomplete="off" required th:placeholder="'IMPORTAR ' + ${tenant.code}">
+          <button class="btn btn-error" type="submit" th:disabled="${tenant.active}">Importar y reemplazar datos</button>
+        </fieldset>
+      </form>
+    </section>
+  </div>
+</main>
+</body></html>

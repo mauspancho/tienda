@@ -40,6 +40,7 @@ class FinanceControllerRenderTest {
 
     @MockBean
     private CurrentTenant currentTenant;
+    @MockBean private com.tienda.pos.credit.CreditService creditService;
 
     @Test
     void financeIndexRendersWithSummaryData() throws Exception {
@@ -59,6 +60,7 @@ class FinanceControllerRenderTest {
                 List.of(new ProductProfitRow("Frijol", money("100.00"), money("4.00"), money("70.00"), money("30.00"), money("30.00")))
         );
         when(financeService.summary(anyString(), any(), any(), anyString())).thenReturn(summary);
+        when(creditService.summary()).thenReturn(new com.tienda.pos.credit.CreditViews.Summary(BigDecimal.ZERO, 0, BigDecimal.ZERO, BigDecimal.ZERO));
 
         mockMvc.perform(get("/admin/finances"))
                 .andExpect(status().isOk())

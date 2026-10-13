@@ -67,7 +67,7 @@ public class CashService {
         AppUser closer = userRepository.findByUsernameWithTenant(username)
                 .filter(user -> user.getTenant() != null && user.getTenant().getId().equals(tenant.getId()))
                 .orElseThrow();
-        CashRegisterSession session = sessionRepository.findByIdAndTenantId(sessionId, tenant.getId())
+        CashRegisterSession session = sessionRepository.lockByIdAndTenantId(sessionId, tenant.getId())
                 .orElseThrow(() -> new DomainException("Caja no encontrada."));
         ensureCanClose(closer, session);
         BigDecimal expected = movementRepository.expectedAmount(tenant.getId(), sessionId);

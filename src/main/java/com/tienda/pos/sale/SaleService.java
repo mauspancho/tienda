@@ -84,12 +84,26 @@ public class SaleService {
         sale.setCashier(cashier);
         sale.setBranch(branch);
         sale.setCashRegister(cashRegister);
-        if (request.getCustomerId() != null) {
+        boolean credit = request.getSettlementType() == SettlementType.CREDIT;
+        sale.setSettlementType(credit ? SettlementType.CREDIT : SettlementType.IMMEDIATE);
+        if (credit) {
+            if (request.getCustomerId() == null) throw new DomainException("Selecciona un cliente para el credito.");
+            var customer = customerRepository.findByIdAndTenantIdForUpdate(request.getCustomerId(), tenantId)
+                    .orElseThrow(() -> new DomainException("Cliente no encontrado."));
+            if (!customer.isActive() || "Público General".equalsIgnoreCase(customer.getName())) {
+                throw new DomainException("Selecciona un cliente activo distinto de Publico General.");
+            }
+            sale.setCustomer(customer);
+        } else if (request.getCustomerId() != null) {
             sale.setCustomer(customerRepository.findByIdAndTenantId(request.getCustomerId(), tenantId)
                     .orElseThrow(() -> new DomainException("Cliente no encontrado.")));
         } else {
             customerRepository.findFirstByTenantIdAndName(tenantId, "Público General").ifPresent(sale::setCustomer);
         }
+
+        cashSession = cashRegisterSessionRepository.lockByIdAndTenantId(cashSession.getId(), tenantId)
+                .orElseThrow(() -> new DomainException("Caja no encontrada."));
+        if (!cashSession.isOpen()) throw new DomainException("Abre la caja antes de realizar una venta.");
 
         BigDecimal subtotal = BigDecimal.ZERO;
         for (SaleRequest.SaleLineRequest line : request.getItems().stream()
@@ -98,6 +112,7 @@ public class SaleService {
             Product product = productRepository.findByIdAndTenantIdForUpdate(line.getProductId(), tenantId)
                     .orElseThrow(() -> new DomainException("Producto no encontrado."));
             InventoryStock stock = inventoryService.defaultStockForUpdate(product);
+            sale.setWarehouse(stock.getWarehouse());
             if (!product.isActive()) {
                 throw new DomainException("Producto inactivo: " + product.getName());
             }
@@ -139,9 +154,9 @@ public class SaleService {
         if (total.compareTo(BigDecimal.ZERO) < 0) {
             throw new DomainException("El descuento no puede ser mayor al subtotal.");
         }
-        BigDecimal received = total;
+        BigDecimal received = credit ? MoneyUtils.money(BigDecimal.ZERO) : total;
         BigDecimal change = MoneyUtils.money(BigDecimal.ZERO);
-        if (request.getPaymentMethod() == PaymentMethod.CASH) {
+        if (!credit && request.getPaymentMethod() == PaymentMethod.CASH) {
             if (request.getReceivedAmount() == null) {
                 throw new DomainException("Indica el efectivo recibido.");
             }
@@ -152,6 +167,7 @@ public class SaleService {
         sale.setSubtotal(MoneyUtils.money(subtotal));
         sale.setDiscount(discount);
         sale.setTotal(total);
+        if (!credit) {
         Payment payment = new Payment();
         payment.setSale(sale);
         payment.setMethod(request.getPaymentMethod());
@@ -159,9 +175,10 @@ public class SaleService {
         payment.setReceivedAmount(received);
         payment.setChangeAmount(change);
         sale.setPayment(payment);
+        }
         Sale saved = saleRepository.save(sale);
 
-        if (request.getPaymentMethod() == PaymentMethod.CASH) {
+        if (!credit && request.getPaymentMethod() == PaymentMethod.CASH) {
             CashMovement movement = new CashMovement();
             movement.setTenant(tenant);
             movement.setCashRegisterSession(cashSession);

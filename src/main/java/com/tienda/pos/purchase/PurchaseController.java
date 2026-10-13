@@ -45,7 +45,7 @@ public class PurchaseController {
         model.addAttribute("purchases", purchaseRepository.findByTenantIdOrderByCreatedAtDesc(tenantId, PageRequest.of(0, 50)));
         model.addAttribute("purchaseForm", new PurchaseForm());
         model.addAttribute("suppliers", supplierRepository.findByTenantIdAndActiveTrueOrderByNameAsc(tenantId));
-        model.addAttribute("products", productRepository.findByTenantIdOrderByNameAsc(tenantId, PageRequest.of(0, 500)).getContent());
+        model.addAttribute("products", productRepository.findByTenantIdAndActiveTrueOrderByNameAsc(tenantId));
         model.addAttribute("fundingSources", PurchaseFundingSource.values());
         return "purchases/index";
     }

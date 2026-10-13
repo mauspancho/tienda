@@ -39,7 +39,7 @@ class CashServiceTest {
         CashRegisterSession session = cashSession(2L, user(2L, "admin", "ROLE_ADMIN"));
 
         when(userRepository.findByUsernameWithTenant("cajero")).thenReturn(Optional.of(closer));
-        when(sessionRepository.findByIdAndTenantId(2L, 1L)).thenReturn(Optional.of(session));
+        when(sessionRepository.lockByIdAndTenantId(2L, 1L)).thenReturn(Optional.of(session));
 
         assertThatThrownBy(() -> service.close("cajero", 2L, new BigDecimal("100")))
                 .isInstanceOf(DomainException.class)
@@ -59,7 +59,7 @@ class CashServiceTest {
         CashRegisterSession session = cashSession(2L, user(2L, "cajero", "ROLE_CAJERO"));
 
         when(userRepository.findByUsernameWithTenant("admin")).thenReturn(Optional.of(admin));
-        when(sessionRepository.findByIdAndTenantId(2L, 1L)).thenReturn(Optional.of(session));
+        when(sessionRepository.lockByIdAndTenantId(2L, 1L)).thenReturn(Optional.of(session));
         when(movementRepository.expectedAmount(1L, 2L)).thenReturn(new BigDecimal("90"));
 
         service.close("admin", 2L, new BigDecimal("100"));
@@ -82,7 +82,7 @@ class CashServiceTest {
         CashRegisterSession session = cashSession(2L, cashier);
 
         when(userRepository.findByUsernameWithTenant("cajero")).thenReturn(Optional.of(cashier));
-        when(sessionRepository.findByIdAndTenantId(2L, 1L)).thenReturn(Optional.of(session));
+        when(sessionRepository.lockByIdAndTenantId(2L, 1L)).thenReturn(Optional.of(session));
         when(movementRepository.expectedAmount(1L, 2L)).thenReturn(new BigDecimal("100"));
 
         service.close("cajero", 2L, new BigDecimal("100"));

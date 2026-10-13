@@ -50,4 +50,10 @@ public interface PurchaseRepository extends JpaRepository<Purchase, Long> {
             order by year(p.purchaseDate), month(p.purchaseDate)
             """)
     List<Object[]> monthlyTotalsByFundingSourceBetween(@Param("tenantId") Long tenantId, @Param("source") PurchaseFundingSource source, @Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    @EntityGraph(attributePaths = {"supplier", "user"})
+    Page<Purchase> findByTenantIdAndPurchaseDateBetweenOrderByPurchaseDateDesc(Long tenantId, LocalDate from, LocalDate to, Pageable pageable);
+    @EntityGraph(attributePaths = {"supplier", "user", "items", "items.product"})
+    java.util.Optional<Purchase> findDetailedByIdAndTenantId(Long id, Long tenantId);
+
 }

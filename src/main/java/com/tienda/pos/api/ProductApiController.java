@@ -7,6 +7,10 @@ import com.tienda.pos.product.ProductRepository;
 import com.tienda.pos.product.ProductService;
 import com.tienda.pos.tenant.CurrentTenant;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
+import org.springframework.util.MultiValueMap;
+import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -51,6 +55,106 @@ public class ProductApiController {
     @GetMapping("/search")
     public List<ProductDto> search(@RequestParam String q) {
         return productRepository.quickSearch(currentTenant.id(), q, PageRequest.of(0, 12)).stream().map(ProductDto::from).toList();
+    }
+
+    @GetMapping("/suggestions")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<String> suggestions(@RequestParam String field,
+                                    @RequestParam(defaultValue = "") String q) {
+        Long tenantId = currentTenant.id();
+        String query = q == null ? "" : q.trim();
+        return switch (field) {
+            case "name" -> productRepository.suggestNames(tenantId, query, PageRequest.of(0, 10));
+            case "brand" -> productRepository.suggestBrands(tenantId, query, PageRequest.of(0, 10));
+            default -> List.of();
+        };
+    }
+
+    @GetMapping("/table")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ProductTableResponse table(@RequestParam(defaultValue = "1") int draw,
+                                      @RequestParam(defaultValue = "0") int start,
+                                      @RequestParam(defaultValue = "20") int length,
+                                      @RequestParam(name = "order[0][column]", defaultValue = "1") int orderColumn,
+                                      @RequestParam(name = "order[0][dir]", defaultValue = "asc") String orderDirection,
+                                      @RequestParam(defaultValue = "") String q,
+                                      @RequestParam(defaultValue = "") String name,
+                                      @RequestParam(defaultValue = "") String brand,
+                                      @RequestParam(required = false) Long categoryId,
+                                      @RequestParam(required = false) BigDecimal minPrice,
+                                      @RequestParam(required = false) BigDecimal maxPrice,
+                                      @RequestParam(required = false) Boolean active,
+                                      @RequestParam(required = false) Boolean whatsapp,
+                                      @RequestParam MultiValueMap<String, String> requestParameters) {
+        Long tenantId = currentTenant.id();
+        int pageSize = Math.max(10, Math.min(length, 100));
+        int page = Math.max(start, 0) / pageSize;
+        BigDecimal normalizedMin = nonNegative(minPrice);
+        BigDecimal normalizedMax = nonNegative(maxPrice);
+        if (normalizedMin != null && normalizedMax != null && normalizedMin.compareTo(normalizedMax) > 0) {
+            BigDecimal previousMin = normalizedMin;
+            normalizedMin = normalizedMax;
+            normalizedMax = previousMin;
+        }
+        Sort.Direction direction = "desc".equalsIgnoreCase(orderDirection)
+                ? Sort.Direction.DESC
+                : Sort.Direction.ASC;
+        String sortProperty = switch (orderColumn) {
+            case 0 -> "code";
+            case 2 -> "brand";
+            case 3 -> "salePrice";
+            case 4 -> "purchaseCost";
+            case 5 -> "currentStock";
+            default -> "name";
+        };
+        Sort sort = Sort.by(direction, sortProperty).and(Sort.by(Sort.Direction.ASC, "id"));
+        List<String> selectedBrands = requestParameters.entrySet().stream()
+                .filter(entry -> entry.getKey().startsWith("columns[2][columnControl][list]"))
+                .flatMap(entry -> entry.getValue().stream())
+                .map(this::normalize)
+                .filter(value -> !value.isBlank())
+                .map(value -> value.toLowerCase(java.util.Locale.ROOT))
+                .distinct()
+                .toList();
+        List<String> brandList = selectedBrands.isEmpty() ? List.of("") : selectedBrands;
+        Page<Product> products = productRepository.filterForTable(tenantId, normalize(q), normalize(name), normalize(brand),
+                selectedBrands.isEmpty(), brandList, categoryId, normalizedMin, normalizedMax, active, whatsapp,
+                PageRequest.of(page, pageSize, sort));
+        List<ProductTableRow> rows = products.getContent().stream().map(ProductTableRow::from).toList();
+        List<ColumnControlOption> brandOptions = productRepository.suggestBrands(tenantId, "", PageRequest.of(0, 500)).stream()
+                .map(value -> new ColumnControlOption(value, value))
+                .toList();
+        return new ProductTableResponse(draw, productRepository.countByTenantId(tenantId), products.getTotalElements(), rows,
+                Map.of("brand", brandOptions));
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    private BigDecimal nonNegative(BigDecimal value) {
+        return value == null ? null : value.max(BigDecimal.ZERO);
+    }
+
+    public record ProductTableResponse(int draw, long recordsTotal, long recordsFiltered,
+                                       List<ProductTableRow> data,
+                                       Map<String, List<ColumnControlOption>> columnControl) {
+    }
+
+    public record ColumnControlOption(String label, String value) {
+    }
+
+    public record ProductTableRow(Long id, String code, String barcode, String name, String brand,
+                                  String category, String imageUrl, BigDecimal salePrice,
+                                  BigDecimal purchaseCost, BigDecimal stock, BigDecimal margin,
+                                  boolean lowStock, boolean whatsapp, boolean promoted) {
+        static ProductTableRow from(Product product) {
+            String category = product.getCategory() == null ? "" : product.getCategory().getName();
+            return new ProductTableRow(product.getId(), product.getCode(), product.getBarcode(), product.getName(),
+                    product.getBrand(), category, product.getImageUrl(), product.getSalePrice(),
+                    product.getPurchaseCost(), product.getCurrentStock(), product.marginPercent(),
+                    product.hasLowStock(), product.isPromocionWhatsapp(), product.isPromoted());
+        }
     }
 
     public record ProductDto(Long id, String code, String barcode, String name, BigDecimal price,

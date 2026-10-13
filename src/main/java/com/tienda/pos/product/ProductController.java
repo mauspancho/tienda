@@ -6,9 +6,13 @@ import com.tienda.pos.exception.DomainException;
 import com.tienda.pos.supplier.SupplierRepository;
 import com.tienda.pos.tenant.CurrentTenant;
 import jakarta.validation.Valid;
+import java.math.BigDecimal;
+import java.util.Set;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -47,12 +51,81 @@ public class ProductController {
     }
 
     @GetMapping("/products")
-    public String list(@RequestParam(defaultValue = "") String q, @RequestParam(defaultValue = "0") int page, Model model) {
+    public String list(@RequestParam(defaultValue = "") String q,
+                       @RequestParam(defaultValue = "") String name,
+                       @RequestParam(defaultValue = "") String brand,
+                       @RequestParam(required = false) Long categoryId,
+                       @RequestParam(required = false) BigDecimal minPrice,
+                       @RequestParam(required = false) BigDecimal maxPrice,
+                       @RequestParam(required = false) Boolean active,
+                       @RequestParam(required = false) Boolean whatsapp,
+                       @RequestParam(defaultValue = "name") String sort,
+                       @RequestParam(defaultValue = "asc") String direction,
+                       @RequestParam(defaultValue = "0") int page,
+                       Model model) {
         Long tenantId = currentTenant.id();
-        Pageable pageable = PageRequest.of(page, 20, Sort.by("name"));
-        model.addAttribute("products", q.isBlank() ? productRepository.findByTenantIdOrderByNameAsc(tenantId, pageable) : productRepository.search(tenantId, q, pageable));
-        model.addAttribute("q", q);
+        String query = normalize(q);
+        String productName = normalize(name);
+        String productBrand = normalize(brand);
+        BigDecimal normalizedMinPrice = nonNegative(minPrice);
+        BigDecimal normalizedMaxPrice = nonNegative(maxPrice);
+        if (normalizedMinPrice != null && normalizedMaxPrice != null
+                && normalizedMinPrice.compareTo(normalizedMaxPrice) > 0) {
+            BigDecimal previousMin = normalizedMinPrice;
+            normalizedMinPrice = normalizedMaxPrice;
+            normalizedMaxPrice = previousMin;
+        }
+        String sortProperty = productSortProperty(sort);
+        String sortDirection = "desc".equalsIgnoreCase(direction) ? "desc" : "asc";
+        int currentPage = Math.max(page, 0);
+        Pageable pageable = PageRequest.of(currentPage, 20, productSort(sortProperty, sortDirection));
+        Page<Product> products = productPage(tenantId, query, productName, productBrand, categoryId,
+                normalizedMinPrice, normalizedMaxPrice, active, whatsapp, pageable);
+        if (currentPage > Math.max(products.getTotalPages() - 1, 0)) {
+            currentPage = Math.max(products.getTotalPages() - 1, 0);
+            pageable = PageRequest.of(currentPage, 20, productSort(sortProperty, sortDirection));
+            products = productPage(tenantId, query, productName, productBrand, categoryId,
+                    normalizedMinPrice, normalizedMaxPrice, active, whatsapp, pageable);
+        }
+        model.addAttribute("products", products);
+        model.addAttribute("q", query);
+        model.addAttribute("name", productName);
+        model.addAttribute("brand", productBrand);
+        model.addAttribute("categoryId", categoryId);
+        model.addAttribute("minPrice", normalizedMinPrice);
+        model.addAttribute("maxPrice", normalizedMaxPrice);
+        model.addAttribute("active", active);
+        model.addAttribute("whatsapp", whatsapp);
+        model.addAttribute("sort", sortProperty);
+        model.addAttribute("direction", sortDirection);
+        model.addAttribute("categories", categoryRepository.findByTenantIdAndActiveTrueOrderByNameAsc(tenantId));
         return "products/index";
+    }
+
+    private Page<Product> productPage(Long tenantId, String query, String name, String brand, Long categoryId,
+                                      BigDecimal minPrice, BigDecimal maxPrice, Boolean active,
+                                      Boolean whatsapp, Pageable pageable) {
+        return productRepository.filter(tenantId, query, name, brand, categoryId, minPrice, maxPrice, active, whatsapp, pageable);
+    }
+
+    private Sort productSort(String property, String direction) {
+        Sort.Direction sortDirection = "desc".equals(direction) ? Sort.Direction.DESC : Sort.Direction.ASC;
+        return Sort.by(sortDirection, property).and(Sort.by(Sort.Direction.ASC, "id"));
+    }
+
+    private String productSortProperty(String sort) {
+        String property = normalize(sort);
+        return Set.of("name", "brand", "code", "salePrice", "purchaseCost", "currentStock").contains(property)
+                ? property
+                : "name";
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    private BigDecimal nonNegative(BigDecimal value) {
+        return value == null ? null : value.max(BigDecimal.ZERO);
     }
 
     @GetMapping("/products/new")
@@ -142,6 +215,52 @@ public class ProductController {
         productService.removePromotion(id);
         redirectAttributes.addFlashAttribute("success", "Promoción retirada.");
         return "redirect:/admin/products";
+    }
+
+    @PostMapping("/products/{id}/whatsapp-promotion")
+    public String updateWhatsappPromotion(@PathVariable Long id,
+                                          @RequestParam(defaultValue = "false") boolean selected,
+                                          @RequestParam(defaultValue = "") String q,
+                                          @RequestParam(defaultValue = "") String name,
+                                          @RequestParam(defaultValue = "") String brand,
+                                          @RequestParam(required = false) Long categoryId,
+                                          @RequestParam(required = false) BigDecimal minPrice,
+                                          @RequestParam(required = false) BigDecimal maxPrice,
+                                          @RequestParam(required = false) Boolean active,
+                                          @RequestParam(required = false) Boolean whatsapp,
+                                          @RequestParam(defaultValue = "name") String sort,
+                                          @RequestParam(defaultValue = "asc") String direction,
+                                          @RequestParam(defaultValue = "0") int page,
+                                          RedirectAttributes redirectAttributes) {
+        try {
+            productService.setWhatsappPromotion(id, selected);
+        } catch (DomainException ex) {
+            redirectAttributes.addFlashAttribute("error", ex.getMessage());
+        }
+        redirectAttributes.addAttribute("q", normalize(q));
+        redirectAttributes.addAttribute("name", normalize(name));
+        redirectAttributes.addAttribute("brand", normalize(brand));
+        if (categoryId != null) redirectAttributes.addAttribute("categoryId", categoryId);
+        if (minPrice != null) redirectAttributes.addAttribute("minPrice", minPrice);
+        if (maxPrice != null) redirectAttributes.addAttribute("maxPrice", maxPrice);
+        if (active != null) redirectAttributes.addAttribute("active", active);
+        if (whatsapp != null) redirectAttributes.addAttribute("whatsapp", whatsapp);
+        redirectAttributes.addAttribute("sort", productSortProperty(sort));
+        redirectAttributes.addAttribute("direction", "desc".equalsIgnoreCase(direction) ? "desc" : "asc");
+        redirectAttributes.addAttribute("page", Math.max(page, 0));
+        return "redirect:/admin/products";
+    }
+
+    @PostMapping("/products/{id}/whatsapp-promotion/state")
+    @ResponseBody
+    public ResponseEntity<Void> updateWhatsappPromotionState(@PathVariable Long id,
+                                                              @RequestParam(defaultValue = "false") boolean selected) {
+        try {
+            productService.setWhatsappPromotion(id, selected);
+            return ResponseEntity.noContent().build();
+        } catch (DomainException ex) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     private void prepareForm(Model model, ProductForm form) {

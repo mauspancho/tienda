@@ -20,6 +20,8 @@ public class Customer extends BaseEntity {
     @Column(nullable = false)
     private String name;
 
+    private String lastName;
+
     private String phone;
     private String email;
     private String address;
@@ -31,6 +33,9 @@ public class Customer extends BaseEntity {
     public void setTenant(Tenant tenant) { this.tenant = tenant; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
+    public String getLastName() { return lastName; }
+    public void setLastName(String lastName) { this.lastName = lastName; }
+    public String getFullName() { return lastName == null || lastName.isBlank() ? name : name + " " + lastName; }
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
     public String getEmail() { return email; }

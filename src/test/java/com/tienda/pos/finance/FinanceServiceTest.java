@@ -30,8 +30,10 @@ class FinanceServiceTest {
     private final ProductRepository productRepository = mock(ProductRepository.class);
     private final CapitalMovementRepository capitalMovementRepository = mock(CapitalMovementRepository.class);
     private final CurrentTenant currentTenant = mock(CurrentTenant.class);
+    private final com.tienda.pos.payment.PaymentRepository payments = mock(com.tienda.pos.payment.PaymentRepository.class);
+    private final com.tienda.pos.credit.CreditPaymentRepository creditPayments = mock(com.tienda.pos.credit.CreditPaymentRepository.class);
     private final FinanceService service = new FinanceService(saleRepository, expenseRepository, purchaseRepository,
-            productRepository, capitalMovementRepository, currentTenant);
+            productRepository, capitalMovementRepository, currentTenant, payments, creditPayments);
 
     @BeforeEach
     void tenantContext() {
@@ -42,6 +44,8 @@ class FinanceServiceTest {
         tenant.setActive(true);
         when(currentTenant.get()).thenReturn(tenant);
         when(currentTenant.id()).thenReturn(1L);
+        when(payments.totalReceivedBetween(anyLong(), any(), any())).thenReturn(BigDecimal.ZERO);
+        when(creditPayments.totalActivePaymentsBetween(anyLong(), any(), any())).thenReturn(BigDecimal.ZERO);
     }
 
     @Test

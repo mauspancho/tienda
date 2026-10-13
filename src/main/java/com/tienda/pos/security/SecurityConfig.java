@@ -43,6 +43,7 @@ public class SecurityConfig {
     }
 
     @Bean
+    @org.springframework.core.annotation.Order(2)
     SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationSuccessHandler successHandler,
                                             AppUserRepository userRepository, SessionRegistry registry,
                                             SessionLogoutService logoutService) throws Exception {

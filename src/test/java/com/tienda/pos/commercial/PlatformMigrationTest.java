@@ -34,8 +34,11 @@ public class PlatformMigrationTest {
             try (Connection c = connect(db)) {
                 assertThat(count(c,"select count(*) from information_schema.tables where table_schema=database()")).isZero();
                 Flyway flyway = flyway(db);
-                assertThat(flyway.migrate().migrationsExecuted).isGreaterThanOrEqualTo(10);
+                assertThat(flyway.migrate().migrationsExecuted).isGreaterThanOrEqualTo(15);
                 assertSuccess(flyway);
+                assertThat(strings(c, "select table_name from information_schema.tables where table_schema=database()"))
+                        .contains("api_refresh_token", "api_idempotency_record", "credit_payment", "credit_payment_application", "credit_charge");
+                assertThat(count(c, "select count(*) from information_schema.key_column_usage where table_schema=database() and table_name='credit_payment' and constraint_name='fk_credit_payment_customer' and column_name='tenant_id'")).isEqualTo(1);
                 assertThat(count(c,"select count(*) from app_user")).isZero();
                 assertThat(count(c,"select count(*) from user_roles")).isZero();
                 assertThat(count(c,"select count(*) from role where name='ROLE_PLATFORM_ADMIN'")).isEqualTo(1);
@@ -86,9 +89,12 @@ public class PlatformMigrationTest {
                     execute(c,"insert into user_roles(user_id,role_id) select 30,id from role where name='ROLE_PLATFORM_ADMIN'");
                 Map<String,List<String>> before=snapshot(c);
                 Flyway latest=flyway(db);
-                assertThat(latest.migrate().migrationsExecuted).isEqualTo(1);
+                int pending = latest.info().pending().length;
+                assertThat(pending).isGreaterThanOrEqualTo(2);
+                assertThat(latest.migrate().migrationsExecuted).isEqualTo(pending);
                 assertSuccess(latest);
                 assertThat(snapshot(c)).isEqualTo(before);
+                assertThat(count(c,"select count(*) from product where id=100 and promocion_whatsapp=false")).isEqualTo(1);
                 assertThat(strings(c,"select cast(ur.user_id as char) from user_roles ur join role r on r.id=ur.role_id where r.name='ROLE_PLATFORM_ADMIN'"))
                         .containsExactly(state==Existing.PLATFORM_EXISTS?"30":"20");
                 assertThat(strings(c,"select cast(ur.user_id as char) from user_roles ur join role r on r.id=ur.role_id where r.name='ROLE_ADMIN' order by ur.user_id"))
@@ -143,12 +149,21 @@ public class PlatformMigrationTest {
     private static Map<String,List<String>> snapshot(Connection c) throws SQLException {
         Map<String,List<String>> snapshot=new TreeMap<>();
         for(String table:strings(c,"select table_name from information_schema.tables where table_schema=database() order by table_name")) {
-            if(List.of("role","user_roles","flyway_schema_history").contains(table)) continue;
+            if(List.of("role","user_roles","flyway_schema_history","api_refresh_token","api_idempotency_record",
+                    "credit_payment","credit_payment_application","credit_charge").contains(table)) continue;
             List<String> rows=new ArrayList<>();
             try(Statement statement=c.createStatement();ResultSet rs=statement.executeQuery("select * from "+table+" order by id")) {
                 while(rs.next()) {
                     List<String> cells=new ArrayList<>();
-                    for(int i=1;i<=rs.getMetaData().getColumnCount();i++) cells.add(rs.getString(i));
+                    for(int i=1;i<=rs.getMetaData().getColumnCount();i++) {
+                        // V11 adds this column; its default is asserted separately above.
+                        if (table.equals("product") && rs.getMetaData().getColumnLabel(i).equalsIgnoreCase("promocion_whatsapp")) continue;
+                        String column = rs.getMetaData().getColumnLabel(i).toLowerCase(Locale.ROOT);
+                        if ((table.equals("tenant") || table.equals("app_user")) && column.equals("auth_epoch")) continue;
+                        if (table.equals("customer") && column.equals("last_name")) continue;
+                        if (table.equals("sale") && List.of("settlement_type","cancelled_at","cancelled_by","cancellation_reason","warehouse_id").contains(column)) continue;
+                        cells.add(rs.getString(i));
+                    }
                     rows.add(cells.toString());
                 }
             }
@@ -159,7 +174,7 @@ public class PlatformMigrationTest {
     private static void assertSuccess(Flyway flyway) {
         flyway.validate();
         assertThat(flyway.info().pending()).isEmpty();
-        assertThat(Arrays.stream(flyway.info().all()).map(i->i.getVersion().getVersion())).contains("1","2","3","4","5","6","7","8","9","10");
+        assertThat(Arrays.stream(flyway.info().all()).map(i->i.getVersion().getVersion())).contains("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15");
         assertThat(flyway.info().all()).allSatisfy(i->assertThat(i.getState()).as(i.getScript()).isEqualTo(MigrationState.SUCCESS));
     }
     private static Flyway flyway(JdbcDatabaseContainer<?> db) {

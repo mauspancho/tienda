@@ -38,6 +38,11 @@ public class AppUser extends BaseEntity {
 
     private String email;
     private boolean active = true;
+
+    @Column(nullable = false)
+    private long authEpoch;
+    public long getAuthEpoch() { return authEpoch; }
+    public void revokeApiTokens() { authEpoch++; }
     private LocalDateTime lastLogin;
 
     @ManyToMany(fetch = FetchType.EAGER)
@@ -67,7 +72,7 @@ public class AppUser extends BaseEntity {
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
     public boolean isActive() { return active; }
-    public void setActive(boolean active) { this.active = active; }
+    public void setActive(boolean active) { if (this.active != active) authEpoch++; this.active = active; }
     public LocalDateTime getLastLogin() { return lastLogin; }
     public void setLastLogin(LocalDateTime lastLogin) { this.lastLogin = lastLogin; }
     public Set<Role> getRoles() { return roles; }

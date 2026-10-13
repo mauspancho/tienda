@@ -46,7 +46,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringJUnitWebConfig(PlatformTestConfiguration.class)
 @TestPropertySource(locations = "/hardening-test.properties", properties = {
         "spring.datasource.url=jdbc:h2:mem:platform-tests;MODE=MySQL;DB_CLOSE_DELAY=-1",
-        "tienda.catalog.tenant-code="
+        "tienda.catalog.tenant-code=",
+        "tienda.product-images.directory=target/backup-test-products",
+        "tienda.catalog-images.directory=target/backup-test-catalog"
 })
 class PlatformIntegrationTest {
     private static final String PASSWORD = "Test-only-493!";
@@ -57,9 +59,13 @@ class PlatformIntegrationTest {
     @Autowired ProductService products;
     @Autowired CashService cash;
     @Autowired SaleService sales;
+    @Autowired com.tienda.pos.credit.CreditService credits;
+    @Autowired com.tienda.pos.customer.CustomerService customers;
+    @Autowired com.fasterxml.jackson.databind.ObjectMapper json;
     @Autowired EntityManager em;
     @Autowired PlatformTransactionManager tx;
     @Autowired JdbcTemplate jdbc;
+    @Autowired com.tienda.pos.backup.TenantBackupService backups;
     @SpyBean PasswordEncoder encoder;
     @SpyBean com.tienda.pos.tenant.PublicTenantResolver publicTenants;
     @SpyBean ProductRepository productRepository;
@@ -70,6 +76,303 @@ class PlatformIntegrationTest {
     Shop a, b;
 
     record Shop(Long id, String username, Long userId, Long productId, String productName, String folio, Long customerId, Long movementId) {}
+
+    private byte[] exportBackup(long tenant) throws Exception {
+        authenticate(operator, "ROLE_PLATFORM_ADMIN", "ROLE_ADMIN");
+        var out = new java.io.ByteArrayOutputStream(); backups.exportArchive(tenant, out); return out.toByteArray();
+    }
+
+    private Map<String, byte[]> zipEntries(byte[] zip) throws Exception {
+        Map<String, byte[]> entries = new LinkedHashMap<>();
+        try (var in = new java.util.zip.ZipInputStream(new java.io.ByteArrayInputStream(zip))) {
+            java.util.zip.ZipEntry entry;
+            while ((entry = in.getNextEntry()) != null) entries.put(entry.getName(), in.readAllBytes());
+        }
+        return entries;
+    }
+
+    private byte[] zip(Map<String, byte[]> entries) throws Exception {
+        var out = new java.io.ByteArrayOutputStream();
+        try (var zip = new java.util.zip.ZipOutputStream(out)) {
+            for (var entry : entries.entrySet()) {
+                zip.putNextEntry(new java.util.zip.ZipEntry(entry.getKey())); zip.write(entry.getValue()); zip.closeEntry();
+            }
+        }
+        return out.toByteArray();
+    }
+
+    private org.springframework.mock.web.MockMultipartFile archive(byte[] zip) {
+        return new org.springframework.mock.web.MockMultipartFile("backupFile", "backup.zip", "application/zip", zip);
+    }
+
+    @Test void tenantBackupRoundTripRemapsIdsAndLeavesOtherTenantUntouched() throws Exception {
+        byte[] beforeB = exportBackup(b.id());
+        byte[] backup = exportBackup(a.id());
+        var entries = zipEntries(backup);
+        String exported = new String(entries.get("data/app_user.json"), java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(exported).contains(a.username()).doesNotContain(b.username()).doesNotContain("$2a$");
+        assertThat(entries.keySet()).doesNotContain("data/role.json", "data/api_refresh_token.json", "data/tenant.json");
+        String hash = jdbc.queryForObject("select password_hash from app_user where id=?", String.class, a.userId());
+        tenants.toggle(a.id());
+        jdbc.update("update product set name='Changed' where id=?", a.productId());
+        backups.importArchive(a.id(), archive(backup));
+        assertThat(jdbc.queryForObject("select name from product where tenant_id=?", String.class, a.id())).isEqualTo(a.productName());
+        long newProduct = number("select id from product where tenant_id=?", a.id());
+        assertThat(newProduct).isNotEqualTo(a.productId());
+        assertThat(number("select product_id from sale_item where sale_id=(select id from sale where tenant_id=?)", a.id())).isEqualTo(newProduct);
+        assertThat(jdbc.queryForObject("select quantity from inventory_stock where tenant_id=?", BigDecimal.class, a.id())).isEqualByComparingTo("9");
+        assertThat(jdbc.queryForObject("select password_hash from app_user where id=?", String.class, a.userId())).isEqualTo(hash);
+        assertThat(jdbc.queryForObject("select active from tenant where id=?", Boolean.class, a.id())).isFalse();
+        var afterB = zipEntries(exportBackup(b.id()));
+        for (var entry : zipEntries(beforeB).entrySet()) if (!entry.getKey().equals("manifest.json"))
+            assertThat(afterB.get(entry.getKey())).as(entry.getKey()).isEqualTo(entry.getValue());
+    }
+
+    @Test void backupRoutesArePlatformOnlyAndRequireCsrfAndTenantConfirmation() throws Exception {
+        String path = "/platform/tenants/" + a.id() + "/backup";
+        mvc.perform(get(path)).andExpect(status().is3xxRedirection());
+        for (String username : List.of(a.username(), cashier)) {
+            var session = login(username, username.equals(cashier) ? "/admin/pos" : "/admin");
+            mvc.perform(get(path).session(session)).andExpect(status().isForbidden());
+            mvc.perform(get(path + "/export").session(session)).andExpect(status().isForbidden());
+            mvc.perform(multipart(path + "/import").file(archive(new byte[]{1})).session(session).with(csrf()))
+                    .andExpect(status().isForbidden());
+        }
+        var platform = login(operator, "/platform/tenants");
+        mvc.perform(get(path).session(platform)).andExpect(status().isOk()).andExpect(content().string(containsString(a.username())));
+        mvc.perform(get(path + "/export").session(platform)).andExpect(status().isOk()).andExpect(content().contentType("application/zip"));
+        mvc.perform(multipart(path + "/import").file(archive(new byte[]{1})).session(platform)).andExpect(status().isForbidden());
+        mvc.perform(multipart(path + "/import").file(archive(new byte[]{1})).param("confirmation", "IMPORTAR " + b.username()).session(platform).with(csrf()))
+                .andExpect(status().is3xxRedirection()).andExpect(flash().attributeExists("error"));
+    }
+
+    @Test void backupRejectsActiveTenantAndForeignReferencesWithFullRollback() throws Exception {
+        byte[] backup = exportBackup(a.id());
+        assertThatThrownBy(() -> backups.importArchive(a.id(), archive(backup))).isInstanceOf(DomainException.class).hasMessageContaining("Suspende");
+        tenants.toggle(a.id());
+        var entries = zipEntries(backup);
+        var manifest = json.readTree(entries.get("manifest.json"));
+        int index = -1;
+        for (var definition : manifest.get("tables")) if (definition.get("name").asText().equals("sale_item")) {
+            for (int i=0; i<definition.get("columns").size(); i++)
+                if (definition.get("columns").get(i).get("name").asText().equals("product_id")) index=i;
+        }
+        var rows = (com.fasterxml.jackson.databind.node.ArrayNode) json.readTree(entries.get("data/sale_item.json"));
+        ((com.fasterxml.jackson.databind.node.ArrayNode) rows.get(0)).set(index, json.getNodeFactory().textNode(b.productId().toString()));
+        entries.put("data/sale_item.json", json.writeValueAsBytes(rows));
+        byte[] malicious = zip(entries);
+        assertThatThrownBy(() -> backups.importArchive(a.id(), archive(malicious))).isInstanceOf(DomainException.class).hasMessageContaining("Referencia fuera");
+        assertThat(number("select id from product where tenant_id=?", a.id())).isEqualTo(a.productId());
+        assertThat(number("select id from product where tenant_id=?", b.id())).isEqualTo(b.productId());
+    }
+
+    @Test void backupRejectsZipTraversalAndIncompleteManifest() throws Exception {
+        var entries = zipEntries(exportBackup(a.id())); tenants.toggle(a.id());
+        entries.put("../escape.txt", new byte[]{1}); byte[] badPath = zip(entries);
+        assertThatThrownBy(() -> backups.importArchive(a.id(), archive(badPath))).isInstanceOf(DomainException.class);
+        entries.remove("../escape.txt"); entries.remove("data/product.json"); byte[] incomplete = zip(entries);
+        assertThatThrownBy(() -> backups.importArchive(a.id(), archive(incomplete))).isInstanceOf(java.io.IOException.class);
+        assertThat(number("select id from product where tenant_id=?", a.id())).isEqualTo(a.productId());
+    }
+
+    @Test void backupImportsMainV12FormatIntoSelectedTenantAndBuildsWarehouseStock() throws Exception {
+        var entries = zipEntries(exportBackup(a.id()));
+        var manifest = (com.fasterxml.jackson.databind.node.ObjectNode) json.readTree(entries.get("manifest.json"));
+        manifest.put("format", "tienda-pos-store-backup"); manifest.put("schemaVersion", 12); manifest.remove("sourceTenant");
+        var tables = json.createArrayNode();
+        Set<String> structural = Set.of("business", "branch", "warehouse", "cash_register", "inventory_stock");
+        Set<String> extraColumns = Set.of("tenant_id", "business_id", "branch_id", "warehouse_id", "cash_register_id", "auth_epoch");
+        for (var definition : manifest.get("tables")) {
+            String table = definition.get("name").asText();
+            if (structural.contains(table)) { entries.remove("data/" + table + ".json"); continue; }
+            var cols = json.createArrayNode(); var rows = json.createArrayNode(); List<Integer> kept = new ArrayList<>();
+            for (int i=0; i<definition.get("columns").size(); i++) if (!extraColumns.contains(definition.get("columns").get(i).get("name").asText())) {
+                cols.add(definition.get("columns").get(i)); kept.add(i);
+            }
+            for (var oldRow : json.readTree(entries.get("data/" + table + ".json"))) {
+                var row = json.createArrayNode(); kept.forEach(i -> row.add(oldRow.get(i))); rows.add(row);
+            }
+            if (table.equals("app_user")) {
+                cols.add(json.createObjectNode().put("name", "password_hash"));
+                for (var row : rows) ((com.fasterxml.jackson.databind.node.ArrayNode) row).add("!MUST-NOT-REPLACE-PASSWORD");
+            }
+            ((com.fasterxml.jackson.databind.node.ObjectNode) definition).set("columns", cols);
+            tables.add(definition); entries.put("data/" + table + ".json", json.writeValueAsBytes(rows));
+        }
+        for (String table : List.of("role", "user_roles", "api_refresh_token", "api_idempotency_record")) {
+            var def = json.createObjectNode().put("name", table).put("rowCount", 0);
+            def.set("columns", json.createArrayNode()); tables.add(def); entries.put("data/" + table + ".json", "[]".getBytes());
+        }
+        manifest.set("tables", tables); entries.put("manifest.json", json.writeValueAsBytes(manifest));
+        String password = jdbc.queryForObject("select password_hash from app_user where id=?", String.class, a.userId());
+        tenants.toggle(a.id()); backups.importArchive(a.id(), archive(zip(entries)));
+        assertThat(jdbc.queryForObject("select quantity from inventory_stock where tenant_id=?", BigDecimal.class, a.id())).isEqualByComparingTo("9");
+        assertThat(number("select count(*) from sale s join warehouse w on w.id=s.warehouse_id where s.tenant_id=? and w.tenant_id=?", a.id(), a.id())).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select password_hash from app_user where id=?", String.class, a.userId())).isEqualTo(password);
+        assertThat(number("select id from product where tenant_id=?", b.id())).isEqualTo(b.productId());
+    }
+
+    @Test void backupOnlyIncludesReferencedImagesAndNeverOverwritesOtherStoreFiles() throws Exception {
+        var props = context.getBean(ProductImagesProperties.class);
+        var directory = java.nio.file.Path.of(props.getDirectory()).toAbsolutePath(); java.nio.file.Files.createDirectories(directory);
+        String nameA = "backup-test-a-" + suffix + ".png", nameB = "backup-test-b-" + suffix + ".png";
+        byte[] png = java.util.Base64.getDecoder().decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aS1kAAAAASUVORK5CYII=");
+        java.nio.file.Path restored = null;
+        try {
+            java.nio.file.Files.write(directory.resolve(nameA), png); java.nio.file.Files.write(directory.resolve(nameB), png);
+            jdbc.update("update product set image_url=? where id=?", props.normalizedPublicPath() + "/" + nameA, a.productId());
+            jdbc.update("update product set image_url=? where id=?", props.normalizedPublicPath() + "/" + nameB, b.productId());
+            byte[] backup = exportBackup(a.id());
+            assertThat(zipEntries(backup).keySet()).contains("images/products/" + nameA).doesNotContain("images/products/" + nameB);
+            tenants.toggle(a.id()); backups.importArchive(a.id(), archive(backup));
+            String image = jdbc.queryForObject("select image_url from product where tenant_id=?", String.class, a.id());
+            assertThat(image).isNotEqualTo(props.normalizedPublicPath() + "/" + nameA);
+            restored = directory.resolve(image.substring(image.lastIndexOf('/')+1));
+            assertThat(java.nio.file.Files.readAllBytes(restored)).isEqualTo(png);
+            assertThat(java.nio.file.Files.readAllBytes(directory.resolve(nameB))).isEqualTo(png);
+        } finally {
+            java.nio.file.Files.deleteIfExists(directory.resolve(nameA)); java.nio.file.Files.deleteIfExists(directory.resolve(nameB));
+            if (restored != null) java.nio.file.Files.deleteIfExists(restored);
+        }
+    }
+
+    @Test void backupUsesSelectedDestinationNotManifestTenantAndDoesNotCopyPrivileges() throws Exception {
+        var entries = zipEntries(exportBackup(a.id()));
+        var manifest = json.readTree(entries.get("manifest.json"));
+        int folio = -1;
+        for (var table : manifest.get("tables")) if (table.get("name").asText().equals("sale"))
+            for (int i=0; i<table.get("columns").size(); i++) if (table.get("columns").get(i).get("name").asText().equals("folio")) folio=i;
+        var rows = (com.fasterxml.jackson.databind.node.ArrayNode) json.readTree(entries.get("data/sale.json"));
+        ((com.fasterxml.jackson.databind.node.ArrayNode) rows.get(0)).set(folio, json.getNodeFactory().textNode("IMPORTED-" + suffix));
+        entries.put("data/sale.json", json.writeValueAsBytes(rows));
+        tenants.toggle(b.id());
+        backups.importArchive(b.id(), archive(zip(entries)));
+        assertThat(number("select id from product where tenant_id=?", a.id())).isEqualTo(a.productId());
+        assertThat(jdbc.queryForObject("select name from product where tenant_id=?", String.class, b.id())).isEqualTo(a.productName());
+        long actor = number("select cashier_id from sale where tenant_id=?", b.id());
+        assertThat(actor).isNotEqualTo(a.userId());
+        assertThat(number("select tenant_id from app_user where id=?", actor)).isEqualTo(b.id());
+        assertThat(jdbc.queryForObject("select active from app_user where id=?", Boolean.class, actor)).isFalse();
+        assertThat(jdbc.queryForList("select r.name from role r join user_roles ur on ur.role_id=r.id where ur.user_id=?", String.class, actor)).containsExactly("ROLE_CAJERO");
+        assertThat(jdbc.queryForObject("select active from app_user where id=?", Boolean.class, b.userId())).isTrue();
+    }
+
+    @Test void backupPreservesCreditBalancesAndRemapsPaymentApplications() throws Exception {
+        authenticate(a.username(), "ROLE_ADMIN");
+        var customerForm = new com.tienda.pos.customer.CustomerForm(); customerForm.setName("Backup debtor"); customerForm.setActive(true);
+        long customer = customers.create(customerForm).getId();
+        var charge = new com.tienda.pos.credit.CreditChargeForm();
+        charge.setAmount(new BigDecimal("75")); charge.setConcept("Historical credit");
+        credits.registerCharge(customer, charge);
+        var payment = new com.tienda.pos.credit.CreditPaymentForm(); payment.setAmount(new BigDecimal("20")); payment.setMethod(PaymentMethod.CASH);
+        credits.registerPayment(customer, payment);
+        byte[] backup = exportBackup(a.id()); tenants.toggle(a.id()); backups.importArchive(a.id(), archive(backup));
+        tenants.toggle(a.id()); authenticate(a.username(), "ROLE_ADMIN");
+        long newCustomer = number("select id from customer where tenant_id=? and name='Backup debtor'", a.id());
+        assertThat(newCustomer).isNotEqualTo(customer);
+        assertThat(credits.statement(newCustomer).balance()).isEqualByComparingTo("55");
+        assertThat(number("select count(*) from credit_payment_application a join credit_charge c on c.id=a.credit_charge_id join credit_payment p on p.id=a.credit_payment_id where a.tenant_id=? and c.tenant_id=? and p.tenant_id=?", a.id(), a.id(), a.id())).isEqualTo(1);
+    }
+
+    private com.fasterxml.jackson.databind.JsonNode apiLogin(String username) throws Exception {
+        SecurityContextHolder.clearContext();
+        return json.readTree(mvc.perform(post("/api/v1/auth/login").contentType("application/json")
+                .content(json.writeValueAsString(Map.of("username", username, "password", PASSWORD))))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+    }
+
+    @Test void apiIsolatesStoresAndCashierSales() throws Exception {
+        String token = apiLogin(a.username()).get("accessToken").asText();
+        for (String path : List.of("/api/v1/products", "/api/v1/inventory/stock", "/api/v1/sales", "/api/v1/users",
+                "/api/v1/cash/current", "/api/v1/cash/sessions", "/api/v1/pos",
+                "/api/v1/customers", "/api/v1/categories", "/api/v1/suppliers", "/api/v1/purchases",
+                "/api/v1/expenses", "/api/v1/settings", "/api/v1/credits/summary", "/api/v1/finances")) {
+            mvc.perform(get(path).header("Authorization", "Bearer " + token)).andExpect(status().isOk())
+                    .andExpect(content().string(not(containsString(b.username()))));
+        }
+        for (String path : List.of("/api/v1/products/" + b.productId(), "/api/v1/sales/" + b.folio(),
+                "/api/v1/inventory/movements/" + b.movementId())) {
+            mvc.perform(get(path).header("Authorization", "Bearer " + token)).andExpect(status().isNotFound());
+        }
+        mvc.perform(get("/api/v1/users/" + b.userId()).header("Authorization", "Bearer " + token))
+                .andExpect(status().isUnprocessableEntity());
+        String cashierToken = apiLogin(cashier).get("accessToken").asText();
+        mvc.perform(get("/api/v1/sales").header("Authorization", "Bearer " + cashierToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(get("/api/v1/sales/" + a.folio()).header("Authorization", "Bearer " + cashierToken))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/cash/sessions").header("Authorization", "Bearer " + cashierToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test void suspendingAndReactivatingTenantDoesNotReviveApiTokens() throws Exception {
+        var login = apiLogin(a.username());
+        String token = login.get("accessToken").asText();
+        new TransactionTemplate(tx).executeWithoutResult(s -> em.find(Tenant.class, a.id()).setActive(false));
+        mvc.perform(get("/api/v1/products").header("Authorization", "Bearer " + token)).andExpect(status().isUnauthorized());
+        new TransactionTemplate(tx).executeWithoutResult(s -> em.find(Tenant.class, a.id()).setActive(true));
+        mvc.perform(get("/api/v1/products").header("Authorization", "Bearer " + token)).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/v1/auth/refresh").contentType("application/json")
+                .content(json.writeValueAsString(Map.of("refreshToken", login.get("refreshToken").asText()))))
+                .andExpect(status().isUnauthorized());
+        apiLogin(a.username());
+    }
+
+    @Test void creditPaymentsReversalAndCancellationKeepTenantStockAndCashIsolated() {
+        authenticate(a.username(), "ROLE_ADMIN");
+        var form = new com.tienda.pos.customer.CustomerForm();
+        form.setName("Credit A"); form.setActive(true);
+        Long customer = customers.create(form).getId();
+        SaleRequest request = new SaleRequest(); request.setSettlementType(SettlementType.CREDIT);
+        request.setCustomerId(customer); request.setPaymentMethod(PaymentMethod.CASH);
+        SaleRequest.SaleLineRequest line = new SaleRequest.SaleLineRequest();
+        line.setProductId(a.productId()); line.setQuantity(BigDecimal.ONE); request.setItems(List.of(line));
+        var result = sales.checkout(request);
+        assertThat(result.received()).isEqualByComparingTo("0");
+        assertThat(result.change()).isEqualByComparingTo("0");
+        Long saleId = number("select id from sale where folio=?", result.folio());
+        assertThat(number("select count(*) from payment where sale_id=?", saleId)).isZero();
+        assertThat(credits.statement(customer).balance()).isEqualByComparingTo("103");
+        var payment = new com.tienda.pos.credit.CreditPaymentForm();
+        payment.setAmount(new BigDecimal("40")); payment.setMethod(PaymentMethod.CASH);
+        Long paymentId = credits.registerPayment(customer, payment).getId();
+        assertThat(credits.statement(customer).balance()).isEqualByComparingTo("63");
+        assertThatThrownBy(() -> credits.cancelCredit(saleId, "error")).isInstanceOf(DomainException.class);
+        authenticate(b.username(), "ROLE_ADMIN");
+        assertThatThrownBy(() -> credits.statement(customer)).isInstanceOf(DomainException.class);
+        assertThatThrownBy(() -> credits.reversePayment(paymentId, "cross store")).isInstanceOf(DomainException.class);
+        assertThatThrownBy(() -> credits.cancelCredit(saleId, "cross store")).isInstanceOf(DomainException.class);
+        authenticate(a.username(), "ROLE_ADMIN");
+        credits.reversePayment(paymentId, "error");
+        credits.cancelCredit(saleId, "error");
+        assertThat(credits.statement(customer).balance()).isEqualByComparingTo("0");
+        assertThat(jdbc.queryForObject("select quantity from inventory_stock where tenant_id=? and product_id=?", BigDecimal.class, a.id(), a.productId())).isEqualByComparingTo("9");
+        assertThat(jdbc.queryForObject("select quantity from inventory_stock where tenant_id=? and product_id=?", BigDecimal.class, b.id(), b.productId())).isEqualByComparingTo("9");
+        assertThat(jdbc.queryForObject("select sum(amount) from cash_movement where tenant_id=?", BigDecimal.class, a.id())).isEqualByComparingTo("103");
+    }
+
+    @Test void idempotentCreditChargesAreScopedToCustomerAndTenant() throws Exception {
+        authenticate(a.username(), "ROLE_ADMIN");
+        var form = new com.tienda.pos.customer.CustomerForm(); form.setName("Debtor"); form.setActive(true);
+        Long customer = customers.create(form).getId();
+        String token = apiLogin(a.username()).get("accessToken").asText();
+        String path = "/api/v1/credits/customers/" + customer + "/charges";
+        String first = mvc.perform(post(path).header("Authorization", "Bearer " + token).header("Idempotency-Key", "same-key")
+                .contentType("application/json").content("{\"amount\":25,\"concept\":\"Test\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        mvc.perform(post(path).header("Authorization", "Bearer " + token).header("Idempotency-Key", "same-key")
+                .contentType("application/json").content("{\"amount\":25,\"concept\":\"Test\"}"))
+                .andExpect(status().isCreated()).andExpect(content().json(first));
+        mvc.perform(post(path).header("Authorization", "Bearer " + token).header("Idempotency-Key", "same-key")
+                .contentType("application/json").content("{\"amount\":26,\"concept\":\"Test\"}"))
+                .andExpect(status().isConflict());
+        authenticate(a.username(), "ROLE_ADMIN");
+        assertThat(credits.statement(customer).balance()).isEqualByComparingTo("25");
+        String otherToken = apiLogin(b.username()).get("accessToken").asText();
+        mvc.perform(post(path).header("Authorization", "Bearer " + otherToken).header("Idempotency-Key", "same-key")
+                .contentType("application/json").content("{\"amount\":25,\"concept\":\"Test\"}"))
+                .andExpect(status().isUnprocessableEntity());
+    }
 
     @BeforeEach
     void fixture() {
@@ -545,6 +848,160 @@ class PlatformIntegrationTest {
         jdbc.update("delete from user_roles where user_id=? and role_id=(select id from role where name='ROLE_PLATFORM_ADMIN')", operatorId);
         mvc.perform(get("/platform/tenants").session(session)).andExpect(status().isForbidden());
         assertValid(session);
+    }
+
+    @Test void productsPaginateBeyondTwentyWithoutExposingOtherTenants() throws Exception {
+        addProducts(44);
+        MockHttpSession session = login(a.username(), "/admin");
+        Set<Long> seen = new HashSet<>();
+        for (int index = 0; index < 3; index++) {
+            MvcResult result = mvc.perform(get("/admin/products").param("page", String.valueOf(index)).session(session))
+                    .andExpect(status().isOk()).andExpect(view().name("products/index"))
+                    .andExpect(content().string(containsString("data-products-table")))
+                    .andExpect(content().string(not(containsString(b.productName())))).andReturn();
+            var page = productPage(result);
+            assertThat(page.getTotalElements()).isEqualTo(45);
+            assertThat(page.getTotalPages()).isEqualTo(3);
+            assertThat(page.getNumber()).isEqualTo(index);
+            assertThat(page.getNumberOfElements()).isEqualTo(index < 2 ? 20 : 5);
+            for (Product product : page) {
+                assertThat(product.getTenant().getId()).isEqualTo(a.id());
+                assertThat(seen.add(product.getId())).isTrue();
+            }
+        }
+        assertThat(seen).hasSize(45).contains(a.productId()).doesNotContain(b.productId());
+        mvc.perform(get("/admin/api/products/table").param("start", "40").session(session))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.recordsTotal").value(45))
+                .andExpect(jsonPath("$.recordsFiltered").value(45))
+                .andExpect(jsonPath("$.data.length()").value(5));
+    }
+
+    @Test void productSearchKeepsQueryInPaginationAndRemainsTenantScoped() throws Exception {
+        addProducts(44);
+        jdbc.update("update product set name=? where id=?", "Paged & cafe other tenant", b.productId());
+        MockHttpSession session = login(a.username(), "/admin");
+        MvcResult result = mvc.perform(get("/admin/products").param("q", "  Paged & cafe  ").param("page", "1").session(session))
+                .andExpect(status().isOk()).andExpect(model().attribute("q", "Paged & cafe"))
+                .andExpect(content().string(containsString("value=\"Paged &amp; cafe\"")))
+                .andExpect(content().string(containsString("name=\"page\" value=\"0\"")))
+                .andExpect(content().string(containsString("data-product-filter-form")))
+                .andExpect(content().string(not(containsString("other tenant")))).andReturn();
+        var page = productPage(result);
+        assertThat(page.getTotalElements()).isEqualTo(44);
+        assertThat(page.getNumber()).isEqualTo(1);
+        assertThat(page.getContent()).hasSize(20).allSatisfy(product -> assertThat(product.getTenant().getId()).isEqualTo(a.id()));
+        for (String query : List.of("SAME-CODE", "1234567890123")) {
+            var matching = productPage(mvc.perform(get("/admin/products").param("q", query).session(session))
+                    .andExpect(status().isOk()).andReturn());
+            assertThat(matching.getTotalElements()).isEqualTo(1);
+            assertThat(matching.getContent()).extracting(Product::getId).containsExactly(a.productId());
+        }
+    }
+
+    @Test void productPaginationHandlesNegativeStaleAndEmptyPages() throws Exception {
+        addProducts(24);
+        MockHttpSession session = login(a.username(), "/admin");
+        for (int requested : List.of(-1, 99)) {
+            var page = productPage(mvc.perform(get("/admin/products").param("page", String.valueOf(requested)).session(session))
+                    .andExpect(status().isOk()).andReturn());
+            assertThat(page.getNumber()).isEqualTo(requested < 0 ? 0 : 1);
+            assertThat(page.getNumberOfElements()).isEqualTo(requested < 0 ? 20 : 5);
+        }
+        MvcResult empty = mvc.perform(get("/admin/products").param("q", "no-match-" + suffix).param("page", "99").session(session))
+                .andExpect(status().isOk()).andExpect(content().string(containsString("No hay productos para mostrar.")))
+                .andExpect(content().string(not(containsString("class=\"product-pagination-links\"")))).andReturn();
+        assertThat(productPage(empty).getTotalElements()).isZero();
+        assertThat(productPage(empty).getNumber()).isZero();
+    }
+
+    @Test void whatsappPromotionTogglePersistsAndDoesNotChangeCatalogPromotion() throws Exception {
+        MockHttpSession session = login(a.username(), "/admin");
+        assertThat(jdbc.queryForObject("select promocion_whatsapp from product where id=?", Boolean.class, a.productId())).isFalse();
+        assertThat(jdbc.queryForObject("select promoted from product where id=?", Boolean.class, a.productId())).isFalse();
+
+        mvc.perform(post("/admin/products/{id}/whatsapp-promotion", a.productId()).session(session).with(csrf())
+                        .param("selected", "true").param("q", "SAME-CODE").param("page", "0"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/products?q=SAME-CODE&name=&brand=&sort=name&direction=asc&page=0"));
+
+        assertThat(jdbc.queryForObject("select promocion_whatsapp from product where id=?", Boolean.class, a.productId())).isTrue();
+        assertThat(jdbc.queryForObject("select promoted from product where id=?", Boolean.class, a.productId())).isFalse();
+        mvc.perform(get("/admin/products").param("q", "SAME-CODE").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Promoción WhatsApp")))
+                .andExpect(content().string(containsString("Seleccionado")));
+
+        mvc.perform(post("/admin/products/{id}/whatsapp-promotion", a.productId()).session(session).with(csrf()))
+                .andExpect(status().is3xxRedirection());
+        assertThat(jdbc.queryForObject("select promocion_whatsapp from product where id=?", Boolean.class, a.productId())).isFalse();
+        assertThat(jdbc.queryForObject("select promoted from product where id=?", Boolean.class, a.productId())).isFalse();
+    }
+
+    @Test void tableFiltersSuggestionsAndCountsNeverExposeAnotherTenant() throws Exception {
+        addProducts(24);
+        jdbc.update("update product set brand=?, promocion_whatsapp=true where id=?", "Own brand", a.productId());
+        jdbc.update("update product set brand=? where id=?", "Private brand", b.productId());
+        MockHttpSession session = login(a.username(), "/admin");
+        mvc.perform(get("/admin/api/products/table").session(session).param("tenantId", b.id().toString()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.recordsTotal").value(25))
+                .andExpect(jsonPath("$.recordsFiltered").value(25)).andExpect(jsonPath("$.data.length()").value(20))
+                .andExpect(jsonPath("$.columnControl.brand[*].value").value(org.hamcrest.Matchers.contains("Own brand")))
+                .andExpect(content().string(not(containsString("Private brand"))));
+        mvc.perform(get("/admin/api/products/table").session(session).param("q", "SAME-CODE")
+                        .param("brand", "Own").param("active", "true").param("whatsapp", "true")
+                        .param("minPrice", "200").param("maxPrice", "100").param("draw", "4"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.draw").value(4))
+                .andExpect(jsonPath("$.recordsTotal").value(25)).andExpect(jsonPath("$.recordsFiltered").value(1))
+                .andExpect(jsonPath("$.data[0].id").value(a.productId().intValue()));
+        mvc.perform(get("/admin/api/products/table").session(session)
+                        .param("columns[2][columnControl][list][0]", "Own brand"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.recordsFiltered").value(1));
+        mvc.perform(get("/admin/api/products/table").session(session).param("brand", "Private brand"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.recordsFiltered").value(0));
+        mvc.perform(get("/admin/api/products/suggestions").session(session).param("field", "brand"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").value(org.hamcrest.Matchers.contains("Own brand")));
+        mvc.perform(get("/admin/api/products/suggestions").session(session).param("field", "name").param("q", "Product-"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").value(org.hamcrest.Matchers.contains(a.productName())));
+        mvc.perform(get("/admin/api/products/table").session(session).param("order[0][column]", "3")
+                        .param("order[0][dir]", "desc").param("length", "1000"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data[0].id").value(a.productId().intValue()))
+                .andExpect(jsonPath("$.data.length()").value(25));
+        mvc.perform(get("/admin/api/products/table").session(session).param("start", "-100").param("length", "-1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(10));
+    }
+
+    @Test void interactiveProductEndpointsStillRequireAnActiveAdministrator() throws Exception {
+        for (String path : List.of("/admin/api/products/table", "/admin/api/products/suggestions?field=name"))
+            mvc.perform(get(path)).andExpect(status().is3xxRedirection());
+        MockHttpSession seller = login(cashier, "/admin/pos");
+        for (String path : List.of("/admin/api/products/table", "/admin/api/products/suggestions?field=name"))
+            mvc.perform(get(path).session(seller)).andExpect(status().isForbidden());
+        mvc.perform(post("/admin/products/{id}/whatsapp-promotion", a.productId()).session(seller).with(csrf())
+                .param("selected", "true")).andExpect(status().isForbidden());
+        MockHttpSession admin = login(a.username(), "/admin");
+        mvc.perform(post("/admin/products/{id}/whatsapp-promotion", b.productId()).session(admin).with(csrf())
+                .param("selected", "true")).andExpect(status().is3xxRedirection());
+        assertThat(jdbc.queryForObject("select promocion_whatsapp from product where id=?", Boolean.class, b.productId())).isFalse();
+        jdbc.update("update tenant set active=false where id=?", a.id());
+        mvc.perform(get("/admin/api/products/table").session(admin)).andExpect(redirectedUrl("/admin/login?expired"));
+    }
+
+    private void addProducts(int count) {
+        authenticate(a.username(), "ROLE_ADMIN");
+        for (int index = 0; index < count; index++) {
+            ProductForm form = new ProductForm();
+            // Repeated names exercise the stable ID tie-breaker between pages.
+            form.setName("Paged & cafe " + String.format("%02d", index / 2));
+            form.setCode("PAGED-" + index); form.setBarcode("998800" + String.format("%07d", index));
+            form.setPurchaseCost(new BigDecimal("10")); form.setSalePrice(new BigDecimal("20"));
+            products.save(form);
+        }
+        SecurityContextHolder.clearContext();
+    }
+
+    @SuppressWarnings("unchecked")
+    private org.springframework.data.domain.Page<Product> productPage(MvcResult result) {
+        return (org.springframework.data.domain.Page<Product>) result.getModelAndView().getModel().get("products");
     }
 
     private void assertExpired(MockHttpSession session) {
