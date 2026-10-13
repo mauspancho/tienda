@@ -1,6 +1,9 @@
 package com.tienda.pos.finance;
 
 import com.tienda.pos.common.NormalMode;
+import com.tienda.pos.credit.CreditService;
+import com.tienda.pos.credit.CreditViews;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -31,11 +34,15 @@ public class FinanceController {
 
     private final FinanceService financeService;
     private final CapitalMovementRepository capitalMovementRepository;
+    private CreditService creditService;
 
     public FinanceController(FinanceService financeService, CapitalMovementRepository capitalMovementRepository) {
         this.financeService = financeService;
         this.capitalMovementRepository = capitalMovementRepository;
     }
+
+    @Autowired(required = false)
+    void setCreditService(CreditService creditService) { this.creditService = creditService; }
 
     @GetMapping
     public String index(@RequestParam(defaultValue = "LAST_30_DAYS") String period,
@@ -46,6 +53,9 @@ public class FinanceController {
         model.addAttribute("summary", financeService.summary(period, from, to, productSort));
         model.addAttribute("periods", PERIODS);
         model.addAttribute("productSort", productSort);
+        model.addAttribute("creditSummary", creditService == null
+                ? new CreditViews.Summary(BigDecimal.ZERO, 0, BigDecimal.ZERO, BigDecimal.ZERO)
+                : creditService.summary());
         return "finances/index";
     }
 

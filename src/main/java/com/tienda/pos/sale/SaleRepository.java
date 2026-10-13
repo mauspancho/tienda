@@ -5,14 +5,30 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import jakarta.persistence.LockModeType;
 
 public interface SaleRepository extends JpaRepository<Sale, Long> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"customer", "cashier", "items", "items.product"})
+    @Query("select s from Sale s where s.id = :id")
+    Optional<Sale> findByIdForUpdate(@Param("id") Long id);
+
+    @EntityGraph(attributePaths = {"customer", "cashier", "items", "items.product"})
+    List<Sale> findByCustomerIdAndSettlementTypeOrderBySaleDateAsc(Long customerId, SettlementType settlementType);
+
+    @EntityGraph(attributePaths = {"customer", "cashier", "items", "items.product"})
+    List<Sale> findBySettlementTypeOrderBySaleDateAsc(SettlementType settlementType);
+
+    @Query("select coalesce(sum(s.total), 0) from Sale s where s.settlementType = 'CREDIT' and s.status = 'COMPLETED'")
+    BigDecimal totalCreditSales();
 
     @EntityGraph(attributePaths = {"cashier", "customer", "payment", "items", "items.product"})
     Optional<Sale> findByFolio(String folio);

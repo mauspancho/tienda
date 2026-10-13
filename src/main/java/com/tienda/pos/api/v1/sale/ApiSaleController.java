@@ -7,6 +7,7 @@ import com.tienda.pos.common.CurrentUser;
 import com.tienda.pos.sale.Sale;
 import com.tienda.pos.sale.SaleRepository;
 import com.tienda.pos.sale.SaleService;
+import com.tienda.pos.credit.CreditPaymentApplicationRepository;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -33,12 +34,15 @@ public class ApiSaleController {
     private final SaleRepository repository;
     private final SaleService saleService;
     private final ApiIdempotencyService idempotencyService;
+    private final CreditPaymentApplicationRepository creditApplications;
 
     public ApiSaleController(SaleRepository repository, SaleService saleService,
-                             ApiIdempotencyService idempotencyService) {
+                             ApiIdempotencyService idempotencyService,
+                             CreditPaymentApplicationRepository creditApplications) {
         this.repository = repository;
         this.saleService = saleService;
         this.idempotencyService = idempotencyService;
+        this.creditApplications = creditApplications;
     }
 
     @GetMapping("/sales")
@@ -48,17 +52,17 @@ public class ApiSaleController {
         Page<Sale> sales = CurrentUser.hasRole("ROLE_ADMIN")
                 ? repository.findAllByOrderBySaleDateDesc(pageable)
                 : repository.findByCashierUsernameOrderBySaleDateDesc(CurrentUser.username(), pageable);
-        return ApiPageResponse.from(sales, SaleResponse::from);
+        return ApiPageResponse.from(sales, this::response);
     }
 
     @GetMapping("/sales/{folio}")
     public SaleResponse detail(@PathVariable String folio) {
-        return SaleResponse.from(visibleSale(folio));
+        return response(visibleSale(folio));
     }
 
     @GetMapping("/tickets/{folio}")
     public SaleResponse ticket(@PathVariable String folio) {
-        return SaleResponse.from(visibleSale(folio));
+        return response(visibleSale(folio));
     }
 
     @PostMapping({"/sales", "/pos/checkout"})
@@ -68,9 +72,13 @@ public class ApiSaleController {
         return idempotencyService.execute(CurrentUser.username(), "SALE_CREATE", idempotencyKey, request,
                 SaleResponse.class, () -> {
                     String folio = saleService.checkout(request.toDomain()).folio();
-                    return SaleResponse.from(repository.findByFolio(folio)
+                    return response(repository.findByFolio(folio)
                             .orElseThrow(() -> new ApiNotFoundException("Venta no encontrada.")));
                 });
+    }
+
+    private SaleResponse response(Sale sale) {
+        return SaleResponse.from(sale, creditApplications.activeAppliedToSale(sale.getId()));
     }
 
     private Sale visibleSale(String folio) {

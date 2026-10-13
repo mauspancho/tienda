@@ -2,7 +2,9 @@
 <html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
 <body>
 <nav th:fragment="sidebar" class="navbar app-nav px-4">
+  <link rel="stylesheet" th:href="@{/css/credits.css}">
   <script th:src="@{/js/theme-switcher.js}"></script>
+  <script defer th:src="@{/js/credit-detail.js}"></script>
   <div class="navbar-start app-nav-brand">
     <a th:href="@{/admin}" class="btn btn-ghost text-xl font-black tracking-normal brand-link">
       <span class="badge badge-success badge-lg text-success-content">TP</span>
@@ -24,6 +26,7 @@
               <ul>
                 <li><a th:href="@{/admin}">Dashboard</a></li>
                 <li><a th:href="@{/admin/sales}">Ventas</a></li>
+                <li><a th:href="@{/admin/credits}">Créditos</a></li>
                 <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/admin/cash}">Caja</a></li>
               </ul>
             </li>
@@ -124,6 +127,7 @@
 
         <li><a th:href="@{/admin}">Dashboard</a></li>
         <li><a th:href="@{/admin/sales}">Ventas</a></li>
+        <li><a th:href="@{/admin/credits}">Créditos</a></li>
         <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/admin/cash}">Caja</a></li>
         <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/admin/products}">Productos</a></li>
         <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/admin/categories}">Categorías</a></li>

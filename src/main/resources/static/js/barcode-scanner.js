@@ -7,6 +7,13 @@
   const results = document.querySelector("[data-search-results]");
   const checkoutButton = document.querySelector("[data-checkout]");
   const posPanel = document.querySelector("[data-cash-open]");
+  const creditCustomer = document.querySelector("[data-credit-customer]");
+  const customerSelect = document.querySelector("[data-customer-id]");
+  const immediatePayment = document.querySelector("[data-immediate-payment]");
+  const creditPage = posPanel?.dataset.creditPage === "true";
+  let previousCreditBalance = 0;
+  let creditBalanceEl = null;
+  let projectedBalanceEl = null;
   const cashOpen = posPanel?.dataset.cashOpen === "true";
   const cart = new Map();
   let busy = false;
@@ -15,6 +22,7 @@
   let lastInputValue = "";
   let fastInputStreak = 0;
   let lastAutoCode = "";
+  let scannerFocusPaused = document.querySelector("[name='settlementType']:checked")?.value === "CREDIT";
 
   const AUTO_SCAN_MIN_LENGTH = 4;
   const SCANNER_KEY_INTERVAL_MS = 55;
@@ -29,8 +37,8 @@
     message.className = kind === "error" ? "alert alert-error" : "alert alert-success";
   };
   const focusScanner = () => {
-    if (!cashOpen || input.disabled) return;
-    setTimeout(() => input.focus(), 40);
+    if (!cashOpen || input.disabled || scannerFocusPaused) return;
+    setTimeout(() => { if (!scannerFocusPaused) input.focus(); }, 40);
   };
   document.addEventListener("click", focusScanner);
   focusScanner();
@@ -143,6 +151,33 @@
       cartBody.appendChild(tr);
     }
     totalEl.textContent = money(cartTotal());
+    if (projectedBalanceEl) projectedBalanceEl.textContent = money(previousCreditBalance + cartTotal());
+  }
+
+  async function loadCustomerBalance() {
+    if (!creditPage || !customerSelect?.value) {
+      previousCreditBalance = 0;
+      if (creditBalanceEl) creditBalanceEl.textContent = money(0);
+      if (projectedBalanceEl) projectedBalanceEl.textContent = money(cartTotal());
+      return;
+    }
+    const response = await fetch(`/admin/credits/customers/${encodeURIComponent(customerSelect.value)}/balance`);
+    if (!response.ok) return;
+    const data = await response.json();
+    previousCreditBalance = Number(data.balance || 0);
+    creditBalanceEl.textContent = money(previousCreditBalance);
+    projectedBalanceEl.textContent = money(previousCreditBalance + cartTotal());
+  }
+
+  async function refreshCreditCustomers() {
+    if (!customerSelect) return;
+    const selected = customerSelect.value;
+    const response = await fetch("/admin/credits/customers/options");
+    if (!response.ok) return;
+    const customers = await response.json();
+    customerSelect.replaceChildren(new Option("Seleccionar cliente", ""),
+      ...customers.map(customer => new Option(customer.name, String(customer.id))));
+    customerSelect.value = selected;
   }
 
   function registerUrlFor(barcode) {
@@ -342,7 +377,17 @@
     }
     const csrf = document.querySelector("meta[name='_csrf']")?.content;
     const csrfHeader = document.querySelector("meta[name='_csrf_header']")?.content;
+    const settlementType = document.querySelector("[name='settlementType']:checked")?.value || "IMMEDIATE";
+    const customerId = customerSelect?.value ? Number(customerSelect.value) : null;
+    if (settlementType === "CREDIT" && !customerId) {
+      say("Selecciona un cliente para la venta a crédito.", "error");
+      return;
+    }
+    if (settlementType === "CREDIT" && !window.confirm(`Se agregarán ${money(cartTotal())} al adeudo del cliente. ¿Confirmar entrega?`)) return;
+    checkoutButton.disabled = true;
     const body = {
+      customerId,
+      settlementType,
       discount: Number(discountInput?.value || 0),
       receivedAmount: cartTotal(),
       paymentMethod: document.querySelector("[name='paymentMethod']:checked")?.value || "CASH",
@@ -350,15 +395,42 @@
     };
     const headers = { "Content-Type": "application/json" };
     if (csrf && csrfHeader) headers[csrfHeader] = csrf;
-    const response = await fetch("/admin/pos/checkout", { method: "POST", headers, body: JSON.stringify(body) });
-    if (!response.ok) {
-      say(cleanErrorText(await response.text()), "error");
-      return;
+    try {
+      const response = await fetch("/admin/pos/checkout", { method: "POST", headers, body: JSON.stringify(body) });
+      if (!response.ok) { say(cleanErrorText(await response.text()), "error"); return; }
+      const result = await response.json();
+      cart.clear(); render();
+      say(settlementType === "CREDIT" ? `Crédito registrado. Folio ${result.folio}.` : `Venta completada. Folio ${result.folio}. Cambio ${money(result.change)}.`);
+      window.open(`/admin/tickets/${result.folio}`, "_blank");
+      if (creditPage) window.location.assign(`/admin/credits/customers/${customerId}`);
+    } finally {
+      checkoutButton.disabled = false;
     }
-    const result = await response.json();
-    cart.clear();
-    render();
-    say(`Venta completada. Folio ${result.folio}. Cambio ${money(result.change)}.`);
-    window.open(`/admin/tickets/${result.folio}`, "_blank");
   });
+
+  document.querySelectorAll("[name='settlementType']").forEach(input => input.addEventListener("change", () => {
+    const credit = document.querySelector("[name='settlementType']:checked")?.value === "CREDIT";
+    scannerFocusPaused = credit;
+    clearAutoScanTimer();
+    if (creditCustomer) creditCustomer.hidden = !credit;
+    if (immediatePayment) immediatePayment.hidden = credit;
+    checkoutButton.textContent = credit ? "Registrar crédito" : "Cobrar";
+    if (!credit) focusScanner();
+  }));
+  customerSelect?.addEventListener("focus", () => { scannerFocusPaused = true; });
+  customerSelect?.addEventListener("change", () => {
+    scannerFocusPaused = !customerSelect.value;
+    if (customerSelect.value) focusScanner();
+  });
+  if (creditPage && customerSelect && discountInput) {
+    const projection = document.createElement("div");
+    projection.className = "grid grid-2";
+    projection.innerHTML = '<div><span class="muted">Adeudo anterior</span><strong data-previous-credit>$0.00</strong></div><div><span class="muted">Nuevo saldo proyectado</span><strong data-projected-credit>$0.00</strong></div>';
+    discountInput.closest(".field")?.before(projection);
+    creditBalanceEl = projection.querySelector("[data-previous-credit]");
+    projectedBalanceEl = projection.querySelector("[data-projected-credit]");
+    customerSelect.addEventListener("change", loadCustomerBalance);
+    loadCustomerBalance();
+  }
+  if (customerSelect) window.addEventListener("focus", refreshCreditCustomers);
 })();

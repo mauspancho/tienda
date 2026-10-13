@@ -20,7 +20,7 @@
               <td th:text="${#temporals.format(s.saleDate,'dd/MM/yyyy HH:mm')}"></td>
               <td th:text="${s.cashier != null ? s.cashier.username : ''}"></td>
               <td th:text="${@display.money(s.total)}"></td>
-              <td th:text="${s.payment != null ? s.payment.method : ''}"></td>
+              <td><span th:if="${s.settlementType.name()=='CREDIT'}" class="badge badge-orange">CRÉDITO</span><span th:if="${s.settlementType.name()!='CREDIT'}" th:text="${s.payment != null ? s.payment.method : ''}"></span></td>
               <td><span class="badge badge-green" th:text="${s.status}"></span></td>
               <td><button class="btn btn-muted sale-toggle" type="button" th:attr="data-sale-detail=${'sale-detail-' + iter.index}">Ver productos</button></td>
             </tr>

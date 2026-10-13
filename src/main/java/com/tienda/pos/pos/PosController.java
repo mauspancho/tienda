@@ -9,6 +9,7 @@ import com.tienda.pos.sale.SaleResult;
 import com.tienda.pos.sale.SaleService;
 import com.tienda.pos.user.AppUser;
 import com.tienda.pos.user.AppUserRepository;
+import com.tienda.pos.customer.CustomerRepository;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
@@ -32,14 +33,16 @@ public class PosController {
     private final CashService cashService;
     private final CashRegisterSessionRepository cashRegisterSessionRepository;
     private final AppUserRepository userRepository;
+    private final CustomerRepository customerRepository;
 
     public PosController(SaleService saleService, CashService cashService,
                          CashRegisterSessionRepository cashRegisterSessionRepository,
-                         AppUserRepository userRepository) {
+                         AppUserRepository userRepository, CustomerRepository customerRepository) {
         this.saleService = saleService;
         this.cashService = cashService;
         this.cashRegisterSessionRepository = cashRegisterSessionRepository;
         this.userRepository = userRepository;
+        this.customerRepository = customerRepository;
     }
 
     @GetMapping("/pos")
@@ -48,6 +51,8 @@ public class PosController {
         var currentCashSession = cashRegisterSessionRepository.findByCashierAndOpenTrue(cashier).orElse(null);
         model.addAttribute("currentCashSession", currentCashSession);
         model.addAttribute("cashOpen", currentCashSession != null);
+        model.addAttribute("creditCustomers", customerRepository.findByActiveTrueOrderByNameAscLastNameAsc().stream()
+                .filter(c -> !"Público General".equalsIgnoreCase(c.getName())).toList());
         return "pos/index";
     }
 

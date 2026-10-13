@@ -1,6 +1,7 @@
 package com.tienda.pos.product;
 
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -24,5 +25,14 @@ public class ProductImageWebConfig implements WebMvcConfigurer {
         }
         registry.addResourceHandler(publicPath + "/**")
                 .addResourceLocations(location);
+    }
+
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping(properties.normalizedPublicPath() + "/**")
+                .allowedOrigins("*")
+                .allowedMethods("GET", "HEAD", "OPTIONS")
+                .allowCredentials(false)
+                .maxAge(3600);
     }
 }

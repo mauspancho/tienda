@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.EntityGraph;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 public interface CashMovementRepository extends JpaRepository<CashMovement, Long> {
     @Query("select coalesce(sum(m.amount), 0) from CashMovement m where m.cashRegisterSession.id = :sessionId")
@@ -14,4 +15,5 @@ public interface CashMovementRepository extends JpaRepository<CashMovement, Long
 
     @EntityGraph(attributePaths = {"user"})
     List<CashMovement> findByCashRegisterSessionIdOrderByCreatedAtAsc(Long sessionId);
+    Optional<CashMovement> findFirstByReferenceTypeAndReferenceIdOrderByCreatedAtAsc(String referenceType, Long referenceId);
 }

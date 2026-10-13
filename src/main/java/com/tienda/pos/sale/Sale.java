@@ -55,6 +55,14 @@ public class Sale extends BaseEntity {
     @Column(nullable = false)
     private SaleStatus status = SaleStatus.COMPLETED;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private SettlementType settlementType = SettlementType.IMMEDIATE;
+
+    private LocalDateTime cancelledAt;
+    private String cancelledBy;
+    private String cancellationReason;
+
     @OneToMany(mappedBy = "sale", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SaleItem> items = new ArrayList<>();
 
@@ -84,6 +92,14 @@ public class Sale extends BaseEntity {
     public void setTotal(BigDecimal total) { this.total = total; }
     public SaleStatus getStatus() { return status; }
     public void setStatus(SaleStatus status) { this.status = status; }
+    public SettlementType getSettlementType() { return settlementType; }
+    public void setSettlementType(SettlementType settlementType) { this.settlementType = settlementType; }
+    public LocalDateTime getCancelledAt() { return cancelledAt; }
+    public void setCancelledAt(LocalDateTime cancelledAt) { this.cancelledAt = cancelledAt; }
+    public String getCancelledBy() { return cancelledBy; }
+    public void setCancelledBy(String cancelledBy) { this.cancelledBy = cancelledBy; }
+    public String getCancellationReason() { return cancellationReason; }
+    public void setCancellationReason(String cancellationReason) { this.cancellationReason = cancellationReason; }
     public List<SaleItem> getItems() { return items; }
     public void setItems(List<SaleItem> items) { this.items = items; }
     public Payment getPayment() { return payment; }

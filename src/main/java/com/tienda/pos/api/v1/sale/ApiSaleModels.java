@@ -6,6 +6,7 @@ import com.tienda.pos.sale.Sale;
 import com.tienda.pos.sale.SaleItem;
 import com.tienda.pos.sale.SaleRequest;
 import com.tienda.pos.sale.SaleStatus;
+import com.tienda.pos.sale.SettlementType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotEmpty;
@@ -25,6 +26,7 @@ public final class ApiSaleModels {
     }
 
     public record SaleCreateRequest(Long customerId,
+                                    SettlementType settlementType,
                                     @NotNull @DecimalMin("0.00") BigDecimal discount,
                                     @NotNull PaymentMethod paymentMethod,
                                     @NotNull @DecimalMin("0.00") BigDecimal receivedAmount,
@@ -32,6 +34,7 @@ public final class ApiSaleModels {
         public SaleRequest toDomain() {
             SaleRequest request = new SaleRequest();
             request.setCustomerId(customerId);
+            request.setSettlementType(settlementType == null ? SettlementType.IMMEDIATE : settlementType);
             request.setDiscount(discount);
             request.setPaymentMethod(paymentMethod);
             request.setReceivedAmount(receivedAmount);
@@ -68,14 +71,23 @@ public final class ApiSaleModels {
     public record SaleResponse(Long id, String folio, LocalDateTime saleDate, PartyRef cashier,
                                PartyRef customer, BigDecimal subtotal, BigDecimal discount,
                                BigDecimal tax, BigDecimal total, SaleStatus status,
+                               SettlementType settlementType, BigDecimal amountPaid, BigDecimal pendingBalance,
                                PaymentResponse payment, List<SaleLineResponse> items) {
         public static SaleResponse from(Sale sale) {
+            return from(sale, BigDecimal.ZERO);
+        }
+
+        public static SaleResponse from(Sale sale, BigDecimal creditPaid) {
             PartyRef cashier = sale.getCashier() == null ? null
                     : new PartyRef(sale.getCashier().getId(), sale.getCashier().fullName());
             PartyRef customer = sale.getCustomer() == null ? null
                     : new PartyRef(sale.getCustomer().getId(), sale.getCustomer().getName());
+            BigDecimal paid = sale.getSettlementType() == SettlementType.CREDIT ? creditPaid : sale.getTotal();
+            BigDecimal pending = sale.getSettlementType() == SettlementType.CREDIT && sale.getStatus() == SaleStatus.COMPLETED
+                    ? sale.getTotal().subtract(creditPaid) : BigDecimal.ZERO;
             return new SaleResponse(sale.getId(), sale.getFolio(), sale.getSaleDate(), cashier, customer,
                     sale.getSubtotal(), sale.getDiscount(), sale.getTax(), sale.getTotal(), sale.getStatus(),
+                    sale.getSettlementType(), paid, pending,
                     PaymentResponse.from(sale.getPayment()), sale.getItems().stream().map(SaleLineResponse::from).toList());
         }
     }

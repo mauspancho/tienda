@@ -43,11 +43,16 @@
     </div>
     <div class="field"><label>Descuento</label><input data-discount type="number" step="0.01" value="0.00" th:disabled="${!cashOpen}"></div>
     <div class="field"><label>Total</label><div data-cart-total class="cart-total">$0.00</div></div>
-    <div class="grid grid-3">
+    <div class="field"><label>Tipo de venta</label><div class="grid grid-2">
+      <label><input type="radio" name="settlementType" value="IMMEDIATE" checked th:disabled="${!cashOpen}"> Pago inmediato</label>
+      <label><input type="radio" name="settlementType" value="CREDIT" th:disabled="${!cashOpen}"> Crédito</label>
+    </div></div>
+    <div data-immediate-payment class="grid grid-3">
       <label><input type="radio" name="paymentMethod" value="CASH" checked th:disabled="${!cashOpen}"> Efectivo</label>
       <label><input type="radio" name="paymentMethod" value="CARD" th:disabled="${!cashOpen}"> Tarjeta</label>
       <label><input type="radio" name="paymentMethod" value="TRANSFER" th:disabled="${!cashOpen}"> Transferencia</label>
     </div>
+    <div data-credit-customer class="field" hidden><label>Cliente para crédito *</label><select data-customer-id><option value="">Seleccionar cliente</option><option th:each="customer:${creditCustomers}" th:value="${customer.id}" th:text="${customer.fullName}"></option></select><a class="muted" th:href="@{/admin/credits/customers/new}" target="_blank">Registrar cliente en otra pestaña</a></div>
     <button data-checkout class="btn btn-success" type="button" th:disabled="${!cashOpen}">Cobrar</button>
   </aside>
 </div>

@@ -12,6 +12,8 @@ import java.util.List;
 
 public class SaleRequest {
     private Long customerId;
+    @NotNull
+    private SettlementType settlementType = SettlementType.IMMEDIATE;
     @DecimalMin("0.00")
     private BigDecimal discount = BigDecimal.ZERO;
     @NotNull
@@ -24,6 +26,8 @@ public class SaleRequest {
 
     public Long getCustomerId() { return customerId; }
     public void setCustomerId(Long customerId) { this.customerId = customerId; }
+    public SettlementType getSettlementType() { return settlementType; }
+    public void setSettlementType(SettlementType settlementType) { this.settlementType = settlementType == null ? SettlementType.IMMEDIATE : settlementType; }
     public BigDecimal getDiscount() { return discount; }
     public void setDiscount(BigDecimal discount) { this.discount = discount; }
     public PaymentMethod getPaymentMethod() { return paymentMethod; }

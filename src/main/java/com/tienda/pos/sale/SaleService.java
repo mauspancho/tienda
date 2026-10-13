@@ -9,6 +9,7 @@ import com.tienda.pos.common.CurrentUser;
 import com.tienda.pos.common.MoneyUtils;
 import com.tienda.pos.common.NormalMode;
 import com.tienda.pos.customer.CustomerRepository;
+import com.tienda.pos.customer.Customer;
 import com.tienda.pos.exception.DomainException;
 import com.tienda.pos.inventory.InventoryMovementType;
 import com.tienda.pos.inventory.InventoryService;
@@ -63,7 +64,21 @@ public class SaleService {
         Sale sale = new Sale();
         sale.setFolio("V" + LocalDateTime.now().format(FOLIO_FORMAT));
         sale.setCashier(cashier);
-        if (request.getCustomerId() != null) {
+        sale.setSettlementType(request.getSettlementType());
+        if (request.getSettlementType() == SettlementType.CREDIT) {
+            if (request.getCustomerId() == null) {
+                throw new DomainException("Selecciona un cliente para la venta a crédito.");
+            }
+            Customer customer = customerRepository.findByIdForUpdate(request.getCustomerId())
+                    .orElseThrow(() -> new DomainException("Cliente no encontrado."));
+            if (!customer.isActive()) {
+                throw new DomainException("El cliente seleccionado está inactivo.");
+            }
+            if ("Público General".equalsIgnoreCase(customer.getName().trim())) {
+                throw new DomainException("Público General no puede utilizar crédito.");
+            }
+            sale.setCustomer(customer);
+        } else if (request.getCustomerId() != null) {
             sale.setCustomer(customerRepository.findById(request.getCustomerId()).orElse(null));
         } else {
             customerRepository.findFirstByName("Público General").ifPresent(sale::setCustomer);
@@ -113,26 +128,30 @@ public class SaleService {
         if (total.compareTo(BigDecimal.ZERO) < 0) {
             throw new DomainException("El descuento no puede ser mayor al subtotal.");
         }
-        BigDecimal received = request.getPaymentMethod() == PaymentMethod.CASH
+        BigDecimal received = request.getSettlementType() == SettlementType.CREDIT ? BigDecimal.ZERO
+                : request.getPaymentMethod() == PaymentMethod.CASH
                 ? MoneyUtils.money(request.getReceivedAmount())
                 : total;
-        if (request.getPaymentMethod() == PaymentMethod.CASH && received.compareTo(total) < 0) {
+        if (request.getSettlementType() == SettlementType.IMMEDIATE
+                && request.getPaymentMethod() == PaymentMethod.CASH && received.compareTo(total) < 0) {
             throw new DomainException("El efectivo recibido debe cubrir el total.");
         }
 
         sale.setSubtotal(MoneyUtils.money(subtotal));
         sale.setDiscount(discount);
         sale.setTotal(total);
-        Payment payment = new Payment();
-        payment.setSale(sale);
-        payment.setMethod(request.getPaymentMethod());
-        payment.setAmount(total);
-        payment.setReceivedAmount(received);
-        payment.setChangeAmount(received.subtract(total));
-        sale.setPayment(payment);
+        if (request.getSettlementType() == SettlementType.IMMEDIATE) {
+            Payment payment = new Payment();
+            payment.setSale(sale);
+            payment.setMethod(request.getPaymentMethod());
+            payment.setAmount(total);
+            payment.setReceivedAmount(received);
+            payment.setChangeAmount(received.subtract(total));
+            sale.setPayment(payment);
+        }
         Sale saved = saleRepository.save(sale);
 
-        if (request.getPaymentMethod() == PaymentMethod.CASH) {
+        if (request.getSettlementType() == SettlementType.IMMEDIATE && request.getPaymentMethod() == PaymentMethod.CASH) {
             CashMovement movement = new CashMovement();
             movement.setCashRegisterSession(cashSession);
             movement.setType(CashMovementType.SALE);
@@ -142,7 +161,8 @@ public class SaleService {
             movement.setUser(cashier);
             cashMovementRepository.save(movement);
         }
-        return new SaleResult(saved.getFolio(), total, received, received.subtract(total));
+        BigDecimal change = request.getSettlementType() == SettlementType.CREDIT ? BigDecimal.ZERO : received.subtract(total);
+        return new SaleResult(saved.getFolio(), total, received, change);
     }
 
     public BigDecimal calculateChange(BigDecimal total, BigDecimal received) {

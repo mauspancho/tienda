@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import com.tienda.pos.sale.SettlementType;
 
 @RestController
 @RequestMapping("/api/v1/pos")
@@ -33,10 +34,11 @@ public class ApiPosController {
         AppUser user = userRepository.findByUsername(CurrentUser.username()).orElseThrow();
         CashRegisterSession session = sessionRepository.findByCashierAndOpenTrue(user).orElse(null);
         return new PosState(session != null, session == null ? null : CashSession.from(session),
-                List.of(PaymentMethod.values()));
+                List.of(PaymentMethod.values()), List.of(SettlementType.values()));
     }
 
-    public record PosState(boolean cashOpen, CashSession cashSession, List<PaymentMethod> paymentMethods) {
+    public record PosState(boolean cashOpen, CashSession cashSession, List<PaymentMethod> paymentMethods,
+                           List<SettlementType> settlementTypes) {
     }
 
     public record CashSession(Long id, LocalDateTime openedAt, BigDecimal openingAmount) {

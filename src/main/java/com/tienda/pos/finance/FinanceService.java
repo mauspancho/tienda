@@ -8,10 +8,13 @@ import com.tienda.pos.product.ProductRepository;
 import com.tienda.pos.purchase.PurchaseFundingSource;
 import com.tienda.pos.purchase.PurchaseRepository;
 import com.tienda.pos.sale.SaleRepository;
+import com.tienda.pos.payment.PaymentRepository;
+import com.tienda.pos.credit.CreditPaymentRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -42,15 +45,28 @@ public class FinanceService {
     private final PurchaseRepository purchaseRepository;
     private final ProductRepository productRepository;
     private final CapitalMovementRepository capitalMovementRepository;
+    private final PaymentRepository paymentRepository;
+    private final CreditPaymentRepository creditPaymentRepository;
 
+    @Autowired
     public FinanceService(SaleRepository saleRepository, ExpenseRepository expenseRepository,
                           PurchaseRepository purchaseRepository, ProductRepository productRepository,
-                          CapitalMovementRepository capitalMovementRepository) {
+                          CapitalMovementRepository capitalMovementRepository, PaymentRepository paymentRepository,
+                          CreditPaymentRepository creditPaymentRepository) {
         this.saleRepository = saleRepository;
         this.expenseRepository = expenseRepository;
         this.purchaseRepository = purchaseRepository;
         this.productRepository = productRepository;
         this.capitalMovementRepository = capitalMovementRepository;
+        this.paymentRepository = paymentRepository;
+        this.creditPaymentRepository = creditPaymentRepository;
+    }
+
+    public FinanceService(SaleRepository saleRepository, ExpenseRepository expenseRepository,
+                          PurchaseRepository purchaseRepository, ProductRepository productRepository,
+                          CapitalMovementRepository capitalMovementRepository) {
+        this(saleRepository, expenseRepository, purchaseRepository, productRepository,
+                capitalMovementRepository, null, null);
     }
 
     public FinanceSummary summary(String period, LocalDate from, LocalDate to, String productSort) {
@@ -80,7 +96,10 @@ public class FinanceService {
                 ? money(initialInvestment.subtract(netProfitAccumulated).max(BigDecimal.ZERO))
                 : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
 
-        BigDecimal cashIn = money(selected.sales().add(selected.ownerContributions()));
+        BigDecimal collectedSales = paymentRepository == null || creditPaymentRepository == null ? selected.sales()
+                : money(paymentRepository.totalReceivedBetween(start(range.from()), end(range.to()))
+                .add(creditPaymentRepository.totalActivePaymentsBetween(start(range.from()), end(range.to()))));
+        BigDecimal cashIn = money(collectedSales.add(selected.ownerContributions()));
         BigDecimal cashOut = money(selected.reinvestment().add(selected.expenses()).add(selected.ownerWithdrawals()));
         BigDecimal cashFlow = money(cashIn.subtract(cashOut));
 

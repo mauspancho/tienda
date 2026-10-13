@@ -37,6 +37,7 @@
   </form>
 
   <div class="grid grid-4 finance-metrics">
+    <div class="card"><span class="muted">Cuentas por cobrar</span><div class="metric" th:text="${@display.money(creditSummary.pending)}">$0.00</div><small th:text="${creditSummary.customersWithDebt + ' clientes con adeudo'}"></small></div>
     <div class="card"><span class="muted">Ventas periodo</span><div class="metric" th:text="${@display.money(summary.period.sales)}">$0.00</div><small th:text="${summary.period.tickets + ' tickets'}">0 tickets</small></div>
     <div class="card"><span class="muted">Costo vendido</span><div class="metric" th:text="${@display.money(summary.period.costOfGoodsSold)}">$0.00</div><small>Costos históricos por venta</small></div>
     <div class="card"><span class="muted">Ganancia bruta</span><div class="metric" th:text="${@display.money(summary.period.grossProfit)}">$0.00</div><small th:text="${@display.number(summary.period.soldUnits) + ' unidades'}">0 unidades</small></div>

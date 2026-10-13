@@ -10,6 +10,8 @@ import com.tienda.pos.product.UnitType;
 import com.tienda.pos.role.Role;
 import com.tienda.pos.role.RoleRepository;
 import com.tienda.pos.sale.SaleRepository;
+import com.tienda.pos.credit.CreditPaymentRepository;
+import com.tienda.pos.customer.CustomerRepository;
 import com.tienda.pos.user.AppUser;
 import com.tienda.pos.user.AppUserRepository;
 import org.junit.jupiter.api.BeforeAll;
@@ -28,6 +30,8 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
@@ -44,6 +48,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ApiV1IntegrationTest {
 
+    private static final Path PRODUCT_IMAGE_DIRECTORY = Path.of(
+            System.getProperty("java.io.tmpdir"), "tienda-api-v1-product-images");
+
     static {
         System.setProperty("tienda.setup-mode", "false");
     }
@@ -57,6 +64,7 @@ class ApiV1IntegrationTest {
         registry.add("spring.flyway.enabled", () -> "false");
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
         registry.add("tienda.api.jwt-secret", () -> "test-secret-with-at-least-thirty-two-bytes");
+        registry.add("tienda.product-images.directory", () -> PRODUCT_IMAGE_DIRECTORY.toString());
         registry.add("springdoc.api-docs.enabled", () -> "false");
         registry.add("springdoc.swagger-ui.enabled", () -> "false");
     }
@@ -70,12 +78,24 @@ class ApiV1IntegrationTest {
     @Autowired CategoryRepository categoryRepository;
     @Autowired ProductRepository productRepository;
     @Autowired SaleRepository saleRepository;
+    @Autowired CreditPaymentRepository creditPaymentRepository;
+    @Autowired CustomerRepository customerRepository;
 
     private Product product;
 
     @BeforeAll
-    void ensureNormalModeForSuite() {
+    void ensureNormalModeForSuite() throws Exception {
         assertThat(System.getProperty("tienda.setup-mode")).isEqualTo("false");
+        Files.createDirectories(PRODUCT_IMAGE_DIRECTORY);
+        Files.write(PRODUCT_IMAGE_DIRECTORY.resolve("public-test.jpg"), new byte[]{1, 2, 3, 4});
+    }
+
+    @Test
+    void productImagesArePublicAndAllowCrossOriginReads() throws Exception {
+        mockMvc.perform(get("/uploads/products/public-test.jpg")
+                        .header("Origin", "https://automation.example"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "*"));
     }
 
     @BeforeEach
@@ -209,6 +229,112 @@ class ApiV1IntegrationTest {
         assertThat(saleRepository.count()).isEqualTo(1);
         assertThat(productRepository.findById(product.getId()).orElseThrow().getCurrentStock())
                 .isEqualByComparingTo("8.000");
+    }
+
+    @Test
+    void creditLifecycleKeepsInventoryCashBalancesIdempotencyAndPermissionsConsistent() throws Exception {
+        product.setSalePrice(new BigDecimal("100.00"));
+        productRepository.save(product);
+        String admin = bearer(login("admin", "password123"));
+        String cashier = bearer(login("cajero", "password123"));
+        String customerJson = mockMvc.perform(post("/api/v1/customers").header("Authorization", admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Ana\",\"lastName\":\"López\",\"active\":true}"))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.fullName").value("Ana López"))
+                .andReturn().getResponse().getContentAsString();
+        long customerId = objectMapper.readTree(customerJson).get("id").asLong();
+        mockMvc.perform(post("/api/v1/cash/open").header("Authorization", cashier)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"openingAmount\":100}"))
+                .andExpect(status().isCreated());
+
+        String firstCredit = "{\"customerId\":" + customerId + ",\"settlementType\":\"CREDIT\",\"discount\":0," +
+                "\"paymentMethod\":\"CASH\",\"receivedAmount\":0,\"items\":[{\"productId\":" + product.getId() + ",\"quantity\":2}]}";
+        for (int i = 0; i < 2; i++) {
+            mockMvc.perform(post("/api/v1/sales").header("Authorization", cashier)
+                            .header("Idempotency-Key", "credit-200").contentType(MediaType.APPLICATION_JSON).content(firstCredit))
+                    .andExpect(status().isCreated()).andExpect(jsonPath("$.settlementType").value("CREDIT"))
+                    .andExpect(jsonPath("$.pendingBalance").value(200.00)).andExpect(jsonPath("$.payment").doesNotExist());
+        }
+        assertThat(saleRepository.count()).isEqualTo(1);
+        assertThat(productRepository.findById(product.getId()).orElseThrow().getCurrentStock()).isEqualByComparingTo("8.000");
+        assertThat(jdbcTemplate.queryForObject("select count(*) from cash_movement where type='SALE'", Long.class)).isZero();
+
+        String payment50 = "{\"amount\":50,\"method\":\"TRANSFER\",\"notes\":\"Primer abono\"}";
+        for (int i = 0; i < 2; i++) {
+            mockMvc.perform(post("/api/v1/credits/customers/{id}/payments", customerId)
+                            .header("Authorization", cashier).header("Idempotency-Key", "payment-50")
+                            .contentType(MediaType.APPLICATION_JSON).content(payment50))
+                    .andExpect(status().isCreated()).andExpect(jsonPath("$.customerBalance").value(150.00));
+        }
+        assertThat(creditPaymentRepository.count()).isEqualTo(1);
+        assertThat(productRepository.findById(product.getId()).orElseThrow().getCurrentStock()).isEqualByComparingTo("8.000");
+
+        String secondCredit = firstCredit.replace("\"quantity\":2", "\"quantity\":1");
+        mockMvc.perform(post("/api/v1/pos/checkout").header("Authorization", cashier)
+                        .header("Idempotency-Key", "credit-100").contentType(MediaType.APPLICATION_JSON).content(secondCredit))
+                .andExpect(status().isCreated());
+        mockMvc.perform(post("/api/v1/credits/customers/{id}/payments", customerId)
+                        .header("Authorization", cashier).header("Idempotency-Key", "payment-250")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"amount\":250,\"method\":\"CASH\"}"))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.customerBalance").value(0.00));
+        assertThat(productRepository.findById(product.getId()).orElseThrow().getCurrentStock()).isEqualByComparingTo("7.000");
+        assertThat(jdbcTemplate.queryForObject("select count(*) from cash_movement where type='CREDIT_PAYMENT'", Long.class)).isEqualTo(1);
+
+        long cashPaymentId = creditPaymentRepository.findAll().stream()
+                .filter(p -> p.getAmount().compareTo(new BigDecimal("250.00")) == 0).findFirst().orElseThrow().getId();
+        mockMvc.perform(post("/api/v1/credits/payments/{id}/reverse", cashPaymentId).header("Authorization", cashier)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"Corrección\"}"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/v1/credits/payments/{id}/reverse", cashPaymentId).header("Authorization", admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"Corrección administrativa\"}"))
+                .andExpect(status().isNoContent());
+        assertThat(jdbcTemplate.queryForObject("select count(*) from cash_movement where type='CREDIT_PAYMENT_REVERSAL'", Long.class)).isEqualTo(1);
+
+        long secondSaleId = saleRepository.findByCustomerIdAndSettlementTypeOrderBySaleDateAsc(customerId,
+                com.tienda.pos.sale.SettlementType.CREDIT).get(1).getId();
+        mockMvc.perform(post("/api/v1/credits/sales/{id}/cancel", secondSaleId).header("Authorization", admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"Producto entregado por error\"}"))
+                .andExpect(status().isNoContent());
+        assertThat(productRepository.findById(product.getId()).orElseThrow().getCurrentStock()).isEqualByComparingTo("8.000");
+        mockMvc.perform(get("/api/v1/credits/customers/{id}", customerId).header("Authorization", cashier))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.customer.balance").value(150.00));
+
+        String chargeRequest = "{\"amount\":75,\"concept\":\"Préstamo adicional\"}";
+        for (int i = 0; i < 2; i++) {
+            mockMvc.perform(post("/api/v1/credits/customers/{id}/charges", customerId)
+                            .header("Authorization", cashier).header("Idempotency-Key", "charge-75")
+                            .contentType(MediaType.APPLICATION_JSON).content(chargeRequest))
+                    .andExpect(status().isCreated()).andExpect(jsonPath("$.customerBalance").value(225.00));
+        }
+        assertThat(jdbcTemplate.queryForObject("select count(*) from credit_charge", Long.class)).isEqualTo(1);
+        assertThat(productRepository.findById(product.getId()).orElseThrow().getCurrentStock()).isEqualByComparingTo("8.000");
+        mockMvc.perform(post("/api/v1/credits/customers/{id}/payments", customerId)
+                        .header("Authorization", cashier).header("Idempotency-Key", "payment-charge-75")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"amount\":75,\"method\":\"TRANSFER\"}"))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.customerBalance").value(150.00));
+        long chargeId = jdbcTemplate.queryForObject("select id from credit_charge", Long.class);
+        mockMvc.perform(post("/api/v1/credits/charges/{id}/reverse", chargeId).header("Authorization", cashier)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"Sin permiso\"}"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/v1/credits/charges/{id}/reverse", chargeId).header("Authorization", admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"Cargo equivocado\"}"))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(get("/api/v1/credits/customers/{id}", customerId).header("Authorization", cashier))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.customer.balance").value(75.00));
+        long chargePaymentId = creditPaymentRepository.findAll().stream()
+                .filter(p -> p.getAmount().compareTo(new BigDecimal("75.00")) == 0).findFirst().orElseThrow().getId();
+        mockMvc.perform(post("/api/v1/credits/payments/{id}/reverse", chargePaymentId).header("Authorization", admin)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"Corrección del cargo\"}"))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(get("/api/v1/credits/customers/{id}", customerId).header("Authorization", cashier))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.customer.balance").value(150.00));
+        mockMvc.perform(get("/admin/credits").with(user("admin").roles("ADMIN")))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/admin/credits/customers/{id}", customerId).with(user("admin").roles("ADMIN")))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/admin/credits/new").param("customerId", String.valueOf(customerId))
+                        .with(user("cajero").roles("CAJERO")))
+                .andExpect(status().isOk());
     }
 
     @Test
