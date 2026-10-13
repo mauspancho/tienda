@@ -34,7 +34,7 @@ public class SecurityConfig {
                         .requestMatchers("/", "/producto/**", "/catalog/**", "/css/**", "/js/**", "/vendor/**",
                                 "/images/**", "/uploads/products/**", "/uploads/catalog/**", "/admin/login", "/error",
                                 "/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        .requestMatchers("/admin/users/**", "/admin/settings/**", "/admin/reports/**", "/admin/cash/**", "/admin/finances", "/admin/finances/**").hasRole("ADMIN")
+                        .requestMatchers("/admin/users/**", "/admin/settings/**", "/admin/backup/**", "/admin/reports/**", "/admin/cash/**", "/admin/finances", "/admin/finances/**").hasRole("ADMIN")
                         .requestMatchers("/admin/products/**", "/admin/categories/**", "/admin/suppliers/**", "/admin/purchases/**",
                                 "/admin/inventory/**", "/admin/expenses/**").hasRole("ADMIN")
                         .requestMatchers("/admin/pos/**", "/admin/sales/**", "/admin/tickets/**", "/admin/api/products/**").hasAnyRole("ADMIN", "CAJERO")

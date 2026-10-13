@@ -103,10 +103,11 @@
         <button class="btn btn-success">Guardar configuración</button>
       </form>
 
-      <form class="card form settings-backup-form" th:action="@{/admin/settings/backup}" method="post">
-        <h2>Respaldo</h2>
-        <button class="btn btn-muted">Generar respaldo</button>
-      </form>
+      <section class="card form settings-backup-form">
+        <h2>Exportación e importación</h2>
+        <p class="muted">Descarga o restaura la información completa de la tienda, incluyendo imágenes.</p>
+        <div><a class="btn btn-muted" th:href="@{/admin/backup}">Administrar respaldos</a></div>
+      </section>
     </section>
   </main>
 </div>

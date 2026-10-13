@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Exportar e importar</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-shell">
+  <div th:replace="~{fragments/layout :: sidebar}"></div>
+  <main class="main">
+    <div th:replace="~{fragments/layout :: header}"></div>
+    <section class="content">
+      <h1>Exportar e importar cuenta</h1>
+      <div th:replace="~{fragments/layout :: alerts}"></div>
+
+      <div class="grid grid-2">
+        <section class="card form">
+          <h2>Exportar tienda completa</h2>
+          <p>Genera un ZIP con productos, existencias, ventas, compras, costos, clientes, créditos, caja, usuarios, configuración e imágenes.</p>
+          <div class="stats shadow">
+            <div class="stat">
+              <div class="stat-title">Registros</div>
+              <div class="stat-value text-primary" th:text="${backupInfo.records}">0</div>
+              <div class="stat-desc" th:text="${backupInfo.tables + ' tablas'}">0 tablas</div>
+            </div>
+            <div class="stat">
+              <div class="stat-title">Imágenes</div>
+              <div class="stat-value text-secondary" th:text="${backupInfo.productImages + backupInfo.catalogImages}">0</div>
+              <div class="stat-desc">Productos y catálogo</div>
+            </div>
+          </div>
+          <div>
+            <a class="btn btn-primary" th:href="@{/admin/backup/export}">Descargar ZIP</a>
+          </div>
+        </section>
+
+        <form class="card form" th:action="@{/admin/backup/import}" method="post" enctype="multipart/form-data"
+              onsubmit="return confirm('La información actual será reemplazada por el contenido del respaldo. ¿Continuar?')">
+          <h2>Importar tienda completa</h2>
+          <div class="alert alert-warning">
+            <span>Esta operación reemplaza todos los datos e imágenes actuales. Exporta primero una copia si necesitas conservarlos.</span>
+          </div>
+          <div class="field">
+            <label for="backupFile">Archivo de respaldo</label>
+            <input id="backupFile" name="backupFile" type="file" accept=".zip,application/zip" required>
+          </div>
+          <div class="field">
+            <label for="confirmation">Confirmación</label>
+            <input id="confirmation" name="confirmation" autocomplete="off" placeholder="Escribe IMPORTAR" required>
+            <small class="muted">Al finalizar se cerrará la sesión para cargar los usuarios restaurados.</small>
+          </div>
+          <div>
+            <button class="btn btn-error" type="submit">Importar y reemplazar</button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>
+</div>
+</body>
+</html>
