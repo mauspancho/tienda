@@ -3,6 +3,8 @@ package com.tienda.pos.whatsapp;
 import com.tienda.pos.exception.DomainException;
 import com.tienda.pos.common.NormalMode;
 import com.tienda.pos.tenant.TenantRepository;
+import com.tienda.pos.whatsapp.automation.PlatformAutomationToken;
+import com.tienda.pos.whatsapp.automation.PlatformAutomationTokenService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
@@ -13,19 +15,22 @@ import java.util.List;
 public class WhatsappPlatformService {
     public record ProviderView(WhatsappProvider provider, long sessions, long connected, long disconnected) { }
     public record PageData(List<ProviderView> providers, List<TenantWhatsappConnection> connections,
-                           List<WppConnectClient.RemoteSession> remoteSessions) { }
+                           List<WppConnectClient.RemoteSession> remoteSessions,
+                           List<PlatformAutomationToken> automationTokens) { }
     private final WhatsappProviderRepository providers;
     private final TenantWhatsappConnectionRepository connections;
     private final TenantRepository tenants;
     private final WhatsappCryptoService crypto;
     private final ProviderUrlValidator urls;
     private final WppConnectClient client;
+    private final PlatformAutomationTokenService automationTokens;
 
     public WhatsappPlatformService(WhatsappProviderRepository providers, TenantWhatsappConnectionRepository connections,
                                    TenantRepository tenants, WhatsappCryptoService crypto, ProviderUrlValidator urls,
-                                   WppConnectClient client) {
+                                   WppConnectClient client, PlatformAutomationTokenService automationTokens) {
         this.providers = providers; this.connections = connections; this.tenants = tenants;
         this.crypto = crypto; this.urls = urls; this.client = client;
+        this.automationTokens = automationTokens;
     }
 
     @Transactional(readOnly = true)
@@ -38,7 +43,7 @@ public class WhatsappPlatformService {
         var active = providers.findFirstByEnabledTrueOrderByIdAsc();
         if (active.isPresent()) try { remote = client.listSessions(active.get(), crypto.decrypt(active.get().getEncryptedSecret())); }
         catch (RuntimeException ignored) { }
-        return new PageData(views, connections.findAllWithDetails(), remote);
+        return new PageData(views, connections.findAllWithDetails(), remote, automationTokens.list());
     }
 
     @Transactional

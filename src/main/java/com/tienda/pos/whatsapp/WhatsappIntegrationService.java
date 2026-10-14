@@ -26,15 +26,18 @@ public class WhatsappIntegrationService {
     private final WhatsappCryptoService crypto;
     private final WppConnectClient client;
     private final WhatsappProperties properties;
+    private final WhatsappAnnouncementService announcements;
     private final Map<Long, Object> tenantLocks = new ConcurrentHashMap<>();
     private static final SecureRandom RANDOM = new SecureRandom();
 
     public WhatsappIntegrationService(CurrentTenant currentTenant, WhatsappProviderRepository providers,
                                       TenantWhatsappConnectionRepository connections, WhatsappGroupRepository groups,
                                       TenantIntegrationTokenRepository tokens, WhatsappCryptoService crypto,
-                                      WppConnectClient client, WhatsappProperties properties) {
+                                      WppConnectClient client, WhatsappProperties properties,
+                                      WhatsappAnnouncementService announcements) {
         this.currentTenant = currentTenant; this.providers = providers; this.connections = connections; this.groups = groups;
         this.tokens = tokens; this.crypto = crypto; this.client = client; this.properties = properties;
+        this.announcements = announcements;
     }
 
     @Transactional(readOnly = true)
@@ -148,6 +151,7 @@ public class WhatsappIntegrationService {
         Long tenantId = currentTenant.id();
         TenantWhatsappConnection connection = connections.findByTenantIdWithDetails(tenantId)
                 .orElseThrow(() -> new DomainException("WhatsApp no está configurado."));
+        announcements.invalidateForDisassociation(tenantId);
         groups.deleteByTenantId(tenantId);
         connections.delete(connection);
     }
@@ -204,6 +208,7 @@ public class WhatsappIntegrationService {
     private void applySnapshot(TenantWhatsappConnection connection, WppConnectClient.SessionSnapshot snapshot) {
         connection.setStatus(snapshot.status()); connection.setPhoneNumber(snapshot.phoneNumber()); connection.setLastCheckedAt(LocalDateTime.now()); connection.setLastError(null);
         if (snapshot.status() == WhatsappSessionStatus.CONNECTED) connection.setLastConnectedAt(LocalDateTime.now());
+        announcements.invalidateIfIdentityChanged(connection);
     }
     private TenantWhatsappConnection requireCurrent() { return connections.findByTenantIdWithDetails(currentTenant.id()).orElseThrow(() -> new DomainException("WhatsApp no está configurado.")); }
     private String token(TenantWhatsappConnection connection) { return crypto.decrypt(connection.getEncryptedSessionToken()); }

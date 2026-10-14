@@ -19,6 +19,8 @@ public class WhatsappGroup extends BaseEntity {
     private Integer participantCount;
     private boolean available = true;
     @Column(nullable = false)
+    private boolean selectedForAnnouncements;
+    @Column(nullable = false)
     private LocalDateTime refreshedAt;
 
     public Tenant getTenant() { return tenant; }
@@ -33,6 +35,8 @@ public class WhatsappGroup extends BaseEntity {
     public void setParticipantCount(Integer participantCount) { this.participantCount = participantCount; }
     public boolean isAvailable() { return available; }
     public void setAvailable(boolean available) { this.available = available; }
+    public boolean isSelectedForAnnouncements() { return selectedForAnnouncements; }
+    public void setSelectedForAnnouncements(boolean value) { this.selectedForAnnouncements = value; }
     public LocalDateTime getRefreshedAt() { return refreshedAt; }
     public void setRefreshedAt(LocalDateTime refreshedAt) { this.refreshedAt = refreshedAt; }
 }

@@ -20,8 +20,12 @@ import java.util.*;
 @PreAuthorize("hasRole('ADMIN')")
 public class WhatsappAdminController {
     private final WhatsappIntegrationService service;
+    private final WhatsappAnnouncementService announcements;
     private final CurrentTenant currentTenant;
-    public WhatsappAdminController(WhatsappIntegrationService service, CurrentTenant currentTenant) { this.service = service; this.currentTenant = currentTenant; }
+    public WhatsappAdminController(WhatsappIntegrationService service, WhatsappAnnouncementService announcements,
+                                   CurrentTenant currentTenant) {
+        this.service = service; this.announcements = announcements; this.currentTenant = currentTenant;
+    }
 
     @GetMapping
     public String page(Model model) {
@@ -29,6 +33,8 @@ public class WhatsappAdminController {
         String base = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString()
                 + "/api/integrations/v1/" + data.tenant().getCode() + "/whatsapp";
         model.addAttribute("data", data); model.addAttribute("apiBase", base);
+        model.addAttribute("announcements", announcements.current());
+        model.addAttribute("announcementGroups", announcements.currentGroups());
         return "whatsapp/index";
     }
 
@@ -42,6 +48,37 @@ public class WhatsappAdminController {
     public String groups(RedirectAttributes flash) { return action(flash, () -> service.refreshCurrentGroups(), "Grupos actualizados."); }
     @PostMapping("/disassociate")
     public String disassociate(RedirectAttributes flash) { return action(flash, () -> { service.disassociateCurrent(); return null; }, "Asociación local eliminada. La sesión de WPPConnect permanece intacta."); }
+
+    @PostMapping("/announcements/groups")
+    public String announcementGroups(@RequestParam(name = "announcementGroupIds", required = false) List<Long> groupIds,
+                                     RedirectAttributes flash) {
+        return action(flash, () -> announcements.saveCurrentSelections(groupIds == null ? List.of() : groupIds),
+                "Grupos para anuncios guardados.");
+    }
+
+    @PostMapping("/announcements/enabled")
+    public String announcementsEnabled(@RequestParam(defaultValue = "false") boolean enabled,
+                                       RedirectAttributes flash) {
+        return action(flash, () -> announcements.setCurrentEnabled(enabled),
+                enabled ? "Anuncios automáticos habilitados." : "Anuncios automáticos deshabilitados; los grupos se conservaron.");
+    }
+
+    @GetMapping(value = "/announcements/status.json", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public Map<String,Object> announcementStatus() {
+        var value = announcements.current();
+        return Map.of("status", value.status().name(), "enabled", value.settings() != null && value.settings().isEnabled(),
+                "availableGroups", value.availableGroups(), "selectedGroups", value.selectedGroups(),
+                "selectedAvailableGroups", value.selectedAvailableGroups(), "ready", value.ready());
+    }
+
+    @GetMapping(value = "/announcements/groups.json", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public Map<String,Object> announcementGroups() {
+        return Map.of("groups", announcements.currentGroups().stream().map(group -> Map.of(
+                "id", group.getId(), "whatsappId", group.getWhatsappId(), "name", group.getName(),
+                "available", group.isAvailable(), "selectedForAnnouncements", group.isSelectedForAnnouncements())).toList());
+    }
 
     @GetMapping(value = "/qr", produces = MediaType.IMAGE_PNG_VALUE)
     @ResponseBody

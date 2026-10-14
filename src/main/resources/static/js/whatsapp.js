@@ -19,6 +19,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const query = event.target.value.trim().toLowerCase();
     document.querySelectorAll('#whatsapp-groups tbody tr[data-search]').forEach(row => row.hidden = !row.dataset.search.includes(query));
   });
+  const announcementChecks = [...document.querySelectorAll('.announcement-group-check')];
+  const saveAnnouncements = document.querySelector('#save-announcement-groups');
+  const pendingAnnouncements = document.querySelector('#announcement-pending');
+  const initialAnnouncements = new Map(announcementChecks.map(input => [input.value, input.checked]));
+  const updateAnnouncementPending = () => {
+    const changed = announcementChecks.some(input => initialAnnouncements.get(input.value) !== input.checked);
+    if (saveAnnouncements) saveAnnouncements.disabled = !changed;
+    if (pendingAnnouncements) pendingAnnouncements.textContent = changed ? 'Hay selecciones pendientes de guardar' : 'Sin cambios pendientes';
+    document.querySelector('#announcement-groups-form')?.classList.toggle('has-pending-changes', changed);
+  };
+  announcementChecks.forEach(input => input.addEventListener('change', updateAnnouncementPending));
   const page = document.querySelector('.whatsapp-page[data-status-url]');
   const qrImage = document.querySelector('#whatsapp-qr-image[data-src]');
   const qrStatus = document.querySelector('#whatsapp-qr-status');

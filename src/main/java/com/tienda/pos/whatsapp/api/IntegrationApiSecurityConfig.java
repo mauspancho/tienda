@@ -15,7 +15,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @NormalMode
 public class IntegrationApiSecurityConfig {
     @Bean
-    @Order(1)
+    @Order(2)
     SecurityFilterChain integrationApiSecurity(HttpSecurity http, IntegrationTokenService tokens, ObjectMapper mapper) throws Exception {
         return http.securityMatcher("/api/integrations/v1/**")
                 .csrf(csrf -> csrf.disable())

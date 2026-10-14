@@ -11,6 +11,10 @@ import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import com.tienda.pos.whatsapp.automation.AutomationScope;
+import com.tienda.pos.whatsapp.automation.PlatformAutomationTokenService;
+import java.util.List;
+import java.util.Set;
 
 @Controller
 @NormalMode
@@ -19,7 +23,11 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class PlatformWhatsappController {
     private final WhatsappPlatformService service;
     private final TenantRepository tenants;
-    public PlatformWhatsappController(WhatsappPlatformService service, TenantRepository tenants) { this.service = service; this.tenants = tenants; }
+    private final PlatformAutomationTokenService automationTokens;
+    public PlatformWhatsappController(WhatsappPlatformService service, TenantRepository tenants,
+                                      PlatformAutomationTokenService automationTokens) {
+        this.service = service; this.tenants = tenants; this.automationTokens = automationTokens;
+    }
 
     @GetMapping
     public String page(Model model) {
@@ -59,6 +67,25 @@ public class PlatformWhatsappController {
     public String associate(@RequestParam Long providerId, @RequestParam Long tenantId, @RequestParam String sessionName,
                             @RequestParam(defaultValue = "false") boolean confirmed, RedirectAttributes flash) {
         try { service.associate(providerId, tenantId, sessionName, confirmed); flash.addFlashAttribute("success", "Sesión existente asociada sin cerrarla ni modificarla."); }
+        catch (RuntimeException ex) { flash.addFlashAttribute("error", ex.getMessage()); }
+        return "redirect:/platform/integrations/wppconnect";
+    }
+
+    @PostMapping("/automation-tokens")
+    public String automationToken(@RequestParam(defaultValue = "n8n") String name,
+                                  @RequestParam(required = false) List<AutomationScope> scopes,
+                                  RedirectAttributes flash) {
+        try {
+            var generated = automationTokens.generate(name, scopes == null ? Set.of() : Set.copyOf(scopes));
+            flash.addFlashAttribute("automationToken", generated.value());
+            flash.addFlashAttribute("success", "Credencial central generada. Cópiala ahora: no volverá a mostrarse.");
+        } catch (RuntimeException ex) { flash.addFlashAttribute("error", ex.getMessage()); }
+        return "redirect:/platform/integrations/wppconnect";
+    }
+
+    @PostMapping("/automation-tokens/{id}/revoke")
+    public String revokeAutomationToken(@PathVariable Long id, RedirectAttributes flash) {
+        try { automationTokens.revoke(id); flash.addFlashAttribute("success", "Credencial central revocada."); }
         catch (RuntimeException ex) { flash.addFlashAttribute("error", ex.getMessage()); }
         return "redirect:/platform/integrations/wppconnect";
     }
