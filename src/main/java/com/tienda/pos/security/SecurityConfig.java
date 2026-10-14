@@ -43,7 +43,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    @org.springframework.core.annotation.Order(2)
+    @org.springframework.core.annotation.Order(3)
     SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationSuccessHandler successHandler,
                                             AppUserRepository userRepository, SessionRegistry registry,
                                             SessionLogoutService logoutService) throws Exception {
@@ -60,7 +60,7 @@ public class SecurityConfig {
                         .requestMatchers("/platform", "/platform/**").hasRole("PLATFORM_ADMIN")
                         .requestMatchers("/", "/css/**", "/js/**", "/vendor/**",
                                 "/images/**", "/uploads/products/**", "/uploads/catalog/**", "/admin/login", "/error").permitAll()
-                        .requestMatchers("/admin/users/**", "/admin/settings/**", "/admin/reports/**", "/admin/cash/**", "/admin/finances", "/admin/finances/**").hasRole("ADMIN")
+                        .requestMatchers("/admin/users/**", "/admin/settings/**", "/admin/reports/**", "/admin/cash/**", "/admin/finances", "/admin/finances/**", "/admin/integrations/**").hasRole("ADMIN")
                         .requestMatchers("/admin/products/**", "/admin/categories/**", "/admin/suppliers/**", "/admin/purchases/**",
                                 "/admin/inventory/**", "/admin/expenses/**").hasRole("ADMIN")
                         .requestMatchers("/admin/pos/**", "/admin/sales/**", "/admin/tickets/**", "/admin/api/products/**").hasAnyRole("ADMIN", "CAJERO")
