@@ -29,6 +29,20 @@ class WhatsappGroupRefreshTest {
         verify(f.groups, never()).findByTenantId(anyLong());
     }
 
+    @Test void statusWithoutPhonePreservesPreviouslyKnownIdentity() {
+        Fixture f = fixture();
+        f.connection.setPhoneNumber("5215512345678");
+        f.connection.getProvider().setStatus(ProviderStatus.TIMEOUT);
+        when(f.client.status(any(), anyString(), anyString()))
+                .thenReturn(new WppConnectClient.SessionSnapshot(WhatsappSessionStatus.CONNECTED, null));
+
+        f.service.refreshStatus(f.connection);
+
+        assertThat(f.connection.getPhoneNumber()).isEqualTo("5215512345678");
+        assertThat(f.connection.getProvider().getStatus()).isEqualTo(ProviderStatus.TIMEOUT);
+        verify(f.announcements).invalidateIfIdentityChanged(f.connection);
+    }
+
     private Fixture fixture() {
         CurrentTenant current = mock(CurrentTenant.class); WhatsappProviderRepository providers = mock(WhatsappProviderRepository.class);
         TenantWhatsappConnectionRepository connections = mock(TenantWhatsappConnectionRepository.class); WhatsappGroupRepository groups = mock(WhatsappGroupRepository.class);
@@ -41,9 +55,11 @@ class WhatsappGroupRefreshTest {
         WhatsappGroup group = new WhatsappGroup(); group.setId(4L); group.setTenant(tenant); group.setConnection(connection); group.setWhatsappId("100@g.us");
         group.setName("Anterior"); group.setAvailable(true); group.setSelectedForAnnouncements(true); group.setRefreshedAt(LocalDateTime.now());
         when(crypto.decrypt("encrypted")).thenReturn("token");
+        when(connections.findByIdWithDetailsForUpdate(3L)).thenReturn(Optional.of(connection));
         WhatsappIntegrationService service = new WhatsappIntegrationService(current, providers, connections, groups, tokens, crypto, client, new WhatsappProperties(), announcements);
-        return new Fixture(service, client, groups, connection, group);
+        return new Fixture(service, client, groups, announcements, connection, group);
     }
     private record Fixture(WhatsappIntegrationService service, WppConnectClient client, WhatsappGroupRepository groups,
+                           WhatsappAnnouncementService announcements,
                            TenantWhatsappConnection connection, WhatsappGroup group) { }
 }

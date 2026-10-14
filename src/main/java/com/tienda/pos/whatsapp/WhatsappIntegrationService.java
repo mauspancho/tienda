@@ -77,14 +77,27 @@ public class WhatsappIntegrationService {
     public TenantWhatsappConnection refreshCurrentStatus() { return refreshStatus(requireCurrent()); }
     @Transactional
     public TenantWhatsappConnection refreshStatus(TenantWhatsappConnection connection) {
-        if (connection.getId() != null) connection = connections.findByIdWithDetails(connection.getId()).orElse(connection);
+        return refreshStatus(connection, false);
+    }
+    @Transactional
+    public TenantWhatsappConnection refreshStatusFromMonitor(TenantWhatsappConnection connection) {
+        return refreshStatus(connection, true);
+    }
+    private TenantWhatsappConnection refreshStatus(TenantWhatsappConnection connection, boolean updateProvider) {
+        if (connection.getId() != null) {
+            connection = connections.findByIdWithDetailsForUpdate(connection.getId()).orElse(connection);
+        }
         try {
             var snapshot = client.status(connection.getProvider(), connection.getSessionName(), token(connection));
-            applySnapshot(connection, snapshot); connection.getProvider().setStatus(ProviderStatus.AVAILABLE);
-            connection.getProvider().setLastCheckedAt(LocalDateTime.now()); connection.getProvider().setLastError(null);
+            applySnapshot(connection, snapshot);
+            if (updateProvider) {
+                connection.getProvider().setStatus(ProviderStatus.AVAILABLE);
+                connection.getProvider().setLastCheckedAt(LocalDateTime.now());
+                connection.getProvider().setLastError(null);
+            }
         } catch (WppConnectException ex) {
             connection.setLastCheckedAt(LocalDateTime.now()); connection.setLastError(ex.getMessage());
-            if (ex.getKind() == WppConnectException.Kind.UNREACHABLE || ex.getKind() == WppConnectException.Kind.TIMEOUT) {
+            if (updateProvider && (ex.getKind() == WppConnectException.Kind.UNREACHABLE || ex.getKind() == WppConnectException.Kind.TIMEOUT)) {
                 connection.getProvider().setStatus(ex.getKind() == WppConnectException.Kind.TIMEOUT ? ProviderStatus.TIMEOUT : ProviderStatus.UNREACHABLE);
                 connection.getProvider().setLastError(ex.getMessage()); connection.getProvider().setLastCheckedAt(LocalDateTime.now());
             } else connection.setStatus(WhatsappSessionStatus.ERROR);
@@ -206,7 +219,11 @@ public class WhatsappIntegrationService {
         return clean.length() > 120 ? clean.substring(clean.length()-120) : clean;
     }
     private void applySnapshot(TenantWhatsappConnection connection, WppConnectClient.SessionSnapshot snapshot) {
-        connection.setStatus(snapshot.status()); connection.setPhoneNumber(snapshot.phoneNumber()); connection.setLastCheckedAt(LocalDateTime.now()); connection.setLastError(null);
+        connection.setStatus(snapshot.status());
+        if (snapshot.phoneNumber() != null && !snapshot.phoneNumber().isBlank()) {
+            connection.setPhoneNumber(snapshot.phoneNumber());
+        }
+        connection.setLastCheckedAt(LocalDateTime.now()); connection.setLastError(null);
         if (snapshot.status() == WhatsappSessionStatus.CONNECTED) connection.setLastConnectedAt(LocalDateTime.now());
         announcements.invalidateIfIdentityChanged(connection);
     }

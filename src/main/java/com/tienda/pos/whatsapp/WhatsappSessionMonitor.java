@@ -19,7 +19,7 @@ public class WhatsappSessionMonitor {
     public void checkConnections() {
         for (TenantWhatsappConnection connection : connections.findAllWithDetails()) {
             if (!connection.getProvider().isEnabled() || !connection.getTenant().isActive()) continue;
-            try { service.refreshStatus(connection); }
+            try { service.refreshStatusFromMonitor(connection); }
             catch (RuntimeException ex) { log.warn("No fue posible comprobar la sesión de WhatsApp id={}: {}", connection.getId(), ex.getMessage()); }
         }
     }

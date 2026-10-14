@@ -62,7 +62,30 @@ public class HttpWppConnectClient implements WppConnectClient {
         JsonNode root = request(provider, token, "GET", "/api/" + segment(sessionName) + "/check-connection-session", null);
         String raw = firstTextRecursive(root, Set.of("status", "state", "sessionStatus", "message"));
         String phone = firstTextRecursive(root, Set.of("phone", "phoneNumber", "wid", "user"));
-        return new SessionSnapshot(mapStatus(raw, root), normalizePhone(phone));
+        WhatsappSessionStatus status = mapStatus(raw, root);
+        if (status == WhatsappSessionStatus.CONNECTED && normalizePhone(phone) == null) {
+            phone = connectedPhone(provider, sessionName, token);
+        }
+        return new SessionSnapshot(status, normalizePhone(phone));
+    }
+
+    private String connectedPhone(WhatsappProvider provider, String sessionName, String token) {
+        for (String endpoint : List.of("/get-phone-number", "/host-device")) {
+            try {
+                JsonNode root = request(provider, token, "GET", "/api/" + segment(sessionName) + endpoint, null);
+                String phone = phoneIdentity(root);
+                if (phone != null) return phone;
+            } catch (WppConnectException ignored) {
+                // Versions of WPPConnect differ in which identity endpoint they expose.
+            }
+        }
+        return null;
+    }
+
+    private String phoneIdentity(JsonNode root) {
+        if (root == null) return null;
+        if (root.isValueNode() && !root.asText().isBlank()) return root.asText();
+        return firstTextRecursive(root, Set.of("phone", "phoneNumber", "wid", "user", "_serialized", "serialized"));
     }
 
     @Override
@@ -250,8 +273,9 @@ public class HttpWppConnectClient implements WppConnectClient {
         return WhatsappSessionStatus.DISCONNECTED;
     }
     private String normalizePhone(String value) {
-        if (value == null) return null;
-        return value.replace("@c.us", "").replace("@s.whatsapp.net", "");
+        if (value == null || value.isBlank()) return null;
+        String normalized = value.trim().replace("@c.us", "").replace("@s.whatsapp.net", "");
+        return normalized.isBlank() ? null : normalized;
     }
     private List<JsonNode> chatItems(JsonNode root) {
         JsonNode array = firstArray(root);

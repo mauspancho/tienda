@@ -30,6 +30,13 @@ class HttpWppConnectClientTest {
                 "{\"response\":{\"status\":\"CONNECTED\",\"phoneNumber\":\"5215512345678@c.us\"}}"));
         server.createContext("/api/bool/check-connection-session", exchange -> json(exchange,
                 "{\"status\":true,\"message\":\"Connected\"}"));
+        server.createContext("/api/bool/get-phone-number", exchange -> json(exchange,
+                "{\"response\":{\"phoneNumber\":\"5215599999999@c.us\"}}"));
+        server.createContext("/api/host/check-connection-session", exchange -> json(exchange,
+                "{\"status\":true,\"message\":\"Connected\"}"));
+        server.createContext("/api/host/get-phone-number", exchange -> error(exchange, 404));
+        server.createContext("/api/host/host-device", exchange -> json(exchange,
+                "{\"response\":{\"id\":{\"user\":\"5215588888888\",\"server\":\"c.us\"}}}"));
         server.createContext("/api/secret/show-all-sessions", exchange -> json(exchange,
                 "[{\"session\":\"tienda\",\"status\":\"CONNECTED\"}]"));
         server.createContext("/api/qr-json/qrcode-session", exchange -> json(exchange,
@@ -53,6 +60,8 @@ class HttpWppConnectClientTest {
         assertThat(client.status(provider, "test", "token").status()).isEqualTo(WhatsappSessionStatus.CONNECTED);
         assertThat(client.status(provider, "test", "token").phoneNumber()).isEqualTo("5215512345678");
         assertThat(client.status(provider, "bool", "token").status()).isEqualTo(WhatsappSessionStatus.CONNECTED);
+        assertThat(client.status(provider, "bool", "token").phoneNumber()).isEqualTo("5215599999999");
+        assertThat(client.status(provider, "host", "token").phoneNumber()).isEqualTo("5215588888888");
         assertThat(client.listSessions(provider, "secret")).extracting(WppConnectClient.RemoteSession::name).containsExactly("tienda");
     }
     @Test void readsQrFromNestedBase64AndBinaryImage() {
@@ -67,6 +76,10 @@ class HttpWppConnectClientTest {
     private void image(HttpExchange exchange, byte[] bytes) throws java.io.IOException {
         exchange.getResponseHeaders().add("Content-Type", "image/png"); exchange.sendResponseHeaders(200, bytes.length);
         exchange.getResponseBody().write(bytes); exchange.close();
+    }
+    private void error(HttpExchange exchange, int status) throws java.io.IOException {
+        exchange.sendResponseHeaders(status, -1);
+        exchange.close();
     }
     private byte[] png() {
         return Base64.getDecoder().decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=");
