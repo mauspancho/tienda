@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class PlatformAutomationAuditService {
     private final PlatformAutomationAuditRepository audits;
     private final PlatformAutomationTokenRepository tokens;
+    private final Object writeLock = new Object();
     public PlatformAutomationAuditService(PlatformAutomationAuditRepository audits, PlatformAutomationTokenRepository tokens) {
         this.audits = audits; this.tokens = tokens;
     }
@@ -19,7 +20,9 @@ public class PlatformAutomationAuditService {
         PlatformAutomationAudit value = new PlatformAutomationAudit();
         value.setToken(tokens.getReferenceById(tokenId)); value.setAction(limit(action, 120));
         value.setTenantCode(limit(tenantCode, 60)); value.setHttpStatus(status); value.setRemoteAddress(limit(remoteAddress, 80));
-        audits.save(value);
+        synchronized (writeLock) {
+            audits.saveAndFlush(value);
+        }
     }
     private String limit(String value, int size) { return value == null ? null : value.substring(0, Math.min(size, value.length())); }
 }

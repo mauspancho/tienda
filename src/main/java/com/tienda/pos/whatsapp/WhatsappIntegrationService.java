@@ -27,6 +27,7 @@ public class WhatsappIntegrationService {
     private final WppConnectClient client;
     private final WhatsappProperties properties;
     private final WhatsappAnnouncementService announcements;
+    private final WhatsappGroupPersistenceService groupPersistence;
     private final Map<Long, Object> tenantLocks = new ConcurrentHashMap<>();
     private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -34,10 +35,12 @@ public class WhatsappIntegrationService {
                                       TenantWhatsappConnectionRepository connections, WhatsappGroupRepository groups,
                                       TenantIntegrationTokenRepository tokens, WhatsappCryptoService crypto,
                                       WppConnectClient client, WhatsappProperties properties,
-                                      WhatsappAnnouncementService announcements) {
+                                      WhatsappAnnouncementService announcements,
+                                      WhatsappGroupPersistenceService groupPersistence) {
         this.currentTenant = currentTenant; this.providers = providers; this.connections = connections; this.groups = groups;
         this.tokens = tokens; this.crypto = crypto; this.client = client; this.properties = properties;
         this.announcements = announcements;
+        this.groupPersistence = groupPersistence;
     }
 
     @Transactional(readOnly = true)
@@ -75,6 +78,16 @@ public class WhatsappIntegrationService {
 
     @Transactional
     public TenantWhatsappConnection refreshCurrentStatus() { return refreshStatus(requireCurrent()); }
+
+    @Transactional
+    public TenantWhatsappConnection currentStatusCached() {
+        TenantWhatsappConnection connection = requireCurrent();
+        LocalDateTime threshold = LocalDateTime.now().minus(properties.getStatusCacheTtl());
+        if (connection.getLastCheckedAt() != null && connection.getLastCheckedAt().isAfter(threshold)) {
+            return connection;
+        }
+        return refreshStatus(connection);
+    }
     @Transactional
     public TenantWhatsappConnection refreshStatus(TenantWhatsappConnection connection) {
         return refreshStatus(connection, false);
@@ -121,24 +134,12 @@ public class WhatsappIntegrationService {
         return client.qrCode(connection.getProvider(), connection.getSessionName(), token(connection));
     }
 
-    @Transactional
     public List<WhatsappGroup> refreshCurrentGroups() { return refreshGroups(requireCurrent()); }
-    @Transactional
     public List<WhatsappGroup> refreshGroups(TenantWhatsappConnection connection) {
         if (connection.getId() != null) connection = connections.findByIdWithDetails(connection.getId()).orElse(connection);
-        if (connection.getStatus() != WhatsappSessionStatus.CONNECTED) refreshStatus(connection);
         if (connection.getStatus() != WhatsappSessionStatus.CONNECTED) throw new DomainException("Conecta WhatsApp para consultar sus grupos.");
         List<WppConnectClient.RemoteGroup> remote = client.groups(connection.getProvider(), connection.getSessionName(), token(connection));
-        LocalDateTime now = LocalDateTime.now();
-        Map<String, WhatsappGroup> stored = new HashMap<>();
-        for (WhatsappGroup group : groups.findByTenantId(connection.getTenant().getId())) { group.setAvailable(false); stored.put(group.getWhatsappId(), group); }
-        for (var item : remote) {
-            WhatsappGroup group = stored.getOrDefault(item.id(), new WhatsappGroup());
-            group.setTenant(connection.getTenant()); group.setConnection(connection); group.setWhatsappId(item.id());
-            group.setName(item.name()); group.setParticipantCount(item.participants()); group.setAvailable(true); group.setRefreshedAt(now);
-            groups.save(group);
-        }
-        return groups.findByTenantIdAndAvailableTrueOrderByNameAsc(connection.getTenant().getId());
+        return groupPersistence.applyCompleteSync(connection.getTenant().getId(), connection.getId(), remote);
     }
 
     @Transactional
@@ -180,18 +181,66 @@ public class WhatsappIntegrationService {
     public WppConnectClient.SendResult sendFile(Tenant tenant, String phone, boolean isGroup, MultipartFile file, String caption) {
         try {
             if (file == null || file.isEmpty() || file.getSize() > properties.getMaxUploadBytes()) throw new DomainException("El archivo es obligatorio y no debe superar 10 MB.");
-            byte[] bytes = file.getBytes(); String type = detectType(bytes);
-            if (type == null) throw new DomainException("Solo se permiten imágenes PNG/JPEG/WebP o documentos PDF válidos.");
-            TenantWhatsappConnection connection = ready(tenant, phone, isGroup);
-            String filename = safeFilename(file.getOriginalFilename(), type);
-            return client.sendFile(connection.getProvider(), connection.getSessionName(), token(connection), normalizeDestination(phone, isGroup), isGroup, filename, type, bytes, caption);
+            return sendFile(tenant, phone, isGroup, file.getOriginalFilename(), file.getBytes(), caption);
         } catch (java.io.IOException ex) { throw new DomainException("No fue posible leer el archivo."); }
     }
 
+    @Transactional(readOnly = true)
+    public WppConnectClient.SendResult sendFile(Tenant tenant, String phone, boolean isGroup,
+                                                String originalFilename, byte[] bytes, String caption) {
+        if (bytes == null || bytes.length == 0 || bytes.length > properties.getMaxUploadBytes()) {
+            throw new DomainException("El archivo es obligatorio y no debe superar 10 MB.");
+        }
+        String type = detectType(bytes);
+        if (type == null) throw new DomainException("Solo se permiten imágenes PNG/JPEG/WebP o documentos PDF válidos.");
+        TenantWhatsappConnection connection = ready(tenant, phone, isGroup);
+        String filename = safeFilename(originalFilename, type);
+        return client.sendFile(connection.getProvider(), connection.getSessionName(), token(connection),
+                normalizeDestination(phone, isGroup), isGroup, filename, type, bytes, caption);
+    }
+
+    @Transactional(readOnly = true)
+    public TenantWhatsappConnection requireConnectedConnection(Tenant tenant) {
+        if (tenant == null || !tenant.isActive()) throw new DomainException("La tienda está suspendida.");
+        TenantWhatsappConnection connection = connections.findByTenantIdWithDetails(tenant.getId())
+                .orElseThrow(() -> new DomainException("WhatsApp no está configurado."));
+        if (connection.getStatus() != WhatsappSessionStatus.CONNECTED) {
+            throw new DomainException("WhatsApp no está conectado.");
+        }
+        return connection;
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isConnected(Tenant tenant) {
+        if (tenant == null || !tenant.isActive()) return false;
+        return connections.findByTenantIdWithDetails(tenant.getId())
+                .map(value -> value.getStatus() == WhatsappSessionStatus.CONNECTED)
+                .orElse(false);
+    }
+
+    public String normalizeIndividualDestination(String value) {
+        String clean = value == null ? "" : value.trim();
+        if (clean.isEmpty() || clean.toLowerCase(Locale.ROOT).contains("@g.us")) {
+            throw new DomainException("Escribe un número individual de WhatsApp válido.");
+        }
+        if (!clean.matches("\\+?[0-9() -]+")) {
+            throw new DomainException("El número solo puede contener dígitos, espacios, guiones, paréntesis y un prefijo +.");
+        }
+        boolean international = clean.startsWith("+");
+        String digits = clean.replaceAll("[^0-9]", "");
+        if (!international && digits.length() == 10) digits = "52" + digits;
+        else if (!international && digits.length() < 11) {
+            throw new DomainException("Incluye el código de país o captura un número mexicano de 10 dígitos.");
+        }
+        if (digits.startsWith("521") && digits.length() == 13) digits = "52" + digits.substring(3);
+        if (!digits.matches("[1-9][0-9]{7,14}")) {
+            throw new DomainException("El número debe tener entre 8 y 15 dígitos e incluir un código de país válido.");
+        }
+        return digits;
+    }
+
     private TenantWhatsappConnection ready(Tenant tenant, String phone, boolean group) {
-        if (!tenant.isActive()) throw new DomainException("La tienda está suspendida.");
-        TenantWhatsappConnection connection = connections.findByTenantIdWithDetails(tenant.getId()).orElseThrow(() -> new DomainException("WhatsApp no está configurado."));
-        if (connection.getStatus() != WhatsappSessionStatus.CONNECTED) throw new DomainException("WhatsApp no está conectado.");
+        TenantWhatsappConnection connection = requireConnectedConnection(tenant);
         String destination = normalizeDestination(phone, group);
         if (group && groups.findByTenantIdAndWhatsappId(tenant.getId(), destination).filter(WhatsappGroup::isAvailable).isEmpty()) throw new DomainException("El grupo no pertenece a esta sesión.");
         return connection;
@@ -200,9 +249,7 @@ public class WhatsappIntegrationService {
     private String normalizeDestination(String value, boolean group) {
         String clean = value == null ? "" : value.trim();
         if (group) { if (!clean.matches("[0-9-]{5,80}@g\\.us")) throw new DomainException("El identificador de grupo no es válido."); return clean; }
-        clean = clean.replaceAll("[^0-9]", "");
-        if (!clean.matches("[0-9]{8,20}")) throw new DomainException("El número de WhatsApp no es válido.");
-        return clean;
+        return normalizeIndividualDestination(clean);
     }
     private String detectType(byte[] value) {
         if (value.length >= 5 && new String(value, 0, 5, java.nio.charset.StandardCharsets.US_ASCII).equals("%PDF-")) return "application/pdf";

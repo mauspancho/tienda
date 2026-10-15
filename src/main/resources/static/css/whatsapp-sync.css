@@ -1,0 +1,38 @@
+.whatsapp-sync-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem 1rem;
+  padding: .75rem;
+  border: 1px solid color-mix(in srgb, currentColor 28%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, Canvas 94%, transparent);
+}
+
+.whatsapp-sync-status strong,
+.whatsapp-sync-status small {
+  flex-basis: 100%;
+}
+
+.whatsapp-sync-status small {
+  color: #ef4444;
+}
+
+.whatsapp-table-pagination {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: .75rem;
+}
+
+.whatsapp-table-pagination span {
+  min-width: 7rem;
+  text-align: center;
+  font-weight: 800;
+}
+
+@media (max-width: 850px) {
+  .whatsapp-table-pagination {
+    justify-content: center;
+  }
+}

@@ -119,6 +119,19 @@ class ProductImageServiceTest {
     }
 
     @Test
+    void storedImageCanBeReadSafelyForServerSideWhatsappSending() throws Exception {
+        ProductImageService service = service();
+        String imageUrl = service.store(imageFile("promotion.jpg", "image/jpeg", 400, 300));
+
+        ProductImageService.ProductImagePayload payload = service.readLocalImage(imageUrl);
+
+        assertThat(payload.filename()).endsWith(".jpg");
+        assertThat(payload.contentType()).isEqualTo("image/jpeg");
+        assertThat(payload.bytes()).isNotEmpty();
+        assertThat(ImageIO.read(new java.io.ByteArrayInputStream(payload.bytes()))).isNotNull();
+    }
+
+    @Test
     void pathTraversalIsRejectedWhenResolvingLocalImage() {
         ProductImageService service = service();
 

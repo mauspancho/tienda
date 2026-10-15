@@ -57,6 +57,10 @@ class UserInterfaceAssetTest {
                 .contains("table.ajax.reload")
                 .contains("window.history.replaceState")
                 .contains("[data-whatsapp-promotion]");
+        assertThat(productIndex)
+                .doesNotContain("/promote", "/unpromote", "Quitar promoción", "★ Promocionado");
+        assertThat(productTable)
+                .doesNotContain("/promote", "/unpromote", "Quitar promoción", "★ Promocionado");
         assertThat(css)
                 .contains(".product-filter-grid")
                 .contains(".products-table")
@@ -82,6 +86,27 @@ class UserInterfaceAssetTest {
                 .contains("content: \"✓\"")
                 .contains("content: \"×\"")
                 .contains(".user-access-option:has(.user-access-input:checked)");
+    }
+
+    @Test
+    void whatsappGroupsUseBackgroundSyncAndClientSidePagination() throws Exception {
+        String page = Files.readString(ROOT.resolve("src/main/resources/templates/whatsapp/index.html"));
+        String script = Files.readString(ROOT.resolve("src/main/resources/static/js/whatsapp.js"));
+        String configuration = Files.readString(ROOT.resolve("src/main/resources/application.yml"));
+
+        assertThat(page)
+                .contains("data-group-sync-start-url")
+                .contains("data-group-sync-status-url")
+                .contains("id=\"group-sync-status\"")
+                .contains("id=\"groups-pagination\"");
+        assertThat(script)
+                .contains("groupPageSize = 50")
+                .contains("pollSync")
+                .contains("statusRequestInFlight")
+                .contains("Se conservará la información de la última sincronización");
+        assertThat(configuration)
+                .contains("group-sync-read-timeout:")
+                .contains("status-cache-ttl:");
     }
 
     @Test
@@ -225,6 +250,28 @@ class UserInterfaceAssetTest {
                 .contains(".sales-table-wrap")
                 .contains(".sale-detail-panel")
                 .contains(".sale-toggle");
+    }
+
+    @Test
+    void manualWhatsappPromotionCanSwitchExclusivelyToAnIndividualNumber() throws Exception {
+        String form = Files.readString(ROOT.resolve("src/main/resources/templates/products/form.html"));
+        String script = Files.readString(ROOT.resolve("src/main/resources/static/js/manual-whatsapp-promotion.js"));
+        String css = Files.readString(ROOT.resolve("src/main/resources/static/css/input.css"));
+
+        assertThat(form)
+                .contains("name=\"sendToNumber\"")
+                .contains("name=\"phone\"")
+                .contains("placeholder=\"+52 5512345678\"")
+                .contains("inputmode=\"tel\"")
+                .contains("data-manual-promotion-groups");
+        assertThat(script)
+                .contains("phone.required = individual")
+                .contains("groups.hidden = individual || !groupReady")
+                .contains("exclusivamente al número")
+                .contains("new URLSearchParams(new FormData(form))");
+        assertThat(css)
+                .contains(".manual-promotion-mode")
+                .contains("@media (max-width: 640px)");
     }
 }
 

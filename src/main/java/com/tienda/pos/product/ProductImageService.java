@@ -175,6 +175,38 @@ public class ProductImageService {
         return imageUrl != null && imageUrl.startsWith(publicPath + "/");
     }
 
+    public ProductImagePayload readLocalImage(String imageUrl) {
+        Path path = resolveLocalImage(imageUrl);
+        try {
+            if (!Files.isRegularFile(path)) {
+                throw new DomainException("La imagen del producto no está disponible en el servidor.");
+            }
+            byte[] bytes = Files.readAllBytes(path);
+            if (bytes.length == 0 || bytes.length > properties.getMaxUploadSize().toBytes()) {
+                throw new DomainException("La imagen del producto está vacía o supera el tamaño permitido.");
+            }
+            BufferedImage image = decode(bytes);
+            validateOriginalDimensions(image);
+            String contentType = detectImageType(bytes);
+            if (contentType == null) {
+                throw new DomainException("La imagen del producto no tiene un formato JPEG, PNG o WebP válido.");
+            }
+            return new ProductImagePayload(path.getFileName().toString(), contentType, bytes);
+        } catch (IOException ex) {
+            throw new DomainException("No fue posible leer la imagen del producto.");
+        }
+    }
+
+    private String detectImageType(byte[] value) {
+        if (value.length >= 8 && value[0] == (byte) 0x89 && value[1] == 0x50
+                && value[2] == 0x4e && value[3] == 0x47) return "image/png";
+        if (value.length >= 3 && value[0] == (byte) 0xff && value[1] == (byte) 0xd8
+                && value[2] == (byte) 0xff) return "image/jpeg";
+        if (value.length >= 12 && new String(value, 0, 4, java.nio.charset.StandardCharsets.US_ASCII).equals("RIFF")
+                && new String(value, 8, 4, java.nio.charset.StandardCharsets.US_ASCII).equals("WEBP")) return "image/webp";
+        return null;
+    }
+
     private void validateUploadMetadata(MultipartFile file) {
         if (file.getSize() > properties.getMaxUploadSize().toBytes()) {
             throw new DomainException("La imagen no debe superar " + properties.getMaxUploadSize().toMegabytes() + " MB.");
@@ -283,6 +315,17 @@ public class ProductImageService {
     }
 
     record DownloadedImage(byte[] bytes, String contentType) {
+    }
+
+    public record ProductImagePayload(String filename, String contentType, byte[] bytes) {
+        public ProductImagePayload {
+            bytes = bytes.clone();
+        }
+
+        @Override
+        public byte[] bytes() {
+            return bytes.clone();
+        }
     }
 
     private static final class HttpRemoteImageFetcher implements RemoteImageFetcher {

@@ -113,6 +113,30 @@ public class WhatsappAnnouncementService {
     }
 
     @Transactional(readOnly = true)
+    public List<WhatsappGroup> manualPromotionGroups(Tenant tenant) {
+        TenantWhatsappConnection connection = requireManualPromotionConnection(tenant);
+        List<WhatsappGroup> selected = groups
+                .findByTenantIdAndConnectionIdAndSelectedForAnnouncementsTrueAndAvailableTrueOrderByNameAsc(
+                        tenant.getId(), connection.getId());
+        if (selected.isEmpty()) {
+            throw new DomainException("Selecciona al menos un grupo desde Configuración de WhatsApp.");
+        }
+        return selected;
+    }
+
+    @Transactional(readOnly = true)
+    public WhatsappGroup requireManualPromotionGroup(Tenant tenant, String whatsappId) {
+        TenantWhatsappConnection connection = requireManualPromotionConnection(tenant);
+        WhatsappGroup group = groups.findByTenantIdAndWhatsappId(tenant.getId(), whatsappId)
+                .orElseThrow(() -> new DomainException("El grupo no pertenece a esta tienda."));
+        if (!group.isAvailable() || !group.isSelectedForAnnouncements()
+                || !Objects.equals(group.getConnection().getId(), connection.getId())) {
+            throw new DomainException("El grupo ya no está autorizado para promociones.");
+        }
+        return group;
+    }
+
+    @Transactional(readOnly = true)
     public WhatsappGroup requireAuthorizedGroup(Tenant tenant, String whatsappId) {
         if (whatsappId == null || whatsappId.isBlank()) throw new DomainException("El grupo de destino es obligatorio.");
         View view = view(tenant);
@@ -158,6 +182,24 @@ public class WhatsappAnnouncementService {
                 .orElseThrow(() -> new DomainException("Vincula una cuenta de WhatsApp antes de configurar anuncios."));
         if (connection.getStatus() != WhatsappSessionStatus.CONNECTED || connection.getPhoneNumber() == null) {
             throw new DomainException("WhatsApp debe estar conectado para confirmar los grupos publicitarios.");
+        }
+        return connection;
+    }
+
+    private TenantWhatsappConnection requireManualPromotionConnection(Tenant tenant) {
+        if (!tenant.isActive()) throw new DomainException("La tienda está suspendida.");
+        TenantWhatsappConnection connection = connections.findByTenantIdWithDetails(tenant.getId())
+                .orElseThrow(() -> new DomainException("Vincula una cuenta desde Configuración de WhatsApp."));
+        TenantWhatsappAnnouncementSettings configured = settings.findByTenantId(tenant.getId())
+                .orElseThrow(() -> new DomainException("Selecciona y confirma los grupos desde Configuración de WhatsApp."));
+        if (!identityMatches(configured, connection)) {
+            throw new DomainException("La cuenta actual debe confirmarse nuevamente desde Configuración de WhatsApp.");
+        }
+        if (connection.getStatus() != WhatsappSessionStatus.CONNECTED || !fresh(connection.getLastCheckedAt())) {
+            throw new DomainException("WhatsApp está desconectado o su estado no es reciente.");
+        }
+        if (!connection.getProvider().isEnabled() || connection.getProvider().getStatus() != ProviderStatus.AVAILABLE) {
+            throw new DomainException("El proveedor WPPConnect no está disponible.");
         }
         return connection;
     }

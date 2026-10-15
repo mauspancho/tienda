@@ -10,12 +10,15 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class HttpWppConnectClientTest {
     private HttpServer server;
     private WhatsappProvider provider;
     private HttpWppConnectClient client;
+    private WhatsappProperties properties;
 
     @BeforeEach void setUp() throws Exception {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -43,7 +46,7 @@ class HttpWppConnectClientTest {
                 "{\"response\":{\"base64Qr\":\"data:image/png;base64," + Base64.getEncoder().encodeToString(png()) + "\"}}"));
         server.createContext("/api/qr-binary/qrcode-session", exchange -> image(exchange, png()));
         server.start();
-        WhatsappProperties properties = new WhatsappProperties();
+        properties = new WhatsappProperties();
         properties.setAllowedHosts(List.of("127.0.0.1"));
         provider = new WhatsappProvider(); provider.setBaseUrl("http://127.0.0.1:" + server.getAddress().getPort());
         client = new HttpWppConnectClient(new ObjectMapper(), new ProviderUrlValidator(properties), properties);
@@ -68,6 +71,48 @@ class HttpWppConnectClientTest {
         assertThat(client.qrCode(provider, "qr-json", "token")).startsWith((byte) 0x89, (byte) 0x50, (byte) 0x4e, (byte) 0x47);
         assertThat(client.qrCode(provider, "qr-binary", "token")).isEqualTo(png());
     }
+    @Test void paginatesFiveHundredGroupsWithSupportedCursorParameters() {
+        List<String> payloads = new CopyOnWriteArrayList<>();
+        server.createContext("/api/many/list-chats", exchange -> {
+            String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            payloads.add(body);
+            if (body.contains("group-499@g.us")) {
+                json(exchange, "{\"response\":[]}");
+                return;
+            }
+            int start = body.contains("group-399@g.us") ? 400 : body.contains("group-299@g.us") ? 300
+                    : body.contains("group-199@g.us") ? 200 : body.contains("group-099@g.us") ? 100 : 0;
+            json(exchange, groupsJson(start, start + 100));
+        });
+
+        var groups = client.groups(provider, "many", "token");
+
+        assertThat(groups).hasSize(500);
+        assertThat(payloads).hasSize(6);
+        assertThat(payloads.getFirst()).contains("\"count\":100", "\"ignoreGroupMetadata\":true")
+                .doesNotContain("\"page\"");
+        assertThat(payloads.get(1)).contains("\"id\":\"group-099@g.us\"", "\"direction\":\"after\"");
+    }
+
+    @Test void rejectsRepeatedPagesInsteadOfAcceptingPartialSynchronization() {
+        server.createContext("/api/repeated/list-chats", exchange -> json(exchange, groupsJson(0, 100)));
+
+        assertThatThrownBy(() -> client.groups(provider, "repeated", "token"))
+                .isInstanceOf(WppConnectException.class)
+                .hasMessageContaining("repitió una página");
+    }
+
+    @Test void usesDedicatedTimeoutForGroupSynchronization() {
+        properties.setGroupSyncReadTimeout(java.time.Duration.ofMillis(50));
+        server.createContext("/api/slow/list-chats", exchange -> {
+            try { Thread.sleep(200); } catch (InterruptedException ex) { Thread.currentThread().interrupt(); }
+            json(exchange, "{\"response\":[]}");
+        });
+
+        assertThatThrownBy(() -> client.groups(provider, "slow", "token"))
+                .isInstanceOf(WppConnectException.class)
+                .hasMessageContaining("tiempo de espera");
+    }
     private void json(HttpExchange exchange, String value) throws java.io.IOException {
         byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().add("Content-Type", "application/json"); exchange.sendResponseHeaders(200, bytes.length);
@@ -80,6 +125,16 @@ class HttpWppConnectClientTest {
     private void error(HttpExchange exchange, int status) throws java.io.IOException {
         exchange.sendResponseHeaders(status, -1);
         exchange.close();
+    }
+    private String groupsJson(int start, int end) {
+        StringBuilder value = new StringBuilder("{\"response\":[");
+        for (int index = start; index < end; index++) {
+            if (index > start) value.append(',');
+            value.append("{\"id\":{\"_serialized\":\"group-")
+                    .append(String.format("%03d", index)).append("@g.us\"},\"name\":\"Grupo ")
+                    .append(index).append("\"}");
+        }
+        return value.append("]}").toString();
     }
     private byte[] png() {
         return Base64.getDecoder().decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=");

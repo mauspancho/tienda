@@ -21,10 +21,12 @@ import java.util.*;
 public class WhatsappAdminController {
     private final WhatsappIntegrationService service;
     private final WhatsappAnnouncementService announcements;
+    private final WhatsappGroupSyncService groupSync;
     private final CurrentTenant currentTenant;
     public WhatsappAdminController(WhatsappIntegrationService service, WhatsappAnnouncementService announcements,
-                                   CurrentTenant currentTenant) {
-        this.service = service; this.announcements = announcements; this.currentTenant = currentTenant;
+                                   WhatsappGroupSyncService groupSync, CurrentTenant currentTenant) {
+        this.service = service; this.announcements = announcements; this.groupSync = groupSync;
+        this.currentTenant = currentTenant;
     }
 
     @GetMapping
@@ -35,6 +37,7 @@ public class WhatsappAdminController {
         model.addAttribute("data", data); model.addAttribute("apiBase", base);
         model.addAttribute("announcements", announcements.current());
         model.addAttribute("announcementGroups", announcements.currentGroups());
+        model.addAttribute("groupSync", groupSync.current());
         return "whatsapp/index";
     }
 
@@ -45,7 +48,25 @@ public class WhatsappAdminController {
     @PostMapping("/reconnect")
     public String reconnect(RedirectAttributes flash) { return action(flash, () -> service.reconnectCurrent(), "Reconexión solicitada sin reemplazar la sesión."); }
     @PostMapping("/groups")
-    public String groups(RedirectAttributes flash) { return action(flash, () -> service.refreshCurrentGroups(), "Grupos actualizados."); }
+    public String groups(RedirectAttributes flash) {
+        return action(flash, groupSync::startCurrent, "La actualización de grupos inició en segundo plano.");
+    }
+
+    @PostMapping(value = "/groups/sync.json", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> startGroupSync() {
+        try {
+            return ResponseEntity.accepted().body(groupSync.startCurrent());
+        } catch (DomainException | WppConnectException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @GetMapping(value = "/groups/sync/status.json", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public WhatsappGroupSyncService.Snapshot groupSyncStatus() {
+        return groupSync.current();
+    }
     @PostMapping("/disassociate")
     public String disassociate(RedirectAttributes flash) { return action(flash, () -> { service.disassociateCurrent(); return null; }, "Asociación local eliminada. La sesión de WPPConnect permanece intacta."); }
 
@@ -90,7 +111,7 @@ public class WhatsappAdminController {
     @ResponseBody
     public Map<String,Object> statusJson() {
         var connection = service.dashboard().connection();
-        if (connection != null) connection = service.refreshCurrentStatus();
+        if (connection != null) connection = service.currentStatusCached();
         return Map.of("status", connection == null ? "NOT_CONFIGURED" : connection.getStatus().name(),
                 "phone", connection == null || connection.getPhoneNumber() == null ? "" : connection.getPhoneNumber());
     }

@@ -17,11 +17,15 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Component
 @NormalMode
 public class HttpWppConnectClient implements WppConnectClient {
+    private static final Logger log = LoggerFactory.getLogger(HttpWppConnectClient.class);
     private final ObjectMapper mapper;
     private final ProviderUrlValidator urls;
     private final WhatsappProperties properties;
@@ -108,19 +112,42 @@ public class HttpWppConnectClient implements WppConnectClient {
 
     @Override
     public List<RemoteGroup> groups(WhatsappProvider provider, String sessionName, String token) {
+        int pageSize = Math.max(1, Math.min(properties.getGroupSyncPageSize(), 500));
+        int maxPages = Math.max(1, Math.min(properties.getGroupSyncMaxPages(), 1000));
         Map<String, RemoteGroup> groups = new LinkedHashMap<>();
-        for (int page = 1; page <= 50; page++) {
+        Set<String> responses = new HashSet<>();
+        String cursor = null;
+        long started = System.nanoTime();
+        for (int page = 1; page <= maxPages; page++) {
             JsonNode root;
+            boolean legacyCompleteResponse = false;
             try {
+                Map<String, Object> body = new LinkedHashMap<>();
+                body.put("onlyGroups", true);
+                body.put("ignoreGroupMetadata", true);
+                body.put("count", pageSize);
+                if (cursor != null) {
+                    body.put("id", cursor);
+                    body.put("direction", "after");
+                }
+                long pageStarted = System.nanoTime();
                 root = request(provider, token, "POST", "/api/" + segment(sessionName) + "/list-chats",
-                        Map.of("onlyGroups", true, "count", 100, "page", page));
+                        body, properties.getGroupSyncReadTimeout());
+                log.info("WPPConnect group page session={} page={} elapsedMs={}", sessionName, page,
+                        elapsedMillis(pageStarted));
             } catch (WppConnectException ex) {
                 if (page == 1 && ex.getKind() == WppConnectException.Kind.INCOMPATIBLE) {
-                    root = request(provider, token, "GET", "/api/" + segment(sessionName) + "/all-chats", null);
+                    root = request(provider, token, "GET", "/api/" + segment(sessionName) + "/all-chats", null,
+                            properties.getGroupSyncReadTimeout());
+                    legacyCompleteResponse = true;
                 } else throw ex;
             }
             List<JsonNode> items = chatItems(root);
-            int before = groups.size();
+            String signature = items.stream().map(this::chatId).map(value -> value == null ? "?" : value)
+                    .reduce((left, right) -> left + "\n" + right).orElse("<empty>");
+            if (!responses.add(signature)) {
+                throw incompleteGroups("WPPConnect repitió una página de grupos sin avanzar.");
+            }
             for (JsonNode item : items) {
                 String id = chatId(item);
                 if (id != null && id.endsWith("@g.us")) {
@@ -129,9 +156,32 @@ public class HttpWppConnectClient implements WppConnectClient {
                     groups.put(id, new RemoteGroup(id, name == null || name.isBlank() ? id : name, count));
                 }
             }
-            if (items.size() < 100 || groups.size() == before) break;
+            if (legacyCompleteResponse || items.size() < pageSize) {
+                log.info("WPPConnect group sync session={} groups={} pages={} elapsedMs={}", sessionName,
+                        groups.size(), page, elapsedMillis(started));
+                return sortedGroups(groups);
+            }
+            String nextCursor = chatId(items.getLast());
+            if (nextCursor == null || nextCursor.equals(cursor)) {
+                throw incompleteGroups("WPPConnect devolvió un cursor de grupos sin avance.");
+            }
+            cursor = nextCursor;
         }
-        return groups.values().stream().sorted(Comparator.comparing(RemoteGroup::name, String.CASE_INSENSITIVE_ORDER)).toList();
+        throw incompleteGroups("La sincronización alcanzó el límite de páginas antes de terminar.");
+    }
+
+    private List<RemoteGroup> sortedGroups(Map<String, RemoteGroup> groups) {
+        return groups.values().stream().sorted(Comparator.comparing(RemoteGroup::name,
+                String.CASE_INSENSITIVE_ORDER)).toList();
+    }
+
+    private WppConnectException incompleteGroups(String message) {
+        return new WppConnectException(WppConnectException.Kind.INCOMPATIBLE,
+                message + " Se conservarán los grupos de la última sincronización completa.");
+    }
+
+    private long elapsedMillis(long started) {
+        return (System.nanoTime() - started) / 1_000_000;
     }
 
     @Override
@@ -154,10 +204,15 @@ public class HttpWppConnectClient implements WppConnectClient {
     }
 
     private JsonNode request(WhatsappProvider provider, String token, String method, String path, Object body) {
+        return request(provider, token, method, path, body, properties.getReadTimeout());
+    }
+
+    private JsonNode request(WhatsappProvider provider, String token, String method, String path, Object body,
+                             Duration readTimeout) {
         var base = urls.validate(provider.getBaseUrl());
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout((int) properties.getConnectTimeout().toMillis());
-        factory.setReadTimeout((int) properties.getReadTimeout().toMillis());
+        factory.setReadTimeout((int) readTimeout.toMillis());
         RestClient client = RestClient.builder().baseUrl(base.toString()).requestFactory(factory).build();
         try {
             RestClient.RequestHeadersSpec<?> spec;

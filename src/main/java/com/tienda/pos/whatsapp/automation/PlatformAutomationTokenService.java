@@ -19,9 +19,11 @@ public class PlatformAutomationTokenService {
     private static final SecureRandom RANDOM = new SecureRandom();
     private final PlatformAutomationTokenRepository tokens;
     private final WhatsappCryptoService crypto;
+    private final PlatformAutomationTokenUsageService usage;
 
-    public PlatformAutomationTokenService(PlatformAutomationTokenRepository tokens, WhatsappCryptoService crypto) {
-        this.tokens = tokens; this.crypto = crypto;
+    public PlatformAutomationTokenService(PlatformAutomationTokenRepository tokens, WhatsappCryptoService crypto,
+                                          PlatformAutomationTokenUsageService usage) {
+        this.tokens = tokens; this.crypto = crypto; this.usage = usage;
     }
 
     @Transactional
@@ -39,17 +41,23 @@ public class PlatformAutomationTokenService {
         return new GeneratedToken(value, tokens.save(token));
     }
 
-    @Transactional
     public AutomationPrincipal authenticate(String raw) {
         if (raw == null || !raw.startsWith("tap_") || raw.length() < 32) throw new BadCredentialsException("Credencial de automatización inválida.");
         PlatformAutomationToken token = tokens.findByTokenHashAndActiveTrue(crypto.hashToken(raw))
                 .orElseThrow(() -> new BadCredentialsException("Credencial de automatización inválida o revocada."));
+        if (token.getRevokedAt() != null) {
+            throw new BadCredentialsException("Credencial de automatización inválida o revocada.");
+        }
         if (token.getExpiresAt() != null && token.getExpiresAt().isBefore(LocalDateTime.now())) {
             throw new BadCredentialsException("Credencial de automatización vencida.");
         }
-        token.setLastUsedAt(LocalDateTime.now());
         Set<AutomationScope> scopes = Arrays.stream(token.getScopes().split(",")).map(String::trim)
                 .map(AutomationScope::valueOf).collect(Collectors.toUnmodifiableSet());
+        LocalDateTime usedAt = LocalDateTime.now();
+        if (token.getLastUsedAt() == null
+                || token.getLastUsedAt().isBefore(usedAt.minus(PlatformAutomationTokenUsageService.UPDATE_INTERVAL))) {
+            usage.record(token.getId(), usedAt);
+        }
         return new AutomationPrincipal(token.getId(), scopes);
     }
 
