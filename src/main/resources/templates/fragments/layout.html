@@ -89,6 +89,7 @@
               <span class="mega-section-title">Sistema</span>
               <ul>
                 <li><a th:href="@{/admin/users}">Usuarios</a></li>
+                <li><a th:href="@{/admin/integrations/whatsapp}">WhatsApp</a></li>
               </ul>
             </li>
           </ul>
@@ -142,6 +143,7 @@
         <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/admin/finances/capital}">Capital</a></li>
         <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/admin/users}">Usuarios</a></li>
         <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/admin/settings}">Configuración</a></li>
+        <li sec:authorize="hasRole('ADMIN')"><a th:href="@{/admin/integrations/whatsapp}">WhatsApp</a></li>
         <li sec:authorize="hasRole('PLATFORM_ADMIN')"><a th:href="@{/platform/tenants}">Plataforma</a></li>
         <li class="mobile-menu-logout">
           <form th:action="@{/admin/logout}" method="post">

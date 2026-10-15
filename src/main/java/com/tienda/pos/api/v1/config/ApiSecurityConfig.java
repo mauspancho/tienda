@@ -113,7 +113,7 @@ public class ApiSecurityConfig {
     }
 
     @Bean
-    @Order(1)
+    @Order(2)
     SecurityFilterChain apiSecurityFilterChain(HttpSecurity http, JwtDecoder jwtDecoder,
                                                JwtAuthenticationConverter converter,
                                                CorsConfigurationSource apiCorsConfigurationSource,

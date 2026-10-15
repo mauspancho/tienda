@@ -31,7 +31,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.context.WebApplicationContext;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.hamcrest.Matchers.*;
@@ -66,6 +70,7 @@ class PlatformIntegrationTest {
     @Autowired PlatformTransactionManager tx;
     @Autowired JdbcTemplate jdbc;
     @Autowired com.tienda.pos.backup.TenantBackupService backups;
+    @Autowired com.tienda.pos.whatsapp.automation.PlatformAutomationTokenService automationTokens;
     @SpyBean PasswordEncoder encoder;
     @SpyBean com.tienda.pos.tenant.PublicTenantResolver publicTenants;
     @SpyBean ProductRepository productRepository;
@@ -76,6 +81,8 @@ class PlatformIntegrationTest {
     Shop a, b;
 
     record Shop(Long id, String username, Long userId, Long productId, String productName, String folio, Long customerId, Long movementId) {}
+    record AutomationFixture(String rawToken, Long tokenId) {}
+    record AutomationRequest(String path, String expected, String excluded) {}
 
     private byte[] exportBackup(long tenant) throws Exception {
         authenticate(operator, "ROLE_PLATFORM_ADMIN", "ROLE_ADMIN");
@@ -372,6 +379,105 @@ class PlatformIntegrationTest {
         mvc.perform(post(path).header("Authorization", "Bearer " + otherToken).header("Idempotency-Key", "same-key")
                 .contentType("application/json").content("{\"amount\":25,\"concept\":\"Test\"}"))
                 .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test void centralAutomationTokenSupportsConcurrentCatalogPaginationWithoutTenantLeaks() throws Exception {
+        AutomationFixture fixture = automationFixture();
+        List<AutomationRequest> requests = new ArrayList<>();
+        for (int round = 0; round < 4; round++) {
+            requests.add(new AutomationRequest("/api/automation/v1/whatsapp/stores/eligible", "default", null));
+            requests.add(new AutomationRequest("/api/automation/v1/whatsapp/stores/default/groups", "Grupo default", "Grupo tienda-teo"));
+            requests.add(new AutomationRequest("/api/automation/v1/whatsapp/stores/tienda-teo/groups", "Grupo tienda-teo", "Grupo default"));
+            requests.add(new AutomationRequest("/api/automation/v1/whatsapp/stores/default/products/promotions?page=" + (round % 3) + "&size=1",
+                    "Default " + ((round % 3) + 1), "Teo "));
+            requests.add(new AutomationRequest("/api/automation/v1/whatsapp/stores/tienda-teo/products/promotions?page=" + (round % 3) + "&size=1",
+                    "Teo " + ((round % 3) + 1), "Default "));
+            for (int page = 0; page < 3; page++) {
+                requests.add(new AutomationRequest("/api/automation/v1/whatsapp/stores/default/products/catalog?page=" + page + "&size=1",
+                        "Default " + (page + 1), "Teo "));
+                requests.add(new AutomationRequest("/api/automation/v1/whatsapp/stores/tienda-teo/products/catalog?page=" + page + "&size=1",
+                        "Teo " + (page + 1), "Default "));
+            }
+        }
+
+        var executor = Executors.newFixedThreadPool(12);
+        CountDownLatch start = new CountDownLatch(1);
+        try {
+            List<Future<MvcResult>> results = requests.stream().map(request -> executor.submit(() -> {
+                start.await();
+                return mvc.perform(get(request.path()).header("Authorization", "Bearer " + fixture.rawToken())).andReturn();
+            })).toList();
+            start.countDown();
+            for (int i = 0; i < results.size(); i++) {
+                MvcResult result = results.get(i).get();
+                AutomationRequest request = requests.get(i);
+                assertThat(result.getResponse().getStatus()).as(request.path()).isEqualTo(200);
+                assertThat(result.getResponse().getContentAsString()).contains(request.expected());
+                if (request.excluded() != null) {
+                    assertThat(result.getResponse().getContentAsString()).doesNotContain(request.excluded());
+                }
+            }
+        } finally {
+            executor.shutdownNow();
+        }
+
+        assertThat(jdbc.queryForObject("select last_used_at from platform_automation_token where id=?", LocalDateTime.class, fixture.tokenId()))
+                .isNotNull();
+        assertThat(jdbc.queryForObject("select version from platform_automation_token where id=?", Long.class, fixture.tokenId()))
+                .isZero();
+        assertThat(jdbc.queryForObject("select count(*) from platform_automation_audit where token_id=?", Long.class, fixture.tokenId()))
+                .isEqualTo((long) requests.size());
+    }
+
+    private AutomationFixture automationFixture() {
+        new TransactionTemplate(tx).executeWithoutResult(status -> {
+            com.tienda.pos.tenant.Tenant defaultTenant = automationTenant("default", "Default");
+            com.tienda.pos.tenant.Tenant teoTenant = automationTenant("tienda-teo", "Tienda Teo");
+            com.tienda.pos.whatsapp.WhatsappProvider provider = new com.tienda.pos.whatsapp.WhatsappProvider();
+            provider.setName("Automation provider " + suffix); provider.setBaseUrl("http://localhost:21465");
+            provider.setEncryptedSecret("test"); provider.setEnabled(true);
+            provider.setStatus(com.tienda.pos.whatsapp.ProviderStatus.AVAILABLE); provider.setLastCheckedAt(LocalDateTime.now());
+            em.persist(provider);
+            automationTenantData(defaultTenant, provider, "Default", "Grupo default", "5215550000001");
+            automationTenantData(teoTenant, provider, "Teo", "Grupo tienda-teo", "5215550000002");
+        });
+        var generated = automationTokens.generate("concurrency-" + suffix,
+                Set.of(com.tienda.pos.whatsapp.automation.AutomationScope.ANNOUNCEMENTS_READ,
+                        com.tienda.pos.whatsapp.automation.AutomationScope.ANNOUNCEMENTS_SEND));
+        return new AutomationFixture(generated.value(), generated.token().getId());
+    }
+
+    private com.tienda.pos.tenant.Tenant automationTenant(String code, String name) {
+        com.tienda.pos.tenant.Tenant tenant = new com.tienda.pos.tenant.Tenant();
+        tenant.setCode(code); tenant.setName(name); tenant.setActive(true); em.persist(tenant);
+        return tenant;
+    }
+
+    private void automationTenantData(com.tienda.pos.tenant.Tenant tenant,
+                                      com.tienda.pos.whatsapp.WhatsappProvider provider,
+                                      String productPrefix, String groupName, String phone) {
+        com.tienda.pos.whatsapp.TenantWhatsappConnection connection = new com.tienda.pos.whatsapp.TenantWhatsappConnection();
+        connection.setTenant(tenant); connection.setProvider(provider); connection.setSessionName("session-" + tenant.getCode());
+        connection.setEncryptedSessionToken("test"); connection.setPhoneNumber(phone);
+        connection.setStatus(com.tienda.pos.whatsapp.WhatsappSessionStatus.CONNECTED);
+        connection.setLastConnectedAt(LocalDateTime.now()); connection.setLastCheckedAt(LocalDateTime.now()); em.persist(connection);
+
+        com.tienda.pos.whatsapp.TenantWhatsappAnnouncementSettings settings = new com.tienda.pos.whatsapp.TenantWhatsappAnnouncementSettings();
+        settings.setTenant(tenant); settings.setEnabled(true); settings.setConfirmedConnectionId(connection.getId());
+        settings.setConfirmedProviderId(provider.getId()); settings.setConfirmedPhoneNumber(phone); settings.setConfirmedAt(LocalDateTime.now());
+        em.persist(settings);
+
+        com.tienda.pos.whatsapp.WhatsappGroup group = new com.tienda.pos.whatsapp.WhatsappGroup();
+        group.setTenant(tenant); group.setConnection(connection); group.setWhatsappId(tenant.getCode() + "@g.us");
+        group.setName(groupName); group.setAvailable(true); group.setSelectedForAnnouncements(true); group.setRefreshedAt(LocalDateTime.now());
+        em.persist(group);
+
+        for (int index = 1; index <= 3; index++) {
+            Product product = new Product(); product.setTenant(tenant); product.setCode("AUTO-" + tenant.getCode() + "-" + index);
+            product.setName(productPrefix + " " + index); product.setPurchaseCost(new BigDecimal("5.00"));
+            product.setSalePrice(new BigDecimal("10.00")); product.setCurrentStock(BigDecimal.TEN);
+            product.setPromocionWhatsapp(true); product.setActive(true); em.persist(product);
+        }
     }
 
     @BeforeEach

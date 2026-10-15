@@ -54,17 +54,7 @@
   }
 
   function actionCell(row) {
-    const action = row.promoted ? "unpromote" : "promote";
-    const label = row.promoted ? "Quitar promoción" : "Promocionar";
-    const buttonClass = row.promoted ? "btn btn-muted" : "btn btn-primary";
-    const badge = row.promoted ? '<span class="badge badge-yellow mt-2">★ Promocionado</span>' : "";
-    return `<div class="join">
-      <a class="btn btn-muted join-item" href="/admin/products/${row.id}/edit">Editar</a>
-      <form class="join-item" action="/admin/products/${row.id}/${action}" method="post">
-        <input type="hidden" name="_csrf" value="${escapeHtml(csrfToken)}">
-        <button class="${buttonClass}" type="submit">${label}</button>
-      </form>
-    </div>${badge}`;
+    return `<a class="btn btn-muted" href="/admin/products/${row.id}/edit">Editar</a>`;
   }
 
   const table = $(tableElement).DataTable({

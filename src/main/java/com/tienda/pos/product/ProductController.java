@@ -5,9 +5,11 @@ import com.tienda.pos.common.NormalMode;
 import com.tienda.pos.exception.DomainException;
 import com.tienda.pos.supplier.SupplierRepository;
 import com.tienda.pos.tenant.CurrentTenant;
+import com.tienda.pos.whatsapp.ManualWhatsappPromotionService;
 import jakarta.validation.Valid;
 import java.math.BigDecimal;
 import java.util.Set;
+import java.util.Map;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -38,16 +40,19 @@ public class ProductController {
     private final SupplierRepository supplierRepository;
     private final BarcodeLabelService barcodeLabelService;
     private final CurrentTenant currentTenant;
+    private final ManualWhatsappPromotionService manualWhatsappPromotionService;
 
     public ProductController(ProductRepository productRepository, ProductService productService,
                              CategoryRepository categoryRepository, SupplierRepository supplierRepository,
-                             BarcodeLabelService barcodeLabelService, CurrentTenant currentTenant) {
+                             BarcodeLabelService barcodeLabelService, CurrentTenant currentTenant,
+                             ManualWhatsappPromotionService manualWhatsappPromotionService) {
         this.productRepository = productRepository;
         this.productService = productService;
         this.categoryRepository = categoryRepository;
         this.supplierRepository = supplierRepository;
         this.barcodeLabelService = barcodeLabelService;
         this.currentTenant = currentTenant;
+        this.manualWhatsappPromotionService = manualWhatsappPromotionService;
     }
 
     @GetMapping("/products")
@@ -151,6 +156,21 @@ public class ProductController {
         model.addAttribute("initialBarcode", "");
         model.addAttribute("autoLookup", false);
         return "products/form";
+    }
+
+    @PostMapping("/products/{id}/manual-whatsapp-promotion")
+    @ResponseBody
+    public ResponseEntity<?> sendManualWhatsappPromotion(@PathVariable Long id,
+                                                          @RequestParam String message,
+                                                          @RequestParam String requestKey,
+                                                          @RequestParam(defaultValue = "false") boolean sendToNumber,
+                                                          @RequestParam(required = false) String phone) {
+        try {
+            return ResponseEntity.ok(manualWhatsappPromotionService.send(id, message, requestKey,
+                    sendToNumber, phone));
+        } catch (DomainException ex) {
+            return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
+        }
     }
 
     @GetMapping("/products/{id}/barcode-label")
@@ -269,6 +289,9 @@ public class ProductController {
         model.addAttribute("categories", categoryRepository.findByTenantIdAndActiveTrueOrderByNameAsc(tenantId));
         model.addAttribute("suppliers", supplierRepository.findByTenantIdAndActiveTrueOrderByNameAsc(tenantId));
         model.addAttribute("units", UnitType.values());
+        if (form.getId() != null) {
+            model.addAttribute("manualPromotion", manualWhatsappPromotionService.preview(form.getId()));
+        }
     }
 
     public record GeneratedCode(String value) {

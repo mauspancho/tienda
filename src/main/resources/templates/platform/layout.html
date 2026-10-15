@@ -5,8 +5,11 @@
   <title th:text="${title} + ' | Tienda POS'">Plataforma</title>
   <link rel="stylesheet" th:href="@{/css/app.css}">
   <link rel="stylesheet" th:href="@{/css/platform.css}">
+  <link rel="stylesheet" th:href="@{/css/whatsapp.css}">
+  <link rel="stylesheet" th:href="@{/css/whatsapp-announcements.css}">
   <script th:src="@{/js/theme-switcher.js}"></script>
   <script defer th:src="@{/js/platform.js}"></script>
+  <script defer th:src="@{/js/whatsapp.js}"></script>
 </head>
 <body>
 <header th:fragment="nav" class="platform-header">
@@ -16,6 +19,7 @@
   </a>
   <nav class="platform-actions" aria-label="Plataforma">
     <a class="btn btn-ghost btn-sm" th:href="@{/platform/tenants}">Tiendas</a>
+    <a class="btn btn-ghost btn-sm" th:href="@{/platform/integrations/wppconnect}">WPPConnect</a>
     <a sec:authorize="hasRole('ADMIN')" class="btn btn-ghost btn-sm" th:href="@{/admin}">Operaci&oacute;n</a>
     <details class="dropdown dropdown-end theme-dropdown">
       <summary class="btn btn-outline btn-sm theme-trigger" title="Cambiar tema" aria-label="Cambiar tema">

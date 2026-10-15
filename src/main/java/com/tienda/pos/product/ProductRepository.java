@@ -197,4 +197,23 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("select coalesce(max(p.promotionOrder), 0) from Product p where p.tenant.id = :tenantId and p.promoted = true")
     Integer maxPromotionOrder(@Param("tenantId") Long tenantId);
     List<Product> findByTenantIdAndActiveTrueOrderByNameAsc(Long tenantId);
+
+    @EntityGraph(attributePaths = "category")
+    @Query("""
+            select p from Product p
+            left join p.category c
+            where p.tenant.id = :tenantId and p.active = true and p.currentStock > 0
+              and p.promocionWhatsapp = true
+            order by coalesce(c.name, ''), coalesce(p.brand, ''), p.name, p.id
+            """)
+    Page<Product> findWhatsappPromotions(@Param("tenantId") Long tenantId, Pageable pageable);
+
+    @EntityGraph(attributePaths = "category")
+    @Query("""
+            select p from Product p
+            left join p.category c
+            where p.tenant.id = :tenantId and p.active = true and p.currentStock > 0
+            order by coalesce(c.name, ''), coalesce(p.brand, ''), p.name, p.id
+            """)
+    Page<Product> findWhatsappCatalog(@Param("tenantId") Long tenantId, Pageable pageable);
 }

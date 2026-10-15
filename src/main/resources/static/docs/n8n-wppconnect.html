@@ -1,0 +1,5 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WPPConnect y n8n</title><link rel="stylesheet" href="/css/app.css"><link rel="stylesheet" href="/css/whatsapp.css"></head>
+<body><main class="content whatsapp-doc"><h1>WPPConnect y n8n</h1><p>Genera una credencial en Administración &gt; WhatsApp. En n8n usa autenticación Bearer con el token mostrado una sola vez.</p><h2>Operaciones</h2><pre>GET  /api/integrations/v1/{tenantCode}/whatsapp/status&#10;GET  /api/integrations/v1/{tenantCode}/whatsapp/groups&#10;POST /api/integrations/v1/{tenantCode}/whatsapp/send</pre><h2>Texto</h2><pre>{"phone":"120363000000000000@g.us","isGroup":true,"message":"Productos disponibles"}</pre><h2>Imagen o PDF</h2><p>Envía multipart/form-data con <code>phone</code>, <code>isGroup</code>, <code>caption</code> y <code>file</code>. Se aceptan PNG, JPEG, WebP y PDF de hasta 10 MB.</p><h2>Seguridad</h2><p>No compartas el token. Revócalo desde el panel si deja de utilizarse. El código de tienda no reemplaza la autenticación.</p></main></body>
+</html>

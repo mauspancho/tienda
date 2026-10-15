@@ -62,7 +62,7 @@
           </label>
         </form>
       </td>
-      <td><div class="join"><a class="btn btn-muted join-item" th:href="@{'/admin/products/' + ${p.id} + '/edit'}">Editar</a><form class="join-item" th:if="${!p.promoted}" th:action="@{/admin/products/{id}/promote(id=${p.id})}" method="post"><button class="btn btn-primary" type="submit">Promocionar</button></form><form class="join-item" th:if="${p.promoted}" th:action="@{/admin/products/{id}/unpromote(id=${p.id})}" method="post"><button class="btn btn-muted" type="submit">Quitar promoción</button></form></div><span th:if="${p.promoted}" class="badge badge-yellow mt-2">★ Promocionado</span></td>
+      <td><a class="btn btn-muted" th:href="@{'/admin/products/' + ${p.id} + '/edit'}">Editar</a></td>
     </tr>
     <tr th:if="${products.empty}"><td colspan="9" class="muted">No hay productos para mostrar.</td></tr>
     </tbody>

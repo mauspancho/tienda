@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{platform/layout :: head('WPPConnect')}"></head>
+<body class="platform-page">
+<header th:replace="~{platform/layout :: nav}"></header>
+<main class="platform-main whatsapp-page">
+  <div class="platform-title"><div><h1>Integración WPPConnect</h1><p>Proveedor compartido y sesiones aisladas por tienda.</p></div></div>
+  <div th:replace="~{fragments/layout :: alerts}"></div>
+
+  <section class="platform-panel">
+    <h2>Proveedor</h2>
+    <form class="whatsapp-form-grid" th:object="${form}" th:action="@{/platform/integrations/wppconnect/provider}" method="post">
+      <input type="hidden" th:field="*{id}">
+      <label>Nombre<input class="input input-bordered" th:field="*{name}" maxlength="120" required></label>
+      <label>URL base<input class="input input-bordered" th:field="*{baseUrl}" placeholder="http://127.0.0.1:21465" required></label>
+      <label>SECRET_KEY<input class="input input-bordered" type="password" th:field="*{secret}" autocomplete="new-password" placeholder="No se vuelve a mostrar"></label>
+      <label class="check-card"><input type="checkbox" th:field="*{enabled}"><span>Habilitado</span></label>
+      <button class="btn btn-primary" type="submit">Guardar proveedor</button>
+    </form>
+    <div class="platform-table-wrap" th:if="${!data.providers.empty}">
+      <table class="table platform-table"><thead><tr><th>Proveedor</th><th>URL</th><th>Estado</th><th>Última prueba</th><th>Sesiones</th><th>Conectadas</th><th>Acción</th></tr></thead>
+      <tbody><tr th:each="item : ${data.providers}"><td th:text="${item.provider.name}"></td><td th:text="${item.provider.baseUrl}"></td>
+        <td th:text="${item.provider.status}"></td><td th:text="${item.provider.lastCheckedAt == null ? 'Nunca' : #temporals.format(item.provider.lastCheckedAt,'dd/MM/yyyy HH:mm')}"></td>
+        <td th:text="${item.sessions}"></td><td th:text="${item.connected}"></td><td><form method="post" th:action="@{/platform/integrations/wppconnect/provider/{id}/test(id=${item.provider.id})}"><button class="btn btn-outline btn-sm">Probar conexión</button></form></td></tr></tbody></table>
+    </div>
+  </section>
+
+  <section class="platform-panel" th:if="${!data.providers.empty}">
+    <h2>Asociar una sesión existente</h2>
+    <p class="whatsapp-help">Esta operación registra la relación local. No ejecuta logout, no borra datos y no modifica webhooks de WPPConnect.</p>
+    <form class="whatsapp-form-grid" method="post" th:action="@{/platform/integrations/wppconnect/associate}">
+      <label>Proveedor<select class="select select-bordered" name="providerId" required><option th:each="item:${data.providers}" th:value="${item.provider.id}" th:text="${item.provider.name}"></option></select></label>
+      <label>Tienda<select class="select select-bordered" name="tenantId" required><option th:each="tenant:${tenants}" th:value="${tenant.id}" th:text="${tenant.name + ' (' + tenant.code + ')'}"></option></select></label>
+      <label>Sesión<select class="select select-bordered" name="sessionName" required><option value="">Selecciona</option><option th:each="session:${data.remoteSessions}" th:value="${session.name}" th:text="${session.name + ' · ' + (session.status == null ? 'estado desconocido' : session.status)}"></option></select></label>
+      <label class="check-card"><input type="checkbox" name="confirmed" value="true" required><span>Confirmo esta asociación</span></label>
+      <button class="btn btn-primary">Asociar sin modificar la sesión</button>
+    </form>
+  </section>
+
+  <section class="platform-panel">
+    <h2>Sesiones administradas</h2>
+    <div class="platform-table-wrap"><table class="table platform-table"><thead><tr><th>Tienda</th><th>Sesión</th><th>Número</th><th>Estado</th><th>Última conexión</th></tr></thead>
+      <tbody><tr th:each="connection:${data.connections}"><td th:text="${connection.tenant.name}"></td><td th:text="${connection.sessionName}"></td><td th:text="${connection.phoneNumber ?: 'Sin vincular'}"></td><td th:text="${connection.status}"></td><td th:text="${connection.lastConnectedAt == null ? '—' : #temporals.format(connection.lastConnectedAt,'dd/MM/yyyy HH:mm')}"></td></tr>
+      <tr th:if="${data.connections.empty}"><td colspan="5">Todavía no hay sesiones asignadas.</td></tr></tbody></table></div>
+  </section>
+
+  <section class="platform-panel">
+    <div class="whatsapp-section-head"><div><h2>Credenciales centrales de automatización</h2><p>Acceso limitado para que un flujo externo consulte tiendas aptas y envíe solo a grupos autorizados.</p></div></div>
+    <div class="alert alert-warning" th:if="${automationToken}"><strong>Token nuevo:</strong> <code id="automation-token" th:text="${automationToken}"></code><button type="button" class="btn btn-sm" data-copy-target="automation-token">Copiar</button></div>
+    <form class="whatsapp-form-grid" method="post" th:action="@{/platform/integrations/wppconnect/automation-tokens}"><label>Nombre<input name="name" value="n8n multitienda" maxlength="120" required></label><fieldset><legend>Permisos</legend><label><input type="checkbox" name="scopes" value="ANNOUNCEMENTS_READ" checked> Consultar campañas</label><label><input type="checkbox" name="scopes" value="ANNOUNCEMENTS_SEND" checked> Enviar a grupos autorizados</label></fieldset><button class="btn btn-primary">Generar credencial central</button></form>
+    <div class="platform-table-wrap"><table class="table platform-table"><thead><tr><th>Nombre</th><th>Referencia</th><th>Permisos</th><th>Creada</th><th>Último uso</th><th>Estado</th><th>Acción</th></tr></thead><tbody><tr th:each="token:${data.automationTokens}"><td th:text="${token.name}"></td><td><code th:text="${token.tokenPrefix + '…'}"></code></td><td th:text="${token.scopes}"></td><td th:text="${#temporals.format(token.createdAt,'dd/MM/yyyy HH:mm')}"></td><td th:text="${token.lastUsedAt == null ? 'Nunca' : #temporals.format(token.lastUsedAt,'dd/MM/yyyy HH:mm')}"></td><td th:text="${token.active ? 'Activa' : 'Revocada'}"></td><td><form method="post" th:if="${token.active}" th:action="@{/platform/integrations/wppconnect/automation-tokens/{id}/revoke(id=${token.id})}" data-confirm="¿Revocar esta credencial central?"><button class="btn btn-error btn-outline btn-sm">Revocar</button></form></td></tr><tr th:if="${data.automationTokens.empty}"><td colspan="7">No hay credenciales centrales.</td></tr></tbody></table></div>
+  </section>
+</main>
+</body></html>

@@ -54,10 +54,11 @@ class TenantMigrationTest {
                 Flyway flyway = configuration(database).load();
                 List<String> versions = Arrays.stream(flyway.info().pending())
                         .map(info -> info.getVersion().getVersion()).toList();
-                assertThat(versions).contains("1", "2", "3", "4", "5", "6", "7", "8", "9");
+                assertThat(versions).contains("1", "2", "3", "4", "5", "6", "7", "8", "9", "16", "17");
                 assertThat(flyway.migrate().migrationsExecuted).isEqualTo(versions.size());
                 assertSuccessfulHistory(flyway, connection, versions, engine);
                 assertInventoryConstraints(connection);
+                assertWhatsappConstraints(connection);
                 assertAllForeignKeysHaveSupportingIndexes(connection);
                 assertNoDuplicateIndexes(connection);
                 assertThat(flyway.migrate().migrationsExecuted).as("Second startup is a no-op").isZero();
@@ -179,6 +180,24 @@ class TenantMigrationTest {
         assertThat(indexes.get("uk_inventory_stock_tenant_product_warehouse").values())
                 .containsExactly("tenant_id", "product_id", "warehouse_id");
         assertThat(foreignKeys(connection)).contains("inventory_stock.fk_inventory_stock_product:product_id->product.id");
+    }
+
+    private static void assertWhatsappConstraints(Connection connection) throws SQLException {
+        assertThat(count(connection, "select count(*) from information_schema.tables where table_schema = database() and table_name in ('whatsapp_provider','tenant_whatsapp_connection','whatsapp_group','tenant_integration_token','tenant_whatsapp_announcement_settings','platform_automation_token','platform_automation_audit','platform_automation_idempotency')"))
+                .isEqualTo(8);
+        assertThat(count(connection, "select count(*) from information_schema.columns where table_schema = database() and table_name = 'whatsapp_group' and column_name = 'selected_for_announcements' and column_default in ('0', b'0')"))
+                .isEqualTo(1);
+        assertThat(strings(connection, """
+                select data_type from information_schema.columns
+                where table_schema = database()
+                    and table_name = 'platform_automation_idempotency'
+                    and column_name = 'response_json'
+                """)).containsExactly("longtext");
+        assertThat(strings(connection, """
+                select constraint_name from information_schema.table_constraints
+                where constraint_schema = database() and table_name = 'tenant_whatsapp_connection'
+                    and constraint_type = 'UNIQUE'
+                """)).contains("uk_tenant_whatsapp_connection_tenant", "uk_tenant_whatsapp_connection_provider_session");
     }
 
     private static List<String> foreignKeys(Connection connection) throws SQLException {
