@@ -12,7 +12,7 @@ interface AuthRepository {
     suspend fun logout()
 }
 interface ProductRepository {
-    fun pages(query: String, active: Boolean? = null, brand: String? = null): Flow<PagingData<Product>>
+    fun pages(query: String, active: Boolean? = null, brand: String? = null, whatsapp: Boolean? = null): Flow<PagingData<Product>>
     suspend fun findBarcode(code: String): Product
     suspend fun search(query: String): List<Product>
 }

@@ -55,6 +55,9 @@ public class PlatformTestConfiguration {
     @Bean com.tienda.pos.whatsapp.WhatsappIntegrationService whatsappIntegrationService() {
         return mock(com.tienda.pos.whatsapp.WhatsappIntegrationService.class);
     }
+    @Bean com.tienda.pos.whatsapp.WhatsappGroupSyncService whatsappGroupSyncService() {
+        return mock(com.tienda.pos.whatsapp.WhatsappGroupSyncService.class);
+    }
     @Bean com.tienda.pos.whatsapp.ManualWhatsappPromotionService manualWhatsappPromotionService() {
         var service = mock(com.tienda.pos.whatsapp.ManualWhatsappPromotionService.class);
         when(service.preview(anyLong())).thenReturn(new com.tienda.pos.whatsapp.ManualWhatsappPromotionService.Preview(

@@ -13,10 +13,20 @@ interface AuthApi {
     @POST("api/v1/auth/logout") suspend fun logout(@Body request: RefreshRequest): retrofit2.Response<Unit>
 }
 interface TiendaApi {
+    @GET("api/v1/whatsapp") suspend fun whatsapp(): WhatsappState
+    @POST("api/v1/whatsapp/{action}") suspend fun whatsappAction(@Path("action") action: String): WhatsappState
+    @Streaming @GET("api/v1/whatsapp/qr") suspend fun whatsappQr(): ResponseBody
+    @GET("api/v1/whatsapp/groups/sync") suspend fun whatsappSync(): WhatsappSync
+    @POST("api/v1/whatsapp/groups/sync") suspend fun syncWhatsappGroups(): WhatsappSync
+    @PUT("api/v1/whatsapp/announcements/groups") suspend fun whatsappGroups(@Body value: WhatsappSelection): WhatsappState
+    @PUT("api/v1/whatsapp/announcements/enabled") suspend fun whatsappAnnouncements(@Body value: Enabled): WhatsappState
+    @GET("api/v1/whatsapp/products/{id}/preview") suspend fun promotionPreview(@Path("id") id: Long): PromotionPreview
+    @POST("api/v1/whatsapp/products/{id}/promotions") suspend fun sendPromotion(@Path("id") id: Long,
+        @Header("Idempotency-Key") key: String, @Body value: PromotionRequest): PromotionResult
     @GET("api/v1/auth/me") suspend fun me(): User
     @GET("api/v1/dashboard") suspend fun dashboard(): Dashboard
     @GET("api/v1/products") suspend fun products(@Query("q") q: String, @Query("page") page: Int,
-        @Query("size") size: Int = 20, @Query("active") active: Boolean? = null, @Query("brand") brand: String? = null): Page<Product>
+        @Query("size") size: Int = 20, @Query("active") active: Boolean? = null, @Query("brand") brand: String? = null, @Query("whatsapp") whatsapp: Boolean? = null): Page<Product>
     @GET("api/v1/products/{id}") suspend fun product(@Path("id") id: Long): Product
     @GET("api/v1/products/barcode/{barcode}") suspend fun barcode(@Path("barcode") code: String): Product
     @POST("api/v1/products") suspend fun createProduct(@Body request: ProductRequest): Product

@@ -45,7 +45,9 @@ import com.mauspancho.tiendapos.ui.sales.*
 import com.mauspancho.tiendapos.ui.settings.*
 import com.mauspancho.tiendapos.ui.components.*
 import com.mauspancho.tiendapos.ui.credits.*
+import com.mauspancho.tiendapos.ui.whatsapp.*
 import com.mauspancho.tiendapos.data.storage.EncryptedPendingOperationStore
+import com.mauspancho.tiendapos.data.dto.Product
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.*
 import java.io.File
@@ -142,7 +144,11 @@ class MainActivity : ComponentActivity() {
                                 val picker = scopedVm("creditCustomers.$scopeId") { CustomerPickerViewModel(app.json, RemoteCreditRepository(client.api), it) }
                                 CreditsScreen(vm, picker, admin) { id -> nav.navigate("creditpos?customerId=${id ?: 0}") }
                             }
-                            Destination.PRODUCTS -> ProductRoute(app, client, scopeId, admin)
+                            Destination.PRODUCTS -> ProductRoute(app, client, scopeId, admin) { product -> nav.navigate("whatsapp-promotion/${product.id}?name=${Uri.encode(product.name)}") }
+                            Destination.WHATSAPP -> {
+                                val vm = scopedVm("whatsapp.$scopeId") { WhatsappViewModel(app.json, RemoteWhatsappRepository(client.api)) }
+                                WhatsappScreen(vm)
+                            }
                             Destination.CASH -> {
                                 val vm = scopedVm("cash.$scopeId") { CashViewModel(client) }
                                 CashScreen(vm, { nav.navigate("cashhistory") }, admin)
@@ -184,6 +190,11 @@ class MainActivity : ComponentActivity() {
                         Column(Modifier.fillMaxSize()) { TextButton({ nav.popBackStack() }) { Text("Volver") }; Box(Modifier.weight(1f)) { ModuleScreen(vm, false, admin) } }
                     }
                     if (admin) {
+                        composable("whatsapp-promotion/{id}?name={name}", arguments = listOf(navArgument("id") { type = NavType.LongType }, navArgument("name") { type = NavType.StringType; defaultValue = "Producto" })) { stack ->
+                            val vm = scopedVm("promotion.$scopeId") { PromotionViewModel(app.json, RemoteWhatsappRepository(client.api), it,
+                                stack.arguments!!.getLong("id"), stack.arguments!!.getString("name").orEmpty(), pendingStore("whatsappPromotion")) }
+                            PromotionScreen(vm) { nav.popBackStack() }
+                        }
                         listOf("cashhistory" to "cash/sessions", "stock" to "inventory/stock", "capital" to "finances/capital", "daily" to "finances/daily", "business" to "settings").forEach { (route, path) -> composable(route) {
                             val vm = scopedVm("$route.$scopeId") { ModuleViewModel(ModuleRepository(client), path, it) }
                             Column(Modifier.fillMaxSize()) { TextButton({ nav.popBackStack() }) { Text("Volver") }; Box(Modifier.weight(1f)) { ModuleScreen(vm, route in listOf("cashhistory", "stock", "capital"), true, day = { date -> nav.navigate("day/${Uri.encode(date)}") }) } }
@@ -209,7 +220,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-@Composable fun ProductRoute(app: TiendaApplication, client: ApiClient, scopeId: String, admin: Boolean) {
+@Composable fun ProductRoute(app: TiendaApplication, client: ApiClient, scopeId: String, admin: Boolean, promote: (Product) -> Unit) {
     val context = LocalContext.current
     val vm = scopedVm("products.$scopeId") { ProductsViewModel(client, RemoteProductRepository(client.api), app.media) }
     val forms = scopedVm("productForms.$scopeId") { ModuleViewModel(ModuleRepository(client), "products", it) }
@@ -219,7 +230,7 @@ class MainActivity : ComponentActivity() {
     val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { okay -> if (okay) photo?.let { uri -> vm.detail.value.value?.let { vm.image(it, uri.toUri()) } } }
     fun capture() { photo = FileProvider.getUriForFile(context, "${context.packageName}.files", app.media.cameraFile()).toString(); camera.launch(photo!!.toUri()) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { allowed -> if (allowed) capture() else vm.operation.value = TaskState(error = Failure("Permite la cámara o selecciona una imagen de la galería.")) }
-    ProductsScreen(vm, forms, client.baseUrl, admin) { choose = true }
+    ProductsScreen(vm, forms, client.baseUrl, admin, promote) { choose = true }
     if (choose) AlertDialog({ choose = false }, title = { Text("Imagen del producto") }, text = { Text("Selecciona el origen de la imagen.") },
         confirmButton = { TextButton({ choose = false; picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) { Text("Galería") } },
         dismissButton = { TextButton({ choose = false; if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) capture() else permission.launch(Manifest.permission.CAMERA) }) { Text("Cámara") } })

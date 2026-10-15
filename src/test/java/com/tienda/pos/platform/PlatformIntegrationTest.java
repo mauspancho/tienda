@@ -288,6 +288,41 @@ class PlatformIntegrationTest {
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
     }
 
+    @Test void mobileWhatsappUsesTenantJwtAndDoesNotExposeProviderCredentials() throws Exception {
+        var integration = context.getBean(com.tienda.pos.whatsapp.WhatsappIntegrationService.class);
+        var groupSync = context.getBean(com.tienda.pos.whatsapp.WhatsappGroupSyncService.class);
+        var manual = context.getBean(com.tienda.pos.whatsapp.ManualWhatsappPromotionService.class);
+        when(integration.dashboard()).thenAnswer(inv -> new com.tienda.pos.whatsapp.WhatsappIntegrationService.Dashboard(
+                context.getBean(com.tienda.pos.tenant.CurrentTenant.class).get(), null, null, List.of(), List.of()));
+        var snapshot = new com.tienda.pos.whatsapp.WhatsappGroupSyncService.Snapshot(
+                com.tienda.pos.whatsapp.WhatsappGroupSyncService.Status.IDLE, false, 0, null, null, null, null);
+        when(groupSync.current()).thenReturn(snapshot);
+        String token = apiLogin(a.username()).get("accessToken").asText();
+        mvc.perform(get("/api/v1/whatsapp").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.connection.status").value("NOT_CONFIGURED"))
+                .andExpect(jsonPath("$.connection.providerConfigured").value(false))
+                .andExpect(content().string(not(containsString("encryptedSessionToken"))))
+                .andExpect(content().string(not(containsString("encryptedSecret"))));
+        String cashierToken = apiLogin(cashier).get("accessToken").asText();
+        mvc.perform(get("/api/v1/whatsapp").header("Authorization", "Bearer " + cashierToken)).andExpect(status().isForbidden());
+        mvc.perform(post("/api/v1/whatsapp/groups/sync").header("Authorization", "Bearer " + cashierToken)).andExpect(status().isForbidden());
+        when(manual.send(eq(a.productId()), eq("Oferta de prueba"), anyString(), eq(true), eq("+5215550000000")))
+                .thenReturn(new com.tienda.pos.whatsapp.ManualWhatsappPromotionService.Result("COMPLETED", 1, 0, false, false,
+                        List.of(new com.tienda.pos.whatsapp.ManualWhatsappPromotionService.DeliveryResult("Número individual", "ACCEPTED", null))));
+        String path = "/api/v1/whatsapp/products/" + a.productId() + "/promotions";
+        String key = "00000000-0000-0000-0000-000000000001";
+        String body = "{\"message\":\"Oferta de prueba\",\"sendToNumber\":true,\"phone\":\"+5215550000000\"}";
+        mvc.perform(post(path).header("Authorization", "Bearer " + token).header("Idempotency-Key", key)
+                        .contentType("application/json").content(body)).andExpect(status().isOk()).andExpect(jsonPath("$.accepted").value(1));
+        verify(manual).send(a.productId(), "Oferta de prueba", key, true, "+5215550000000");
+        mvc.perform(post(path).header("Authorization", "Bearer " + token).contentType("application/json").content(body)).andExpect(status().isBadRequest());
+        mvc.perform(post(path).header("Authorization", "Bearer " + cashierToken).header("Idempotency-Key", key)
+                .contentType("application/json").content(body)).andExpect(status().isForbidden());
+        reset(integration, groupSync, manual);
+        when(manual.preview(anyLong())).thenReturn(new com.tienda.pos.whatsapp.ManualWhatsappPromotionService.Preview(
+                false, false, "WhatsApp no está configurado.", "WhatsApp no está configurado.", "", List.of(), 0));
+    }
+
     @Test void apiIsolatesStoresAndCashierSales() throws Exception {
         String token = apiLogin(a.username()).get("accessToken").asText();
         for (String path : List.of("/api/v1/products", "/api/v1/inventory/stock", "/api/v1/sales", "/api/v1/users",

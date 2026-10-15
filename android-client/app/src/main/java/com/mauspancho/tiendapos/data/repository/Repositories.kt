@@ -36,8 +36,8 @@ class RemoteAuthRepository(private val client: ApiClient) : AuthRepository {
     }
 }
 class RemoteProductRepository(private val api: TiendaApi) : ProductRepository {
-    override fun pages(query: String, active: Boolean?, brand: String?) = Pager(PagingConfig(pageSize = 20, initialLoadSize = 20)) {
-        ApiPagingSource { page -> api.products(query, page, active = active, brand = brand) }
+    override fun pages(query: String, active: Boolean?, brand: String?, whatsapp: Boolean?) = Pager(PagingConfig(pageSize = 20, initialLoadSize = 20)) {
+        ApiPagingSource { page -> api.products(query, page, active = active, brand = brand, whatsapp = whatsapp) }
     }.flow
     override suspend fun findBarcode(code: String) = api.barcode(code)
     override suspend fun search(query: String) = api.products(query, 0, active = true).content

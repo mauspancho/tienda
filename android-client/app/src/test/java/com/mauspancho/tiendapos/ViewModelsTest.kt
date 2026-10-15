@@ -27,7 +27,7 @@ class ViewModelsTest {
             override suspend fun checkout(attempt: CheckoutAttempt): Sale = error("Unused")
         }
         val products = object : ProductRepository {
-            override fun pages(query: String, active: Boolean?, brand: String?) = flowOf(PagingData.empty<Product>())
+            override fun pages(query: String, active: Boolean?, brand: String?, whatsapp: Boolean?) = flowOf(PagingData.empty<Product>())
             override suspend fun findBarcode(code: String): Product {
                 if (lookupFails) throw SocketTimeoutException()
                 return product()
@@ -66,6 +66,22 @@ class ViewModelsTest {
         vm.login("fixture", "test-only"); assertTrue(vm.state.value.loading); advanceUntilIdle()
         assertEquals(listOf("CAJERO"), success?.roles); assertFalse(vm.state.value.loading)
     }
+    @Test fun platformAccountDenialExplainsStoreAccessWithoutSigningIn() = runTest(dispatcher) {
+        var signedIn = false
+        val repo = object : AuthRepository {
+            override val session = MutableStateFlow<Session?>(null)
+            override suspend fun login(username: String, password: String): User {
+                val body = okhttp3.ResponseBody.create(null, "{\"message\":\"Cuenta no disponible.\",\"status\":401,\"error\":\"Unauthorized\"}")
+                throw retrofit2.HttpException(retrofit2.Response.error<User>(401, body))
+            }
+            override suspend fun restore(): User? = null
+            override suspend fun logout() = Unit
+        }
+        val vm = AuthViewModel(Json { ignoreUnknownKeys = true }, repo) { signedIn = true }
+        vm.login("platform", "test-only"); advanceUntilIdle()
+        assertFalse(signedIn)
+        assertTrue(vm.state.value.error!!.message.contains("PLATFORM_ADMIN"))
+    }
     @Test fun timeoutFreezesCheckoutAndRetryReusesSameKey() = runTest(dispatcher) {
         val keys = mutableListOf<String>()
         val repository = object : PosRepository {
@@ -73,7 +89,7 @@ class ViewModelsTest {
             override suspend fun checkout(attempt: CheckoutAttempt): Sale { keys.add(attempt.key); throw SocketTimeoutException() }
         }
         val products = object : ProductRepository {
-            override fun pages(query: String, active: Boolean?, brand: String?) = flowOf(PagingData.from(listOf(product())))
+            override fun pages(query: String, active: Boolean?, brand: String?, whatsapp: Boolean?) = flowOf(PagingData.from(listOf(product())))
             override suspend fun findBarcode(code: String) = product()
             override suspend fun search(query: String) = listOf(product())
         }

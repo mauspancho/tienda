@@ -53,7 +53,7 @@ class CreditsTest {
     @Before fun setup() { Dispatchers.setMain(dispatcher) }
     @After fun cleanup() { Dispatchers.resetMain() }
     private val products = object : ProductRepository {
-        override fun pages(query: String, active: Boolean?, brand: String?) = flowOf(PagingData.from(listOf(product())))
+        override fun pages(query: String, active: Boolean?, brand: String?, whatsapp: Boolean?) = flowOf(PagingData.from(listOf(product())))
         override suspend fun findBarcode(code: String) = product()
         override suspend fun search(query: String) = listOf(product())
     }

@@ -15,8 +15,10 @@ class ProductsViewModel(private val client: ApiClient, private val repository: P
     val query = MutableStateFlow("")
     val brand = MutableStateFlow("")
     val activeOnly = MutableStateFlow(false)
-    val pages = combine(query.debounce(350), brand.debounce(350), activeOnly) { q, b, active -> Triple(q, b, active) }
-        .flatMapLatest { (q, b, active) -> repository.pages(q, if (active) true else null, b.ifBlank { null }) }.cachedIn(viewModelScope)
+    val whatsappOnly = MutableStateFlow(false)
+    private data class Filters(val query: String, val brand: String, val active: Boolean, val whatsapp: Boolean)
+    val pages = combine(query.debounce(350), brand.debounce(350), activeOnly, whatsappOnly, ::Filters)
+        .flatMapLatest { (q, b, active, whatsapp) -> repository.pages(q, if (active) true else null, b.ifBlank { null }, if (whatsapp) true else null) }.cachedIn(viewModelScope)
     val detail = MutableStateFlow(TaskState<Product>())
     fun open(id: Long) { task(detail) { client.api.product(id) } }
     fun image(product: Product, uri: android.net.Uri) {

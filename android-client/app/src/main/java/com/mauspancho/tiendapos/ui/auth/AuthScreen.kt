@@ -21,6 +21,7 @@ import com.mauspancho.tiendapos.ui.components.*
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).imePadding().padding(24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Text("Tienda POS", style = MaterialTheme.typography.headlineLarge)
         Text("Iniciar sesión", style = MaterialTheme.typography.titleLarge)
+        Text("Acceso con usuario ADMIN o CAJERO de una tienda. La administración de plataforma se realiza en la web.", style = MaterialTheme.typography.bodySmall)
         Text(server, style = MaterialTheme.typography.bodyMedium)
         notice?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         OutlinedTextField(username, { username = it }, Modifier.fillMaxWidth(), label = { Text("Usuario") }, singleLine = true, enabled = !state.loading)

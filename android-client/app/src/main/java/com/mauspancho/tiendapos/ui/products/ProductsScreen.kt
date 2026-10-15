@@ -6,6 +6,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.collectAsLazyPagingItems
@@ -23,11 +24,12 @@ import kotlinx.serialization.json.*
         }
     }
 }
-@Composable fun ProductsScreen(vm: ProductsViewModel, forms: ModuleViewModel, base: String, admin: Boolean, image: (Product) -> Unit) {
+@Composable fun ProductsScreen(vm: ProductsViewModel, forms: ModuleViewModel, base: String, admin: Boolean, promote: (Product) -> Unit = {}, image: (Product) -> Unit) {
     val pages = vm.pages.collectAsLazyPagingItems()
     val query by vm.query.collectAsStateWithLifecycle()
     val brand by vm.brand.collectAsStateWithLifecycle()
     val active by vm.activeOnly.collectAsStateWithLifecycle()
+    val whatsapp by vm.whatsappOnly.collectAsStateWithLifecycle()
     val detail by vm.detail.collectAsStateWithLifecycle()
     val operation by vm.operation.collectAsStateWithLifecycle()
     val form by forms.form.collectAsStateWithLifecycle()
@@ -41,8 +43,9 @@ import kotlinx.serialization.json.*
             OutlinedTextField(brand, { vm.brand.value = it }, Modifier.weight(1f), label = { Text("Marca") }, singleLine = true)
             FilterChip(active, { vm.activeOnly.value = !active }, label = { Text("Activos") })
         }
+        FilterChip(whatsapp, { vm.whatsappOnly.value = !whatsapp }, label = { Text("Promociones WhatsApp") }, modifier = Modifier.padding(horizontal = 16.dp))
         if (admin) TextButton({ forms.create() }) { Text("Registrar producto") }
-        LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyColumn(Modifier.weight(1f).testTag("products.list"), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item { PagingStatus(pages.loadState.refresh, forms.repository.json, pages::retry) }
             if (pages.itemCount == 0 && pages.loadState.refresh is androidx.paging.LoadState.NotLoading) item { Empty() }
             items(pages.itemCount, key = { index -> pages.peek(index)?.id ?: -index.toLong() - 1 }) { index -> pages[index]?.let { product ->
@@ -56,7 +59,7 @@ import kotlinx.serialization.json.*
         }
     }
     if (show) FullScreenDialog({ show = false }) {
-        LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        LazyColumn(Modifier.testTag("product.detail.list"), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item { TextButton({ show = false }) { Text("Volver") } }
             if (detail.loading) item { Loading() }
             item { ErrorCard(detail.error) }
@@ -68,6 +71,7 @@ import kotlinx.serialization.json.*
                     item { Action(if (product.active) "Desactivar" else "Activar", !operation.loading) { vm.state(product.id, "active", !product.active); pages.refresh() } }
                     item { Action(if (product.promoted) "Quitar promoción pública" else "Promoción pública", !operation.loading) { vm.state(product.id, "promotion", !product.promoted) } }
                     item { Action(if (product.promocionWhatsapp) "Quitar promoción WhatsApp" else "Promoción WhatsApp", !operation.loading) { vm.state(product.id, "whatsapp-promotion", !product.promocionWhatsapp) } }
+                    item { Action("Enviar promoción por WhatsApp", !operation.loading) { promote(product) } }
                 }
             }
             item { ErrorCard(operation.error) }

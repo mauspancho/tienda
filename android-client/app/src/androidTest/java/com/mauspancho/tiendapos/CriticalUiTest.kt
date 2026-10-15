@@ -29,7 +29,7 @@ class CriticalUiTest {
             override suspend fun checkout(attempt: CheckoutAttempt): Sale = error("Unused")
         }
         val products = object : ProductRepository {
-            override fun pages(query: String, active: Boolean?, brand: String?) = flowOf(PagingData.empty<Product>())
+            override fun pages(query: String, active: Boolean?, brand: String?, whatsapp: Boolean?) = flowOf(PagingData.empty<Product>())
             override suspend fun findBarcode(code: String) = product
             override suspend fun search(query: String) = emptyList<Product>()
         }

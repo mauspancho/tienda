@@ -1,5 +1,7 @@
 # Tienda POS — cliente Android nativo
 
+Actualización del 14 de octubre de 2026: main `0bf25e8` integrado y módulo nativo de [WhatsApp y promociones](WHATSAPP.md). Para habilitarlo hay que desplegar también los nuevos adaptadores JWT del backend incluidos en la rama `android`.
+
 Compatibilidad revisada con el main multitienda del 13 de octubre de 2026: [SERVER_COMPATIBILITY.md](SERVER_COMPATIBILITY.md). Incluye soporte de lectura de cargos manuales y aislamiento de solicitudes al cambiar de cuenta.
 
 La integración de **Créditos y Fiados** está documentada en [CREDITS.md](CREDITS.md): pantallas, endpoints comprobados, permisos reales, checkpoints cifrados, requisitos del backend, pruebas e instalación. El servidor de producción debe actualizarse para habilitarla; el cliente conserva el cobro directo en efectivo en servidores anteriores.
@@ -8,7 +10,7 @@ Proyecto Android independiente: Kotlin, Jetpack Compose y Material 3, package `c
 
 ## Contrato inspeccionado
 
-En la creación inicial se inspeccionó la API en `E:\ERP-tienda-main-products-pagination\src\main\java\com\tienda\pos\api\v1`. La revisión actual utiliza el main multitienda del servidor, que conserva `/api/v1/**`; el resultado está en `SERVER_COMPATIBILITY.md`. El cliente usa los contratos y permisos implementados por el backend. No se modificaron archivos del servidor.
+En la creación inicial se inspeccionó la API en `E:\ERP-tienda-main-products-pagination\src\main\java\com\tienda\pos\api\v1`. La revisión actual utiliza el main multitienda del servidor, que conserva `/api/v1/**`; el resultado está en `SERVER_COMPATIBILITY.md`. La actualización de WhatsApp añade los adaptadores JWT documentados en `WHATSAPP.md`.
 
 El cliente se creó como proyecto autocontenido en `android-client/` y se incorpora al repositorio `mauspancho/tienda` en la rama `android`. Puede compilarse sin el proyecto Maven. El wrapper Gradle es oficial y verifica el SHA-256 de la distribución. Las cachés, claves, archivos de compilación y `local.properties` no se publican.
 

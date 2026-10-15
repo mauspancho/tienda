@@ -1,5 +1,23 @@
 # Validación y resumen de entrega
 
+## Actualización con WhatsApp — 14 de octubre de 2026
+
+Main integrado: `0bf25e876ac4ce150c17265bbaa61d838f52353d`. Cliente 1.1.0 (versionCode 2), rama `android`. Alcance y despliegue requerido: [WHATSAPP.md](WHATSAPP.md). Esta actualización sí añade adaptadores y pruebas del backend bajo `/api/v1/whatsapp`; las notas de entregas anteriores se conservan como historial.
+
+- 57 pruebas unitarias Android, sin fallos: incluye filtros paginados, permisos, selección por IDs, rechazo de QR inválido por tipo/tamaño, persistencia cifrada y conservación de la clave en reintentos inciertos.
+- Emulador Android 17/API 37: las 9 pruebas de regresión pasaron. El flujo nuevo de WhatsApp pasó en ejecución específica tras corregir los selectores de la prueba y su PNG de ejemplo: login ADMIN, conectar, mostrar QR, actualizar conexión, sincronizar, seleccionar grupos, habilitar anuncios, abrir producto y revisar/cancelar/confirmar una promoción individual mediante HTTP autenticado.
+- 26 pruebas de backend/H2 con JDK 21, sin fallos: `PlatformIntegrationTest` (3 seleccionadas), `ManualWhatsappPromotionServiceTest`, `WhatsappGroupSyncServiceTest` y `WhatsappAnnouncementServiceTest`.
+- Compilación final `testDebugUnitTest lintDebug assembleDebug assembleRelease`: correcta; lint con 0 errores y 22 advertencias. Firma debug comprobada con apksigner; APK 1.1.0 instalado y abierto correctamente en el emulador. Release generado sin firma de distribución.
+- Contrato generado desde Springdoc ejecutándose en H2: `backend-whatsapp-openapi.json`, 75 rutas móviles. No se eliminaron rutas móviles anteriores. Los únicos cambios documentales en rutas anteriores son sufijos de operationId de Springdoc para `state` y `refresh`, sin cambios de transporte.
+
+Los envíos de prueba terminan en mocks/fixtures. No se vincularon teléfonos reales, habilitaron anuncios reales ni enviaron mensajes de producción. Las credenciales WPPConnect/n8n no se incorporan al APK.
+
+APK instalable: `app/build/outputs/apk/debug/app-debug.apk` (38,471,650 bytes), SHA-256 `BCF56F8B8DFC367227998745C0C2EA2318790D044BD74E141BA272049635C2D0`. La configuración de red dentro del APK se verificó con aapt2: HTTP deshabilitado y certificados del sistema. APK release sin firma: `app/build/outputs/apk/release/app-release-unsigned.apk` (24,943,250 bytes).
+
+Logs locales ignorados por Git: `whatsapp-backend-final.log`, `whatsapp-validated.log`, `whatsapp-final-flow.log`, `whatsapp-apk-final.log` y `whatsapp-openapi.log`. Informes Gradle en `app/build/reports/`. El APK entregado se recompila sin la excepción HTTP del emulador.
+
+---
+
 Ejecución local: 1 de octubre de 2026, zona America/Mexico_City. Cliente en `E:\ERP-tienda\android-client`. Backend inspeccionado en `E:\ERP-tienda-main-products-pagination`; no se modificó ni desplegó el backend y no se hizo commit/push.
 
 ## Resultado
