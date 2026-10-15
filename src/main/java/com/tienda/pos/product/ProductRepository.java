@@ -98,6 +98,16 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             """)
     List<String> suggestBrands(@Param("tenantId") Long tenantId, @Param("q") String query, Pageable pageable);
 
+    @Query("select distinct p.brand from Product p where p.tenant.id = :tenantId and p.brand is not null and p.brand <> '' order by p.brand asc")
+    List<String> findDistinctBrands(@Param("tenantId") Long tenantId);
+
+    @Query("select p from Product p where p.tenant.id = :tenantId and p.brand is not null and p.brand <> '' order by p.id asc")
+    List<Product> findProductsWithBrand(@Param("tenantId") Long tenantId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Product p where p.tenant.id = :tenantId and p.brand is not null and p.brand <> '' order by p.id asc")
+    List<Product> findProductsWithBrandForUpdate(@Param("tenantId") Long tenantId);
+
 
 
     Optional<Product> findByTenantIdAndBarcode(Long tenantId, String barcode);

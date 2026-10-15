@@ -44,15 +44,18 @@ class ProductServiceTest {
     private final StoreContextService storeContextService = mock(StoreContextService.class);
     private final ExternalProductService externalProductService = mock(ExternalProductService.class);
     private final ProductImageService productImageService = mock(ProductImageService.class);
+    private final ProductBrandService productBrandService = mock(ProductBrandService.class);
     private final CurrentTenant currentTenant = mock(CurrentTenant.class);
     private final Tenant tenant = tenant();
     private final ProductService service = new ProductService(productRepository, categoryRepository,
-            supplierRepository, movementRepository, stockRepository, storeContextService, externalProductService, productImageService, currentTenant);
+            supplierRepository, movementRepository, stockRepository, storeContextService, externalProductService,
+            productImageService, productBrandService, currentTenant);
 
     @BeforeEach
     void tenantContext() {
         when(currentTenant.get()).thenReturn(tenant);
         when(currentTenant.id()).thenReturn(1L);
+        when(productBrandService.canonicalize(any(), any())).thenAnswer(invocation -> invocation.getArgument(1));
     }
 
     @Test
@@ -124,6 +127,7 @@ class ProductServiceTest {
         form.setCode("PRD-12345678");
         form.setBarcode("7501055300006");
         form.setName("Coca-Cola 600 ml");
+        form.setBrand(" GAMESA ");
         form.setPurchaseCost(new BigDecimal("14.00"));
         form.setSalePrice(new BigDecimal("20.00"));
         form.setCurrentStock(new BigDecimal("24.000"));
@@ -137,6 +141,7 @@ class ProductServiceTest {
         when(productImageService.cleanImageReference(remoteImage)).thenReturn(remoteImage);
         when(productImageService.isOpenFoodFactsImage(remoteImage)).thenReturn(true);
         when(productImageService.storeOpenFoodFactsImage(remoteImage)).thenReturn("/uploads/products/local.jpg");
+        when(productBrandService.canonicalize(1L, " GAMESA ")).thenReturn("Gamesa");
         Branch branch = new Branch();
         branch.setTenant(tenant);
         Warehouse warehouse = new Warehouse();
@@ -155,8 +160,10 @@ class ProductServiceTest {
 
         assertThat(saved.getTenant()).isSameAs(tenant);
         assertThat(saved.getCurrentStock()).isEqualByComparingTo(new BigDecimal("24.000"));
+        assertThat(saved.getBrand()).isEqualTo("Gamesa");
         assertThat(saved.getImageUrl()).isEqualTo("/uploads/products/local.jpg");
         verify(productImageService).storeOpenFoodFactsImage(remoteImage);
+        verify(productBrandService).canonicalize(1L, " GAMESA ");
         ArgumentCaptor<InventoryMovement> movementCaptor = ArgumentCaptor.forClass(InventoryMovement.class);
         verify(movementRepository).save(movementCaptor.capture());
         InventoryMovement movement = movementCaptor.getValue();

@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<body>
+<dialog th:fragment="modal" class="modal product-share-modal" data-product-share-modal>
+  <div class="modal-box card form">
+    <div class="page-title product-share-heading">
+      <div>
+        <h2>Compartir producto</h2>
+        <p class="muted">Prepara el mensaje y elige dónde compartirlo.</p>
+      </div>
+      <button class="btn btn-muted" type="button" aria-label="Cerrar" data-product-share-close>&times;</button>
+    </div>
+
+    <div class="manual-promotion-product">
+      <img data-share-product-image alt="Imagen del producto" hidden>
+      <span class="product-share-image-placeholder" data-share-no-image>Sin imagen</span>
+      <div class="manual-promotion-product-info">
+        <strong data-share-product-name>Producto</strong>
+        <span data-share-product-brand></span>
+        <span data-share-product-description></span>
+        <b data-share-product-price></b>
+      </div>
+    </div>
+
+    <div class="product-share-platforms" role="tablist" aria-label="Red social">
+      <button class="btn btn-muted product-share-platform" type="button" role="tab" data-share-platform="whatsapp"><span class="product-share-icon product-share-icon-whatsapp" aria-hidden="true">W</span>WhatsApp</button>
+      <button class="btn btn-muted product-share-platform" type="button" role="tab" data-share-platform="facebook"><span class="product-share-icon product-share-icon-facebook" aria-hidden="true">f</span>Facebook</button>
+      <button class="btn btn-muted product-share-platform" type="button" role="tab" data-share-platform="instagram"><span class="product-share-icon product-share-icon-instagram" aria-hidden="true">I</span>Instagram</button>
+    </div>
+
+    <div class="field">
+      <label for="product-share-message">Mensaje</label>
+      <textarea id="product-share-message" maxlength="4000" rows="7" required data-share-message></textarea>
+      <small class="muted"><span data-share-message-count>0</span>/4000</small>
+    </div>
+
+    <div class="manual-promotion-preview">
+      <span>Vista previa</span>
+      <img data-share-preview-image alt="Vista previa" hidden>
+      <div><strong data-share-preview-name></strong><p data-share-preview-message></p></div>
+    </div>
+
+    <section class="product-share-panel" data-share-panel="whatsapp">
+      <div class="alert alert-error" hidden data-share-whatsapp-warning></div>
+      <div class="manual-promotion-recipients" hidden data-share-whatsapp-groups>
+        <strong data-share-whatsapp-group-count></strong>
+        <div class="manual-promotion-group-list" data-share-whatsapp-group-list></div>
+      </div>
+      <label class="manual-promotion-mode">
+        <input type="checkbox" data-share-whatsapp-number-mode>
+        <span><strong>Enviar a un número específico</strong><small>Se enviará exclusivamente a ese número y no a los grupos.</small></span>
+      </label>
+      <div class="field" hidden data-share-whatsapp-phone-field>
+        <label for="product-share-phone">Número de WhatsApp</label>
+        <input id="product-share-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+52 5512345678" maxlength="32" data-share-whatsapp-phone>
+        <small class="muted">Usa código de país. Los números mexicanos de 10 dígitos se completan con +52.</small>
+      </div>
+      <div class="alert alert-error" hidden data-share-whatsapp-individual-warning></div>
+    </section>
+
+    <section class="product-share-panel alert alert-info" data-share-panel="facebook" hidden>
+      <p>Se copiará el mensaje, se descargará la imagen disponible y se abrirá Facebook. Tú eliges dónde publicarlo y confirmas la publicación.</p>
+    </section>
+
+    <section class="product-share-panel alert alert-info" data-share-panel="instagram" hidden>
+      <p>En dispositivos compatibles se abrirá el menú para compartir la imagen. En los demás se copiará el mensaje, se descargará la imagen y se abrirá Instagram.</p>
+    </section>
+
+    <div class="product-share-manual-actions" data-share-manual-actions hidden>
+      <button class="btn btn-muted" type="button" data-share-copy>Copiar mensaje</button>
+      <button class="btn btn-muted" type="button" data-share-download>Descargar imagen</button>
+    </div>
+
+    <div data-share-result hidden></div>
+    <div class="modal-action">
+      <button class="btn btn-muted" type="button" data-product-share-cancel>Cancelar</button>
+      <button class="btn btn-primary" type="button" data-product-share-submit>
+        <span data-product-share-submit-label>Continuar</span>
+        <span class="loading loading-spinner loading-sm" data-product-share-spinner hidden></span>
+      </button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>Cerrar</button></form>
+</dialog>
+</body>
+</html>

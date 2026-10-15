@@ -7,7 +7,7 @@
 </head>
 <body>
 <div class="app-shell"><div th:replace="~{fragments/layout :: sidebar}"></div><main class="main"><div th:replace="~{fragments/layout :: header}"></div><section class="content">
-<div class="page-title"><h1>Producto</h1><div class="product-detail-actions"><button th:if="${productForm.id != null}" class="btn btn-primary" type="button" data-manual-promotion-open>Promocionar producto</button><a class="btn btn-muted" th:href="@{/admin/products}">Volver</a></div></div>
+<div class="page-title"><h1>Producto</h1><div class="product-detail-actions"><button th:if="${productForm.id != null}" class="btn btn-primary" type="button" th:data-product-share="${productForm.id}">Compartir producto</button><a class="btn btn-muted" th:href="@{/admin/products}">Volver</a></div></div>
 
 <div class="card form" data-product-lookup th:data-initial-barcode="${initialBarcode}" th:data-auto-lookup="${autoLookup}">
   <h2>Escanear producto</h2>
@@ -50,7 +50,7 @@
   <div class="field"><label>Producto</label><input th:field="*{name}" data-product-name></div>
 </div>
 <div class="grid grid-3">
-  <div class="field"><label>Marca</label><input th:field="*{brand}" data-product-brand></div>
+  <div class="field product-autocomplete" data-brand-autocomplete th:data-brand-suggestions-url="@{/admin/api/products/suggestions(field='brand')}"><label>Marca</label><input th:field="*{brand}" data-product-brand autocomplete="off" aria-autocomplete="list" aria-expanded="false" placeholder="Escribe al menos 2 caracteres"><div class="product-autocomplete-menu" role="listbox" data-brand-autocomplete-menu hidden></div></div>
   <div class="field"><label>Presentación</label><input th:field="*{presentation}" data-product-presentation placeholder="600 ml"></div>
   <div class="field"><label>URL de imagen</label><input th:field="*{imageUrl}" data-product-image-url placeholder="https://..."></div>
 </div>
@@ -95,40 +95,5 @@
 </div>
 <button class="btn btn-success" type="submit">Guardar producto</button></form>
 
-<dialog th:if="${productForm.id != null}" class="modal manual-promotion-modal" data-manual-promotion-modal>
-  <div class="modal-box card form">
-    <div class="page-title"><div><h2>Promocionar producto</h2><p class="muted" data-manual-promotion-destination-help>Envío inmediato a los grupos autorizados de esta tienda.</p></div><button class="btn btn-muted" type="button" aria-label="Cerrar" data-manual-promotion-close>×</button></div>
-    <div class="manual-promotion-product">
-      <img th:if="${productForm.imageUrl != null and !productForm.imageUrl.isBlank()}" th:src="${productForm.imageUrl}" th:alt="${productForm.name}">
-      <div class="manual-promotion-product-info">
-        <strong th:text="${productForm.name}">Producto</strong>
-        <span th:if="${productForm.brand != null and !productForm.brand.isBlank()}" th:text="${productForm.brand}"></span>
-        <span th:if="${productForm.presentation != null and !productForm.presentation.isBlank()}" th:text="${productForm.presentation}"></span>
-        <b th:text="${'Precio: $' + #numbers.formatDecimal(productForm.salePrice, 1, 2)}">Precio</b>
-      </div>
-    </div>
-    <div class="alert alert-error" th:hidden="${manualPromotion.ready}" th:text="${manualPromotion.warning}" data-manual-promotion-group-warning></div>
-    <div class="manual-promotion-recipients" th:hidden="${!manualPromotion.ready}" data-manual-promotion-groups>
-      <strong th:text="${manualPromotion.groupCount + (manualPromotion.groupCount == 1 ? ' grupo destinatario' : ' grupos destinatarios')}"></strong>
-      <div class="manual-promotion-group-list"><span class="badge" th:each="group : ${manualPromotion.groupNames}" th:text="${group}"></span></div>
-    </div>
-    <form th:action="@{/admin/products/{id}/manual-whatsapp-promotion(id=${productForm.id})}" method="post" data-manual-promotion-form
-          th:data-group-count="${manualPromotion.groupCount}" th:data-group-ready="${manualPromotion.ready}"
-          th:data-individual-ready="${manualPromotion.individualReady}" th:data-product-name="${productForm.name}">
-      <input type="hidden" name="requestKey" data-manual-promotion-key>
-      <label class="manual-promotion-mode"><input type="checkbox" name="sendToNumber" value="true" data-manual-promotion-mode> <span><strong>Enviar a un número específico</strong><small>La promoción se enviará exclusivamente a ese número y no a los grupos.</small></span></label>
-      <div class="field" hidden data-manual-promotion-phone-field>
-        <label for="manual-promotion-phone">Número de WhatsApp</label>
-        <input id="manual-promotion-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+52 5512345678" maxlength="32" data-manual-promotion-phone>
-        <small class="muted">Usa código de país. Los números mexicanos de 10 dígitos se completan con +52.</small>
-      </div>
-      <div class="alert alert-error" hidden data-manual-promotion-individual-warning th:text="${manualPromotion.individualWarning}"></div>
-      <div class="field"><label for="manual-promotion-message">Mensaje</label><textarea id="manual-promotion-message" name="message" maxlength="4000" rows="8" required data-manual-promotion-message th:text="${manualPromotion.suggestedMessage}"></textarea><small class="muted"><span data-manual-promotion-count>0</span>/4000</small></div>
-      <div class="manual-promotion-preview"><span>Vista previa</span><img th:if="${productForm.imageUrl != null and !productForm.imageUrl.isBlank()}" th:src="${productForm.imageUrl}" alt=""><p data-manual-promotion-preview></p></div>
-      <div data-manual-promotion-result hidden></div>
-      <div class="modal-action"><button class="btn btn-muted" type="button" data-manual-promotion-cancel>Cancelar</button><button class="btn btn-primary" type="submit" th:disabled="${!manualPromotion.ready}" data-manual-promotion-submit><span data-manual-promotion-submit-label>Enviar promoción</span><span class="loading loading-spinner loading-sm" data-manual-promotion-spinner hidden></span></button></div>
-    </form>
-  </div>
-  <form method="dialog" class="modal-backdrop"><button>Cerrar</button></form>
-</dialog>
-</section></main></div><script th:src="@{/vendor/zxing/zxing-browser.min.js}"></script><script th:src="@{/js/product-code-generator.js}"></script><script th:src="@{/js/camera-barcode-scanner.js}"></script><script th:if="${productForm.id != null}" th:src="@{/js/manual-whatsapp-promotion.js}"></script></body></html>
+<div th:if="${productForm.id != null}" th:replace="~{products/share-modal :: modal}"></div>
+</section></main></div><script th:src="@{/vendor/zxing/zxing-browser.min.js}"></script><script th:src="@{/js/product-code-generator.js}"></script><script th:src="@{/js/product-brand-autocomplete.js}"></script><script th:src="@{/js/camera-barcode-scanner.js}"></script><script th:if="${productForm.id != null}" th:src="@{/js/product-sharing.js(v='20261015-1')}"></script></body></html>

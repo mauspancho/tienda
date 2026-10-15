@@ -253,24 +253,40 @@ class UserInterfaceAssetTest {
     }
 
     @Test
-    void manualWhatsappPromotionCanSwitchExclusivelyToAnIndividualNumber() throws Exception {
+    void productSharingSupportsWhatsappAndManualSocialFlows() throws Exception {
         String form = Files.readString(ROOT.resolve("src/main/resources/templates/products/form.html"));
-        String script = Files.readString(ROOT.resolve("src/main/resources/static/js/manual-whatsapp-promotion.js"));
+        String index = Files.readString(ROOT.resolve("src/main/resources/templates/products/index.html"));
+        String modal = Files.readString(ROOT.resolve("src/main/resources/templates/products/share-modal.html"));
+        String script = Files.readString(ROOT.resolve("src/main/resources/static/js/product-sharing.js"));
         String css = Files.readString(ROOT.resolve("src/main/resources/static/css/input.css"));
 
         assertThat(form)
-                .contains("name=\"sendToNumber\"")
-                .contains("name=\"phone\"")
+                .contains("data-product-share")
+                .contains("products/share-modal :: modal")
+                .contains("/js/product-sharing.js");
+        assertThat(index)
+                .contains("<th>Compartir</th>")
+                .contains("data-share-platform=\"whatsapp\"")
+                .contains("data-share-platform=\"facebook\"")
+                .contains("data-share-platform=\"instagram\"");
+        assertThat(modal)
                 .contains("placeholder=\"+52 5512345678\"")
                 .contains("inputmode=\"tel\"")
-                .contains("data-manual-promotion-groups");
+                .contains("data-share-whatsapp-groups")
+                .contains("data-share-copy")
+                .contains("data-share-download");
         assertThat(script)
                 .contains("phone.required = individual")
-                .contains("groups.hidden = individual || !groupReady")
+                .contains("manual-whatsapp-promotion")
                 .contains("exclusivamente al número")
-                .contains("new URLSearchParams(new FormData(form))");
+                .contains("navigator.share")
+                .contains("navigator.canShare")
+                .contains("https://www.facebook.com/")
+                .contains("https://www.instagram.com/");
         assertThat(css)
                 .contains(".manual-promotion-mode")
+                .contains(".product-share-menu")
+                .contains(".product-share-modal")
                 .contains("@media (max-width: 640px)");
     }
 }

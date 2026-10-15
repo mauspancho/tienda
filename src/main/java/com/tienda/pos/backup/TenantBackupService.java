@@ -6,6 +6,7 @@ import com.tienda.pos.catalog.CatalogImagesProperties;
 import com.tienda.pos.common.NormalMode;
 import com.tienda.pos.exception.DomainException;
 import com.tienda.pos.product.ProductImagesProperties;
+import com.tienda.pos.product.ProductBrandNormalizer;
 import com.tienda.pos.security.SessionRevocationService;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -46,12 +47,15 @@ public class TenantBackupService {
     private final JdbcTemplate db;
     private final ObjectMapper json;
     private final SessionRevocationService sessions;
+    private final ProductBrandNormalizer brandNormalizer;
     private final Path products, catalog;
     private final String productPath, catalogPath;
 
     public TenantBackupService(JdbcTemplate db, ObjectMapper json, SessionRevocationService sessions,
-                               ProductImagesProperties products, CatalogImagesProperties catalog) {
+                               ProductImagesProperties products, CatalogImagesProperties catalog,
+                               ProductBrandNormalizer brandNormalizer) {
         this.db = db; this.json = json; this.sessions = sessions;
+        this.brandNormalizer = brandNormalizer;
         this.products = Path.of(products.getDirectory()).toAbsolutePath().normalize();
         this.catalog = Path.of(catalog.getDirectory()).toAbsolutePath().normalize();
         this.productPath = products.normalizedPublicPath(); this.catalogPath = catalog.normalizedPublicPath();
@@ -141,6 +145,7 @@ public class TenantBackupService {
                     Map<String, String> row = new LinkedHashMap<>(original);
                     String oldId = row.remove("id"); row.remove("tenant_id");
                     if (metadata.containsKey("tenant_id")) row.put("tenant_id", Long.toString(tenant));
+                    if (table.equals("product")) row.put("brand", brandNormalizer.normalize(row.get("brand")));
                     for (String column : new ArrayList<>(row.keySet())) {
                         String parent = parent(table, column);
                         if (parent != null && row.get(column) != null) row.put(column, mapped(ids, parent, row.get(column)).toString());

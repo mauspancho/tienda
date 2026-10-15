@@ -1099,8 +1099,8 @@ class PlatformIntegrationTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.recordsFiltered").value(1));
         mvc.perform(get("/admin/api/products/table").session(session).param("brand", "Private brand"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.recordsFiltered").value(0));
-        mvc.perform(get("/admin/api/products/suggestions").session(session).param("field", "brand"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$").value(org.hamcrest.Matchers.contains("Own brand")));
+        mvc.perform(get("/admin/api/products/suggestions").session(session).param("field", "brand").param("q", "Ow"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").value(org.hamcrest.Matchers.contains("Own Brand")));
         mvc.perform(get("/admin/api/products/suggestions").session(session).param("field", "name").param("q", "Product-"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$").value(org.hamcrest.Matchers.contains(a.productName())));
         mvc.perform(get("/admin/api/products/table").session(session).param("order[0][column]", "3")

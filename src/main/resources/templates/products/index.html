@@ -7,7 +7,7 @@
 </head>
 <body>
 <div class="app-shell"><div th:replace="~{fragments/layout :: sidebar}"></div><main class="main"><div th:replace="~{fragments/layout :: header}"></div><section class="content">
-<div class="page-title"><h1>Productos</h1><a class="btn btn-primary" th:href="@{/admin/products/new}">Nuevo producto</a></div><div th:replace="~{fragments/layout :: alerts}"></div>
+<div class="page-title"><h1>Productos</h1><div class="join"><a class="btn btn-muted join-item" th:href="@{/admin/products/brands}">Revisar marcas</a><a class="btn btn-primary join-item" th:href="@{/admin/products/new}">Nuevo producto</a></div></div><div th:replace="~{fragments/layout :: alerts}"></div>
 <form class="card product-filter-form" method="get" th:action="@{/admin/products}" data-product-filter-form>
   <div class="product-filter-grid">
     <div class="field product-filter-wide"><label>Búsqueda general</label><input name="q" th:value="${q}" placeholder="Código, barras, nombre, marca o categoría" autocomplete="off" data-product-filter></div>
@@ -26,7 +26,7 @@
 <div class="table-wrap" style="margin-top:16px">
   <table id="productsTable" class="products-table display" data-products-table th:data-source="@{/admin/api/products/table}" th:data-start="${products.number * products.size}" th:data-sort="${sort}" th:data-direction="${direction}">
     <thead><tr>
-      <th>Código</th><th>Producto</th><th>Marca</th><th>Precio</th><th>Costo</th><th>Stock</th><th>Margen</th><th>Promoción WhatsApp</th><th></th>
+      <th>Código</th><th>Producto</th><th>Marca</th><th>Precio</th><th>Costo</th><th>Stock</th><th>Margen</th><th>Promoción WhatsApp</th><th>Compartir</th><th></th>
     </tr></thead>
     <tbody>
     <tr th:each="p:${products.content}">
@@ -62,9 +62,19 @@
           </label>
         </form>
       </td>
+      <td>
+        <details class="dropdown dropdown-end product-share-menu">
+          <summary class="btn btn-muted">Compartir</summary>
+          <div class="product-share-menu-content">
+            <button type="button" th:data-product-share="${p.id}" data-share-platform="whatsapp"><span class="product-share-icon product-share-icon-whatsapp" aria-hidden="true">W</span>WhatsApp</button>
+            <button type="button" th:data-product-share="${p.id}" data-share-platform="facebook"><span class="product-share-icon product-share-icon-facebook" aria-hidden="true">f</span>Facebook</button>
+            <button type="button" th:data-product-share="${p.id}" data-share-platform="instagram"><span class="product-share-icon product-share-icon-instagram" aria-hidden="true">I</span>Instagram</button>
+          </div>
+        </details>
+      </td>
       <td><a class="btn btn-muted" th:href="@{'/admin/products/' + ${p.id} + '/edit'}">Editar</a></td>
     </tr>
-    <tr th:if="${products.empty}"><td colspan="9" class="muted">No hay productos para mostrar.</td></tr>
+    <tr th:if="${products.empty}"><td colspan="10" class="muted">No hay productos para mostrar.</td></tr>
     </tbody>
   </table>
 </div>
@@ -86,6 +96,7 @@
     </div>
   </div>
 </dialog>
+<div th:replace="~{products/share-modal :: modal}"></div>
 </section></main></div>
 <script th:src="@{/vendor/jquery/jquery.min.js}"></script>
 <script th:src="@{/vendor/datatables/dataTables.min.js}"></script>
@@ -93,4 +104,5 @@
 <script th:src="@{/vendor/datatables/dataTables.columnControl.min.js}"></script>
 <script th:src="@{/vendor/datatables/columnControl.dataTables.min.js}"></script>
 <script th:src="@{/js/product-table.js(v='20260921-1')}"></script>
+<script th:src="@{/js/product-sharing.js(v='20261015-1')}"></script>
 </body></html>

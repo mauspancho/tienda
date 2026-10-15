@@ -57,6 +57,18 @@
     return `<a class="btn btn-muted" href="/admin/products/${row.id}/edit">Editar</a>`;
   }
 
+  function shareCell(row) {
+    const productId = Number(row.id);
+    return `<details class="dropdown dropdown-end product-share-menu">
+      <summary class="btn btn-muted">Compartir</summary>
+      <div class="product-share-menu-content">
+        <button type="button" data-product-share="${productId}" data-share-platform="whatsapp"><span class="product-share-icon product-share-icon-whatsapp" aria-hidden="true">W</span>WhatsApp</button>
+        <button type="button" data-product-share="${productId}" data-share-platform="facebook"><span class="product-share-icon product-share-icon-facebook" aria-hidden="true">f</span>Facebook</button>
+        <button type="button" data-product-share="${productId}" data-share-platform="instagram"><span class="product-share-icon product-share-icon-instagram" aria-hidden="true">I</span>Instagram</button>
+      </div>
+    </details>`;
+  }
+
   const table = $(tableElement).DataTable({
     processing: true,
     serverSide: true,
@@ -91,6 +103,7 @@
       { data: "stock", name: "currentStock", render: (value, type, row) => type === "display" ? `<span class="badge ${row.lowStock ? "badge-yellow" : "badge-green"}">${localeNumber.display(value)}</span>` : value },
       { data: "margin", name: "margin", orderable: false, render: localePercent },
       { data: null, name: "whatsapp", orderable: false, render: (_data, type, row) => type === "display" ? whatsappCell(row) : row.whatsapp },
+      { data: null, name: "share", orderable: false, render: (_data, type, row) => type === "display" ? shareCell(row) : row.id },
       { data: null, name: "actions", orderable: false, render: (_data, type, row) => type === "display" ? actionCell(row) : row.id }
     ],
     language: {

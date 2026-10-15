@@ -47,12 +47,14 @@ public class ProductService {
     private final StoreContextService storeContextService;
     private final ExternalProductService externalProductService;
     private final ProductImageService productImageService;
+    private final ProductBrandService productBrandService;
     private final CurrentTenant currentTenant;
 
     public ProductService(ProductRepository productRepository, CategoryRepository categoryRepository,
                           SupplierRepository supplierRepository, InventoryMovementRepository movementRepository,
                           InventoryStockRepository stockRepository, StoreContextService storeContextService,
                           ExternalProductService externalProductService, ProductImageService productImageService,
+                          ProductBrandService productBrandService,
                           CurrentTenant currentTenant) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
@@ -62,6 +64,7 @@ public class ProductService {
         this.storeContextService = storeContextService;
         this.externalProductService = externalProductService;
         this.productImageService = productImageService;
+        this.productBrandService = productBrandService;
         this.currentTenant = currentTenant;
     }
 
@@ -96,7 +99,7 @@ public class ProductService {
             product.setCode(form.getCode().trim());
             product.setBarcode(barcode);
             product.setName(form.getName().trim());
-            product.setBrand(blankToNull(form.getBrand()));
+            product.setBrand(productBrandService.canonicalize(tenantId, form.getBrand()));
             product.setPresentation(blankToNull(form.getPresentation()));
             product.setImageUrl(imageUrl);
             product.setDescription(form.getDescription());

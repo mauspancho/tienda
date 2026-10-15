@@ -27,7 +27,8 @@ import static org.mockito.ArgumentMatchers.anyLong;
 @org.springframework.context.annotation.ComponentScan("com.tienda.pos.api.v1")
 @Import({HardeningTestConfiguration.class, PlatformTenantController.class, PlatformTenantService.class,
         com.tienda.pos.backup.TenantBackupService.class, com.tienda.pos.backup.PlatformBackupController.class,
-        TenantProvisioningService.class, UserService.class, UserController.class, ProductService.class,
+        TenantProvisioningService.class, UserService.class, UserController.class, ProductBrandNormalizer.class,
+        ProductBrandService.class, ProductService.class, ProductSharingService.class,
         ProductController.class, BarcodeLabelService.class, InventoryController.class, SaleController.class,
         PosController.class, CashService.class, CategoryController.class, SupplierController.class, AuthController.class,
         com.tienda.pos.api.ProductApiController.class,

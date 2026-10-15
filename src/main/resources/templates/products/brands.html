@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Normalizar marcas</title><link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="app-shell"><div th:replace="~{fragments/layout :: sidebar}"></div><main class="main"><div th:replace="~{fragments/layout :: header}"></div><section class="content">
+  <div class="page-title"><div><h1>Normalización de marcas</h1><p class="muted">Vista previa de los cambios para esta tienda. La operación no combina marcas parcialmente parecidas.</p></div><a class="btn btn-muted" th:href="@{/admin/products}">Volver</a></div>
+  <div th:replace="~{fragments/layout :: alerts}"></div>
+  <div class="grid grid-3">
+    <div class="card"><span class="muted">Productos con marca</span><h2 th:text="${report.productsWithBrand}">0</h2></div>
+    <div class="card"><span class="muted">Productos por corregir</span><h2 th:text="${report.productsAffected}">0</h2></div>
+    <div class="card"><span class="muted">Grupos afectados</span><h2 th:text="${report.groups.size()}">0</h2></div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h2>Reporte previo</h2>
+    <p class="muted" th:if="${report.groups.empty}">No hay variantes pendientes. Ejecutar de nuevo no producirá cambios.</p>
+    <div class="table-wrap" th:unless="${report.groups.empty}"><table><thead><tr><th>Marca resultante</th><th>Valores actuales</th><th>Productos</th><th>Cambian</th></tr></thead><tbody>
+      <tr th:each="group : ${report.groups}"><td><strong th:text="${group.canonicalBrand}"></strong></td><td><span th:each="variant, status : ${group.variants}" th:text="${variant + (status.last ? '' : ', ')}"></span></td><td th:text="${group.productCount}"></td><td th:text="${group.changedProductCount}"></td></tr>
+    </tbody></table></div>
+    <form th:action="@{/admin/products/brands/normalize}" method="post" style="margin-top:16px" th:if="${report.productsAffected > 0}">
+      <button class="btn btn-primary" type="submit" onclick="return confirm('¿Aplicar esta normalización a las marcas mostradas?')">Aplicar normalización</button>
+    </form>
+  </div>
+</section></main></div>
+</body></html>

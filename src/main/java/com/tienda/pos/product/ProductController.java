@@ -15,6 +15,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -41,11 +43,15 @@ public class ProductController {
     private final BarcodeLabelService barcodeLabelService;
     private final CurrentTenant currentTenant;
     private final ManualWhatsappPromotionService manualWhatsappPromotionService;
+    private final ProductBrandService productBrandService;
+    private final ProductSharingService productSharingService;
 
     public ProductController(ProductRepository productRepository, ProductService productService,
                              CategoryRepository categoryRepository, SupplierRepository supplierRepository,
                              BarcodeLabelService barcodeLabelService, CurrentTenant currentTenant,
-                             ManualWhatsappPromotionService manualWhatsappPromotionService) {
+                             ManualWhatsappPromotionService manualWhatsappPromotionService,
+                             ProductBrandService productBrandService,
+                             ProductSharingService productSharingService) {
         this.productRepository = productRepository;
         this.productService = productService;
         this.categoryRepository = categoryRepository;
@@ -53,6 +59,8 @@ public class ProductController {
         this.barcodeLabelService = barcodeLabelService;
         this.currentTenant = currentTenant;
         this.manualWhatsappPromotionService = manualWhatsappPromotionService;
+        this.productBrandService = productBrandService;
+        this.productSharingService = productSharingService;
     }
 
     @GetMapping("/products")
@@ -158,6 +166,21 @@ public class ProductController {
         return "products/form";
     }
 
+    @GetMapping("/products/brands")
+    public String brands(Model model) {
+        model.addAttribute("report", productBrandService.report(currentTenant.id()));
+        return "products/brands";
+    }
+
+    @PostMapping("/products/brands/normalize")
+    public String normalizeBrands(RedirectAttributes redirectAttributes) {
+        ProductBrandService.BrandNormalizationResult result = productBrandService.normalizeExisting(currentTenant.id());
+        redirectAttributes.addFlashAttribute("success", result.changedProducts() == 0
+                ? "Las marcas ya estaban normalizadas."
+                : "Se normalizaron " + result.changedProducts() + " productos correctamente.");
+        return "redirect:/admin/products/brands";
+    }
+
     @PostMapping("/products/{id}/manual-whatsapp-promotion")
     @ResponseBody
     public ResponseEntity<?> sendManualWhatsappPromotion(@PathVariable Long id,
@@ -170,6 +193,31 @@ public class ProductController {
                     sendToNumber, phone));
         } catch (DomainException ex) {
             return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/products/{id}/share-preview")
+    @ResponseBody
+    public ResponseEntity<?> sharePreview(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(productSharingService.preview(id));
+        } catch (DomainException ex) {
+            return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/products/{id}/share-image")
+    public ResponseEntity<byte[]> shareImage(@PathVariable Long id) {
+        try {
+            ProductImageService.ProductImagePayload image = productSharingService.image(id);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(image.contentType()))
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=\"" + image.filename().replace("\"", "") + "\"")
+                    .header(HttpHeaders.CACHE_CONTROL, "private, no-store")
+                    .body(image.bytes());
+        } catch (DomainException ex) {
+            return ResponseEntity.notFound().build();
         }
     }
 
@@ -289,9 +337,6 @@ public class ProductController {
         model.addAttribute("categories", categoryRepository.findByTenantIdAndActiveTrueOrderByNameAsc(tenantId));
         model.addAttribute("suppliers", supplierRepository.findByTenantIdAndActiveTrueOrderByNameAsc(tenantId));
         model.addAttribute("units", UnitType.values());
-        if (form.getId() != null) {
-            model.addAttribute("manualPromotion", manualWhatsappPromotionService.preview(form.getId()));
-        }
     }
 
     public record GeneratedCode(String value) {

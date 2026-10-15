@@ -5,6 +5,7 @@ import com.tienda.pos.product.Product;
 import com.tienda.pos.product.ProductBarcodeLookupResult;
 import com.tienda.pos.product.ProductRepository;
 import com.tienda.pos.product.ProductService;
+import com.tienda.pos.product.ProductBrandService;
 import com.tienda.pos.tenant.CurrentTenant;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Page;
@@ -30,11 +31,14 @@ public class ProductApiController {
 
     private final ProductRepository productRepository;
     private final ProductService productService;
+    private final ProductBrandService productBrandService;
     private final CurrentTenant currentTenant;
 
-    public ProductApiController(ProductRepository productRepository, ProductService productService, CurrentTenant currentTenant) {
+    public ProductApiController(ProductRepository productRepository, ProductService productService,
+                                ProductBrandService productBrandService, CurrentTenant currentTenant) {
         this.productRepository = productRepository;
         this.productService = productService;
+        this.productBrandService = productBrandService;
         this.currentTenant = currentTenant;
     }
 
@@ -65,7 +69,7 @@ public class ProductApiController {
         String query = q == null ? "" : q.trim();
         return switch (field) {
             case "name" -> productRepository.suggestNames(tenantId, query, PageRequest.of(0, 10));
-            case "brand" -> productRepository.suggestBrands(tenantId, query, PageRequest.of(0, 10));
+            case "brand" -> productBrandService.suggest(tenantId, query);
             default -> List.of();
         };
     }
