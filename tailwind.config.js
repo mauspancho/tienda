@@ -32,6 +32,56 @@ module.exports = {
         }
       },
       {
+        ocean: {
+          "color-scheme": "light",
+          "primary": "#00799A",
+          "primary-content": "#ffffff",
+          "secondary": "#00B3E2",
+          "secondary-content": "#002430",
+          "accent": "#0095BD",
+          "accent-content": "#002430",
+          "neutral": "#004B61",
+          "neutral-content": "#ECF9FF",
+          "base-100": "#ffffff",
+          "base-200": "#ECF9FF",
+          "base-300": "#A1E4FF",
+          "base-content": "#002430",
+          "info": "#00799A",
+          "info-content": "#ffffff",
+          "success": "#16a34a",
+          "success-content": "#052e16",
+          "warning": "#d97706",
+          "warning-content": "#111827",
+          "error": "#dc2626",
+          "error-content": "#ffffff"
+        }
+      },
+      {
+        forest: {
+          "color-scheme": "light",
+          "primary": "#3d6868",
+          "primary-content": "#ffffff",
+          "secondary": "#a7c686",
+          "secondary-content": "#3c515d",
+          "accent": "#fcee8c",
+          "accent-content": "#3c515d",
+          "neutral": "#3c515d",
+          "neutral-content": "#ffffff",
+          "base-100": "#ffffff",
+          "base-200": "#ffffff",
+          "base-300": "#a7c686",
+          "base-content": "#3c515d",
+          "info": "#2563eb",
+          "info-content": "#ffffff",
+          "success": "#16a34a",
+          "success-content": "#052e16",
+          "warning": "#d97706",
+          "warning-content": "#111827",
+          "error": "#dc2626",
+          "error-content": "#ffffff"
+        }
+      },
+      {
         sunset: {
           "color-scheme": "dark",
           "primary": "#f97316",

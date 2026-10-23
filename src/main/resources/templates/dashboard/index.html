@@ -2,7 +2,7 @@
 <html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Dashboard</title><link rel="stylesheet" th:href="@{/css/app.css}">
+  <title>Dashboard</title><script th:src="@{/js/theme-boot.js}"></script><link rel="stylesheet" th:href="@{/css/app.css}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -59,28 +59,18 @@
 </div>
 <script>
 function dashboardChartPalette() {
-  const dark = document.documentElement.getAttribute('data-theme') === 'sunset';
-  return dark
-    ? {
-        text: '#ffffff',
-        grid: 'rgba(255, 255, 255, .22)',
-        border: 'rgba(255, 255, 255, .55)',
-        accent: '#f97316',
-        fill: 'rgba(249, 115, 22, .22)',
-        point: '#ffffff',
-        tooltipBg: '#181420',
-        tooltipText: '#ffffff'
-      }
-    : {
-        text: '#162033',
-        grid: 'rgba(22, 32, 51, .16)',
-        border: 'rgba(22, 32, 51, .36)',
-        accent: '#2563eb',
-        fill: 'rgba(37, 99, 235, .12)',
-        point: '#ffffff',
-        tooltipBg: '#ffffff',
-        tooltipText: '#162033'
-      };
+  const styles = getComputedStyle(document.documentElement);
+  const read = (token, fallback) => (styles.getPropertyValue(token) || fallback).trim();
+  return {
+    text: read('--chart-text', '#162033'),
+    grid: read('--chart-grid', 'rgba(22, 32, 51, .16)'),
+    border: read('--chart-grid-strong', 'rgba(22, 32, 51, .36)'),
+    accent: read('--color-primary', '#2563eb'),
+    fill: read('--chart-fill', 'rgba(37, 99, 235, .12)'),
+    point: read('--chart-point', '#ffffff'),
+    tooltipBg: read('--chart-tooltip-background', '#ffffff'),
+    tooltipText: read('--chart-tooltip-text', '#162033')
+  };
 }
 
 function money(value) {

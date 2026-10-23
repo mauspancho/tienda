@@ -3,7 +3,7 @@
 <head th:fragment="head(title)">
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title th:text="${title} + ' | Tienda POS'">Plataforma</title>
-  <link rel="stylesheet" th:href="@{/css/app.css}">
+  <script th:src="@{/js/theme-boot.js}"></script><link rel="stylesheet" th:href="@{/css/app.css}">
   <link rel="stylesheet" th:href="@{/css/platform.css}">
   <link rel="stylesheet" th:href="@{/css/whatsapp.css}">
   <link rel="stylesheet" th:href="@{/css/whatsapp-announcements.css}">
@@ -28,6 +28,8 @@
       <ul class="menu dropdown-content theme-menu">
         <li><button type="button" data-theme-option="tienda">Claro</button></li>
         <li><button type="button" data-theme-option="sunset">Sunset oscuro</button></li>
+        <li><button type="button" data-theme-option="ocean">Ocean</button></li>
+        <li><button type="button" data-theme-option="forest">Forest</button></li>
       </ul>
     </details>
     <form th:action="@{/admin/logout}" method="post"><button class="btn btn-outline btn-sm">Salir</button></form>

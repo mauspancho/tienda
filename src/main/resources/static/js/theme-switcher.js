@@ -1,7 +1,17 @@
 (function () {
   const storageKey = "tienda-theme";
   const defaultTheme = "tienda";
-  const themes = ["tienda", "sunset"];
+  const themes = ["tienda", "sunset", "ocean", "forest"];
+
+  // Registro del sistema de temas (lo consumen gráficos y módulos externos).
+  window.TiendaThemes = {
+    storageKey,
+    defaultTheme,
+    themes,
+    current: () => document.documentElement.getAttribute("data-theme") || defaultTheme,
+    apply: (theme) => applyTheme(theme),
+    set: (theme) => setTheme(theme),
+  };
 
   function preferredTheme() {
     try {
@@ -14,9 +24,13 @@
 
   function applyTheme(theme) {
     const nextTheme = themes.includes(theme) ? theme : defaultTheme;
+    const alreadyApplied = document.documentElement.getAttribute("data-theme") === nextTheme;
     document.documentElement.setAttribute("data-theme", nextTheme);
     if (document.body) {
       document.body.setAttribute("data-theme", nextTheme);
+    }
+    if (alreadyApplied) {
+      return nextTheme;
     }
     document.dispatchEvent(new CustomEvent("tienda:theme-changed", { detail: { theme: nextTheme } }));
     return nextTheme;
